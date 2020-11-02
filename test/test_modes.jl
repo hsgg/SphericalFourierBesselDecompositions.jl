@@ -1,0 +1,90 @@
+#!/usr/bin/env julia
+
+
+using SphericalFourierBesselDecompositions
+SFB = SphericalFourierBesselDecompositions
+
+
+@testset "Modes" begin
+    false && @testset "AnlmModes" begin
+        rmin = 100.0
+        rmax = 10000.0
+        kmax = 0.01
+        #rmin = 500.0
+        #rmax = 3000.0
+        #kmax = 0.2
+
+        @time modes = SFB.AnlmModes(kmax, rmin, rmax, cache=false)
+        @show modes.kmax modes.nmax modes.lmax modes.nside
+        @test 2*modes.nside >= modes.lmax
+        @test maximum(modes.lmax_n) == modes.lmax
+        @test maximum(modes.nmax_l) == modes.nmax
+        @show SFB.getnlmsize(modes)
+        @time for n=1:modes.nmax, l=0:modes.lmax_n[n], m=0:l
+            idx = SFB.getidx(modes, n, l, m)
+            n2, l2, m2 = SFB.getnlm(modes, idx)
+            @test n == n2
+            @test l == l2
+            @test m == m2
+        end
+    end
+
+    false && @testset "ClnnModes" begin
+        rmin = 500.0
+        rmax = 2000.0
+        kmax = 0.02
+        @time anlmmodes = SFB.AnlmModes(kmax, rmin, rmax)
+        #@time anlmmodes = SFB.AnlmModes(2, 0, rmin, rmax)
+        @time clnnmodes = SFB.ClnnModes(anlmmodes, Δnmax=4)
+        @show anlmmodes.nmax anlmmodes.lmax anlmmodes.nside
+        @show clnnmodes.Δnmax clnnmodes.Δnmax_l
+        @show SFB.getlnnsize(clnnmodes)
+        @test maximum(clnnmodes.Δnmax_l) == clnnmodes.Δnmax
+        idx2 = 1
+        @time for l=0:clnnmodes.amodes.lmax, Δn=0:clnnmodes.Δnmax_l[l+1], n̄=1:clnnmodes.amodes.nmax_l[l+1]-Δn
+            idx = SFB.getidx(clnnmodes, l, n̄+Δn, n̄)
+            idx3 = SFB.getidx(clnnmodes, l, n̄, n̄+Δn)
+            @test idx == idx3
+            l2, n2, n2′ = SFB.getlnn(clnnmodes, idx)
+            Δn2 = n2′ - n2
+            n̄2 = n2
+            #@show idx, l,Δn,n̄, l2,Δn2,n̄2
+            @test l2 <= clnnmodes.amodes.lmax
+            @test Δn2 <= clnnmodes.Δnmax_l[l+1]
+            @test n̄2 <= clnnmodes.amodes.nmax_l[l+1] - Δn
+            @test l == l2
+            @test Δn == Δn2
+            @test n̄ == n̄2
+            @test idx == idx2
+            idx2 += 1
+        end
+    end
+
+    @testset "ClnnBinnedModes" begin
+        rmin = 500.0
+        rmax = 2000.0
+        nmax = 10
+        lmax = 11
+        amodes = SFB.AnlmModes(nmax, lmax, rmin, rmax)
+        cmodes = SFB.ClnnModes(amodes, Δnmax=4)
+
+        @time w̃, v = SFB.bandpower_binning_weights(cmodes, Δℓ=1)
+        @time bcmodes = SFB.ClnnBinnedModes(w̃, v, cmodes)
+        @show bcmodes.LKK[1,:]
+        @show unique(bcmodes.LKK[1,:])
+        @test all(unique(bcmodes.LKK[1,:]) .≈ 0:lmax)
+
+        @time w̃, v = SFB.bandpower_binning_weights(cmodes, Δℓ=2)
+        @time bcmodes = SFB.ClnnBinnedModes(w̃, v, cmodes)
+        @test all(unique(bcmodes.LKK[1,:]) .≈ 0.5:2:lmax)
+
+        @time w̃, v = SFB.bandpower_binning_weights(cmodes, Δℓ=3)
+        @time bcmodes = SFB.ClnnBinnedModes(w̃, v, cmodes)
+        @show bcmodes.LKK[1,:]
+        @show unique(bcmodes.LKK[1,:])
+        @test all(unique(bcmodes.LKK[1,:]) .≈ 1:3:lmax)
+    end
+end
+
+
+# vim: set sw=4 et sts=4 :
