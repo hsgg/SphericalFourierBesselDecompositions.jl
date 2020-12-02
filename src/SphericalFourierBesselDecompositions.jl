@@ -12,6 +12,7 @@ include("SeparableArrays.jl")
 include("windows.jl")  # window function related
 include("theory.jl")  # mostly for testing the package, may be split at some point
 include("covariance.jl")  # mostly theory, may be split at some point
+include("window_chains.jl")  # window function related
 
 using Statistics
 #using Roots
@@ -24,6 +25,7 @@ using .Windows
 using .SeparableArrays
 using .Theory
 using .Covariance
+using .window_chains
 #using QuadGK
 #using FastGaussQuadrature
 
