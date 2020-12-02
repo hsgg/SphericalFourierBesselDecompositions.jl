@@ -38,6 +38,8 @@ function window_chain(ell, I_LM_nl1_n12)
         end
         #@show L
 
+        all_triangles(ell, L) || continue
+
         twoLplus1_w3j000 = (2*L[1] + 1) * wigner3j(T, ell[end], ell[1], L[1], 0, 0, 0)
         for i=2:k
             twoLplus1_w3j000 *= (2*L[i] + 1) * wigner3j(T, ell[i-1], ell[i], L[i], 0, 0, 0)
@@ -108,9 +110,9 @@ end
 
 # all_triangles(ell, L): Return true if all triangle conditions are met.
 function all_triangles(ell, L)
-    triangle(ell[end], ell[1], L[1]) || return false
-    for i=2:length(ell)
-        triangle(ell[i-1], ell[i], L[i]) || return false
+    for i=1:length(ell)
+        im1 = (i == 1) ? length(ell) : i-1
+        triangle(ell[im1], ell[i], L[i]) || return false
     end
     return true
 end
