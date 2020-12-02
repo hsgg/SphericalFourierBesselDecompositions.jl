@@ -52,7 +52,7 @@ using Test
 
 
         @testset "k = 3" begin
-            lmax = 4
+            lmax = 3
             SFB.window_chains.calc_w3j_k([0,1,0], [0,0,0], [0,0,0]) # compile
             SFB.window_chains.calc_w3j_3([0,1,0], [0,0,0], [0,0,0]) # compile
             tslow = 0.0
@@ -119,6 +119,13 @@ using Test
             k = 5
             @show k tslow tfast
         end
+    end
+
+
+    false && @testset "W_k" begin
+        ell = [1, 1, 1, 1]
+        I_LM_nl1_n12 = []
+        SFB.window_chains.window_chain(ell, I_LM_nl1_n12)
     end
 end
 
