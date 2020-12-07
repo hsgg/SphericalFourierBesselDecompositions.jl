@@ -15,6 +15,8 @@ include("test_separablearrays.jl")
 include("test_windows.jl")
 include("test_theory.jl")
 include("test_modes.jl")
+include("test_wigner_chains.jl")
+include("test_nditerators.jl")
 include("test_window_chains.jl")
 
 

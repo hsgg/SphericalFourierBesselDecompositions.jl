@@ -529,7 +529,6 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
     @show length(mix), size(mix)
     @show lnnsize^2, lnnsize
 
-    nr = size(win, 1)
     r, Δr = window_r(wmodes)
 
     LMAX = 2 * amodes.lmax
@@ -735,7 +734,6 @@ function power_win_mix(win, w̃mat, vmat, wmodes::ConfigurationSpaceModes, bcmod
     LNNsize = getlnnsize(bcmodes)
     @show LNNsize^2, LNNsize, lnnsize
 
-    nr = size(win, 1)
     r, Δr = window_r(wmodes)
 
     println("Calculate Wr_lm:")
