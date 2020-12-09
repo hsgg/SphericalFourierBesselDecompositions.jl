@@ -23,7 +23,9 @@ struct NeqLView{T}
 end
 NeqLView(I, ell, n1, n2) = NeqLView(I, convert(Array{Int}, ell), convert(Array{Int}, n1), convert(Array{Int}, n2))
 
-Base.getindex(v::NeqLView, LM::Int, i::Int, j::Int) = v.I_LM_ln_ln[LM, v.ell[i]+1, v.n1[i], v.ell[j]+1, v.n2[j]]
+Base.getindex(v::NeqLView, LM::Int, i::Int, j::Int) = begin
+    v.I_LM_ln_ln[LM, v.ell[i]+1, v.n1[i], v.ell[j]+1, v.n2[j]]
+end
 
 
 

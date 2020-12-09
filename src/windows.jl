@@ -462,7 +462,10 @@ function calc_cmixii(i, i′, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache,
         N′ = N
         N = tmp
     end
-    i == 1 && @show i,i′, n,n′, N,N′, l,L
+
+    showthis = ((l==L==0 && n==N′==1 && n′==N==2) || (l==L==0 && n==N′==2 && n′==N==1))
+    showthis && @show "huzzah",i,i′, n,n′, N,N′, l,L
+    #@show i,i′, (l,n,n′), (L,N,N′)
 
     # sanity check
     Nsamp1 = 8 * (n + N) + l + L
