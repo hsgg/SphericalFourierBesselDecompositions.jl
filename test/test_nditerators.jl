@@ -38,7 +38,7 @@ using Test
     M2 = SFB.NDIterator(0, L1)
     M3 = SFB.NDIterator(L1, 10)
     M4 = SFB.NDIterator(0, 10)
-    M5 = SFB.NDIterator(0, 10; k=5)
+    M5 = SFB.NDIterator(0, 10; N=5)
     @test length(L1) == N
     @test length(M1) == N
     @test length(M2) == N
@@ -47,10 +47,18 @@ using Test
     @test length(M5) == 5
 
     # test broadcast
-    L = SFB.NDIterator(0, 10, k=6)
+    L = SFB.NDIterator(0, 10, N=6)
     SFB.advance(L)  # make L valid
     arr = @. L + 1
     @test arr == fill(1, 6)
+
+    # test array conversion
+    @test convert(Array, L) == fill(0,6)
+    #Array(L)  # doesn't work
+
+    # firstindex, lastindex
+    @test L[begin] == 0
+    @test L[end] == 0
 end
 
 

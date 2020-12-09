@@ -33,7 +33,7 @@ function NDIterator(idxmin::AbstractArray, idxmax::AbstractArray)
     end
     return ndi
 end
-NDIterator(idxmin::Integer, idxmax::Integer; k=1) = NDIterator(fill(idxmin,k), fill(idxmax,k))
+NDIterator(idxmin::Integer, idxmax::Integer; N=1) = NDIterator(fill(idxmin,N), fill(idxmax,N))
 NDIterator(idxmin::Integer, idxmax) = NDIterator(fill(idxmin, length(idxmax)), convert(Array, idxmax))
 NDIterator(idxmin, idxmax::Integer) = NDIterator(convert(Array, idxmin), fill(idxmax, length(idxmin)))
 NDIterator(idxmin, idxmax) = NDIterator(convert(Array, idxmin), convert(Array, idxmax))
@@ -42,6 +42,11 @@ NDIterator(idxmin, idxmax) = NDIterator(convert(Array, idxmin), convert(Array, i
 Base.getindex(ndi::NDIterator, i::Int) = ndi.idx[i]
 Base.:-(ndi::NDIterator) = - ndi.idx
 Base.convert(::Type{T}, ndi::NDIterator) where {T<:AbstractArray} = T(ndi.idx)
+
+Base.firstindex(ndi::NDIterator) = 1
+Base.lastindex(ndi::NDIterator) = length(ndi.idx)
+
+Base.show(io::IO, ndi::NDIterator) = show(io, ndi.idx)
 
 # for @__dot__ syntax
 Base.length(ndi::NDIterator) = length(ndi.idx)
