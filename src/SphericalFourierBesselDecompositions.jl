@@ -11,10 +11,10 @@ include("modes.jl")  # AnlmModes, ClnnModes, ClnnBinnedModes
 include("SeparableArrays.jl")
 include("windows.jl")  # window function related
 include("theory.jl")  # mostly for testing the package, may be split at some point
-include("covariance.jl")  # mostly theory, may be split at some point
 include("NDIterators.jl")
 include("wigner_chains.jl")  # Wigner symbol related
 include("window_chains.jl")  # window function related
+include("covariance.jl")  # mostly theory, may be split at some point
 
 using Statistics
 #using Roots
@@ -28,7 +28,7 @@ using .SeparableArrays
 using .Theory
 using .Covariance
 using .WignerChains
-using .window_chains
+using .WindowChains
 using .NDIterators
 #using QuadGK
 #using FastGaussQuadrature

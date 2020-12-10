@@ -1,7 +1,7 @@
 #!/usr/bin/env julia
 
 
-module window_chains
+module WindowChains
 
 export window_chain
 

@@ -9,6 +9,7 @@ using ..Modes
 using ..Windows
 using ..SeparableArrays
 using ..Theory
+using ..WindowChains
 
 
 function get_wmix(w, w′, nl, m, NL, M)
@@ -19,7 +20,8 @@ function get_wmix(w, w′, nl, m, NL, M)
 end
 
 
-function calc_covariance_exact(CNlnn, wmix, wmix′, cmodes)
+# used to be calc_covariance_exact()
+function calc_covariance_exact_direct(CNlnn, wmix, wmix′, cmodes)
     amodes = cmodes.amodes
     lnnsize = getlnnsize(cmodes)
     VWlnnLNN = fill(0.0, lnnsize, lnnsize)
@@ -183,6 +185,40 @@ function calc_covariance_exact2(CNlnn, wmix, cmodes, Veff)
         VWAlnnLNN[j,i] = VWAlnnLNN[i,j]
     end
     return VWAlnnLNN
+end
+
+
+function calc_covariance_exact_chain(CNlnn, win, wmodes, cmodes)
+    amodes = cmodes.amodes
+    I_LM_ln_ln, LMcache = WindowChains.calc_I_LM_nl_nl(win, wmodes, amodes)
+    lnnsize = getlnnsize(cmodes)
+    A1 = fill(0.0, lnnsize, lnnsize)
+    for j=1:lnnsize, i=j:lnnsize
+        l, n, n′ = getlnn(cmodes, i)
+        L, N, N′ = getlnn(cmodes, j)
+        ell = [0, L, 0, l]
+        enn = [0, N, 0, n′]
+        enn′ = [0, N′, 0, n]
+        A = 0.0
+        for k=1:lnnsize
+            l1, n1, n2 = getlm(cmodes, k)
+            ell[1] = l1
+            enn[1] = n1
+            enn′[1] = n2
+            W4 = fill(NaN, lnnsize)
+            for m=1:lnnsize
+                l3, n4, n3 = getlm(cmodes, m)
+                ell[3] = l3
+                enn[3] = n4
+                enn′[3] = n3
+                W4[m] = window_chain(ell, enn, enn′, I_LM_ln_ln, LMcache)
+            end
+            A += CNlnn[k] * (CNlnn' * W4)
+        end
+        A /= (2*l+1) * (2*L+1)
+        A1[i,j] = A[j,i] = A
+    end
+    return A1
 end
 
 

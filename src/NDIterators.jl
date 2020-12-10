@@ -4,8 +4,8 @@
 # Currently, we implement an iterator interface for the iteration over the
 # elements of the iterator, not to advance the iterator.
 #
-# TODO: Implement iterator interface defined by Julia documentation.
-# TODO: Implement AbstracArray interface defined by Julia documentation.
+# TODO: Implement iterator interface defined by Julia documentation. The object
+# that the iterator returns is the array of indices.
 
 module NDIterators
 
