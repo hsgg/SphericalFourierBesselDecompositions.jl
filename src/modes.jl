@@ -372,19 +372,30 @@ end
 
 getlnnsize(bcmodes::ClnnBinnedModes) = size(bcmodes.LKK,2)
 
-getlkk(bcmodes::ClnnBinnedModes, i) = bcmodes.LKK[1,i], bcmodes.LKK[2,i], bcmodes.LKK[3,i]
+getlkk(bcmodes::ClnnBinnedModes, i) = begin
+    #@show i,bcmodes.LKK[2,i]
+    bcmodes.LKK[1,i], bcmodes.LKK[2,i], bcmodes.LKK[3,i]
+end
 
 getlkk(bcmodes::ClnnBinnedModes, idxs::AbstractArray) = bcmodes.LKK
 
 
 # _getcblnn_helper(): get surrounding interval range
 _getcblnn_helper(arr, i) = begin
-    x_lo = arr[max(1, i - 1)]
-    x_mi = arr[i]
-    x_hi = arr[min(i + 1, length(arr))]
-    x_lo = (x_lo + x_mi) / 2
-    x_hi = (x_hi + x_mi) / 2
-    return x_lo, x_hi
+    lo = arr[max(1, i - 1)]
+    mi = arr[i]
+    hi = arr[min(i + 1, length(arr))]
+    if mi < lo && mi < hi
+        hi = min(lo, hi)
+        lo = mi - (hi - mi) / 2
+    elseif mi > lo && mi > hi
+        lo = max(lo, hi)
+        hi = mi + (mi - lo) / 2
+    end
+    @assert lo <= mi <= hi
+    lo = (lo + mi) / 2
+    hi = (hi + mi) / 2
+    return lo, hi
 end
 
 getidxapprox(bcmodes::ClnnBinnedModes, ℓ, k1in, k2in) = begin
@@ -394,12 +405,15 @@ getidxapprox(bcmodes::ClnnBinnedModes, ℓ, k1in, k2in) = begin
     i = findfirst(i -> begin
                       ℓ_lo, ℓ_hi = _getcblnn_helper(bcmodes.LKK[1,:], i)
                       (ℓ_lo <= ℓ <= ℓ_hi) || return false
+                      #@show i,ℓ_lo,ℓ_hi
 
                       k1_lo, k1_hi = _getcblnn_helper(bcmodes.LKK[2,:], i)
+                      #@show i,k1_lo,k1_hi
                       (k1_lo <= k1 <= k1_hi) || return false
 
                       k2_lo, k2_hi = _getcblnn_helper(bcmodes.LKK[3,:], i)
                       (k2_lo <= k2 <= k2_hi) || return false
+                      #@show i,k2_lo,k2_hi
                       return true
                   end,
                   1:getlnnsize(bcmodes))

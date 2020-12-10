@@ -4,9 +4,12 @@
 using SphericalFourierBesselDecompositions
 SFB = SphericalFourierBesselDecompositions
 
+using Test
+using LinearAlgebra
+
 
 @testset "Modes" begin
-    false && @testset "AnlmModes" begin
+    @testset "AnlmModes" begin
         rmin = 100.0
         rmax = 10000.0
         kmax = 0.01
@@ -29,7 +32,7 @@ SFB = SphericalFourierBesselDecompositions
         end
     end
 
-    false && @testset "ClnnModes" begin
+    @testset "ClnnModes" begin
         rmin = 500.0
         rmax = 2000.0
         kmax = 0.02
@@ -83,6 +86,50 @@ SFB = SphericalFourierBesselDecompositions
         @show bcmodes.LKK[1,:]
         @show unique(bcmodes.LKK[1,:])
         @test all(unique(bcmodes.LKK[1,:]) .≈ 1:3:lmax)
+
+
+        rmin = 500.0
+        rmax = 2000.0
+        nmax = 10
+        lmax = 10
+        amodes = SFB.AnlmModes(nmax, lmax, rmin, rmax)
+        cmodes = SFB.ClnnModes(amodes, Δnmax=0)
+
+        w̃, v = SFB.bandpower_binning_weights(cmodes, Δℓ=1)
+        bcmodes = SFB.ClnnBinnedModes(w̃, v, cmodes)
+        @test all(unique(bcmodes.LKK[1,:]) .≈ 0:lmax)
+        @test w̃ == I
+        @test v == I
+
+        @show bcmodes.LKK[1,:]
+        @show bcmodes.LKK[2,:]
+        @show bcmodes.LKK[3,:]
+        @test bcmodes.LKK[2,:] == bcmodes.LKK[3,:]
+        @show unique(bcmodes.LKK[1,:])
+        @show unique(bcmodes.LKK[2,:])
+        @show unique(bcmodes.LKK[3,:])
+
+        i = 91
+        @show "====",i
+        l, k, k′ = SFB.getlkk(bcmodes, i)
+        idx = SFB.getidxapprox(bcmodes, l, k, k′)
+        L, K, K′ = SFB.getlkk(bcmodes, idx)
+        @show (l,k,k′),i (l,K,K′),idx
+        @test i == idx
+
+        i = 12
+        @show "====",i
+        l, k, k′ = SFB.getlkk(bcmodes, i)
+        idx = SFB.getidxapprox(bcmodes, l, k, k′)
+        L, K, K′ = SFB.getlkk(bcmodes, idx)
+        @show (l,k,k′),i (l,K,K′),idx
+        @test i == idx
+
+        for i=1:SFB.getlnnsize(bcmodes)
+            l, k, k′ = SFB.getlkk(bcmodes, i)
+            idx = SFB.getidxapprox(bcmodes, l, k, k′)
+            @test i == idx
+        end
     end
 end
 
