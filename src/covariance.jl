@@ -7,7 +7,7 @@ export calc_covariance_exact_direct,
        calc_covariance_volumescaling,
        calc_covariance_efstathiou,
        calc_covariance_exact2,
-       calc_covariance_exact
+       calc_covariance_exact_chain
 
 using ..Modes
 using ..Windows
@@ -204,18 +204,21 @@ function calc_covariance_exact_chain(CNlnn, win, wmodes, cmodes)
     for j=1:lnnsize, i=j:lnnsize
         l, n, n′ = getlnn(cmodes, i)
         L, N, N′ = getlnn(cmodes, j)
+        if abs(L-l) > 1 || abs(n-N) > 1 || abs(n′-N′) > 1
+            continue
+        end
         ell = [0, L, 0, l]
         enn = [0, N, 0, n′]
         enn′ = [0, N′, 0, n]
         A = 0.0
         for k=1:lnnsize
-            l1, n1, n2 = getlm(cmodes, k)
+            l1, n1, n2 = getlnn(cmodes, k)
             ell[1] = l1
             enn[1] = n1
             enn′[1] = n2
             W4 = fill(NaN, lnnsize)
             for m=1:lnnsize
-                l3, n4, n3 = getlm(cmodes, m)
+                l3, n4, n3 = getlnn(cmodes, m)
                 ell[3] = l3
                 enn[3] = n4
                 enn′[3] = n3
