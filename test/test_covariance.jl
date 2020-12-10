@@ -15,7 +15,9 @@ using Test
     wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
     win = SFB.make_window(wmodes, :radial, :ang_quarter)
 
-    CNlnn
+    @show SFB.calc_covariance_exact_direct
+
+    #CNlnn
 end
 
 

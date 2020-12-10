@@ -3,7 +3,11 @@
 
 module Covariance
 
-export calc_covariance_exact, calc_covariance_volumescaling, calc_covariance_efstathiou, calc_covariance_exact2
+export calc_covariance_exact_direct,
+       calc_covariance_volumescaling,
+       calc_covariance_efstathiou,
+       calc_covariance_exact2,
+       calc_covariance_exact
 
 using ..Modes
 using ..Windows
@@ -59,6 +63,10 @@ function calc_covariance_exact_direct(CNlnn, wmix, wmix′, cmodes)
         VWlnnLNN[j,i] = V / (2*l+1) / (2*L+1)
     end
     return VWlnnLNN
+end
+
+
+function get_near_clnn(Clnn, l, k, k′)
 end
 
 
@@ -155,7 +163,7 @@ function calc_covariance_exact2(CNlnn, wmix, cmodes, Veff)
     for j=1:lnnsize, i=j:lnnsize
         l, n, n′ = getlnn(cmodes, i)
         L, N, N′ = getlnn(cmodes, j)
-        @show (l,n,n′),(L,N,N′)
+        i==j && @show (l,n,n′),(L,N,N′)
         #if abs(L-l) > 1 || abs(n-N) > 1 || abs(n′-N′) > 1
         #    continue
         #end
