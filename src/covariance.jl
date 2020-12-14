@@ -25,17 +25,17 @@ end
 
 
 # used to be calc_covariance_exact()
-function calc_covariance_exact_direct(CNlnn, wmix, wmix′, cmodes)
+function calc_covariance_exact_direct(CNlnn, wmix, wmix′, cmodes; Δℓ=1, Δn=1)
     amodes = cmodes.amodes
     lnnsize = getlnnsize(cmodes)
     VWlnnLNN = fill(0.0, lnnsize, lnnsize)
     for j=1:lnnsize, i=j:lnnsize
         l, n, n′ = getlnn(cmodes, i)
         L, N, N′ = getlnn(cmodes, j)
-        @show (l,n,n′),(L,N,N′)
-        if abs(L-l) > 1 || abs(n-N) > 1 || abs(n′-N′) > 1
+        if abs(L-l) > Δℓ || abs(n-N) > Δn || abs(n′-N′) > Δn
             continue
         end
+        @show i,(l,n,n′),j,(L,N,N′)
         V = 0.0
         for i334=1:lnnsize, i112=1:lnnsize
             l1, n1, n2 = getlnn(cmodes, i112)
@@ -204,9 +204,11 @@ function calc_covariance_exact_chain(CNlnn, win, wmodes, cmodes)
     for j=1:lnnsize, i=j:lnnsize
         l, n, n′ = getlnn(cmodes, i)
         L, N, N′ = getlnn(cmodes, j)
+        @show i,(l,n,n′),j,(L,N,N′)
         if abs(L-l) > 1 || abs(n-N) > 1 || abs(n′-N′) > 1
             continue
         end
+        @show i,(l,n,n′),j,(L,N,N′)
         ell = [0, L, 0, l]
         enn = [0, N, 0, n′]
         enn′ = [0, N′, 0, n]
