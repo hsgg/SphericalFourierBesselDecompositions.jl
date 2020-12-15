@@ -108,11 +108,12 @@ end
 This function is used for elementwise exponentiation of the array 's'. It could
 be made more elegant by extending the broadcast syntax. PRs welcome.
 """
-function exponentiate(s::SeparableArray, exp::Number)
-    a1 = s.arr1 .^ exp
-    a2 = s.arr2 .^ exp
+function exponentiate(s::SeparableArray, exponent::Number)
+    a1 = s.arr1 .^ exponent
+    a2 = s.arr2 .^ exponent
     return SeparableArray(a1, a2, name1=s.name1, name2=s.name2)
 end
+#Base.broadcasted(::typeof(^), s::SeparableArray, e::Number) = exponentiate(s, e)
 
 
 
