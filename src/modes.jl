@@ -304,6 +304,15 @@ function getidx(cmodes::ClnnModes, l, n1, n2)
 end
 
 
+@doc raw"""
+    getlkk(::ClnnModes, [i])
+    getlkk(::ClnnBinnedModes, [i])
+
+Get the physical modes ℓ, k, and k' corresponding to the index `i`. If `i` is
+left out, an array `lkk` of all modes is returned so that `lkk[1,:]` are all
+the ℓ-values, `lkk[2,:]` all the k-values, and `lkk[3,:]` are all the
+k'-values.
+"""
 function getlkk(cmodes::ClnnModes, i)
     l, n1, n2 = getlnn(cmodes, i)
     k1 = cmodes.knl[n1,l+1]
@@ -312,7 +321,7 @@ function getlkk(cmodes::ClnnModes, i)
 end
 
 
-function getlkk(cmodes::ClnnModes, idxs::AbstractArray)
+function getlkk(cmodes::ClnnModes)
     l, k1, k2 = getlkk(cmodes, 1)
     lkk = fill(eltype(promote(l, k1, k2))(0), 3, getlnnsize(cmodes))
     for i=1:size(lkk,2)
@@ -359,8 +368,7 @@ iterate(s::ClnnBinnedModes, x) = nothing
 
 function ClnnBinnedModes(w̃, v, cmodes::ClnnModes)
     @assert all(sum(w̃, dims=2) .≈ 1)  # ensure w̃ is normalized
-    lnnsize = size(w̃,2)
-    LKK = getlkk(cmodes, 1:lnnsize) * w̃'
+    LKK = getlkk(cmodes) * w̃'
     if cmodes.symmetric
         for i=1:size(LKK,2)
             LKK[2:3,i] .= extrema(LKK[2:3,i])  # ensure k1 <= k2
@@ -377,7 +385,7 @@ getlkk(bcmodes::ClnnBinnedModes, i) = begin
     bcmodes.LKK[1,i], bcmodes.LKK[2,i], bcmodes.LKK[3,i]
 end
 
-getlkk(bcmodes::ClnnBinnedModes, idxs::AbstractArray) = bcmodes.LKK
+getlkk(bcmodes::ClnnBinnedModes) = bcmodes.LKK
 
 
 # _getcblnn_helper(): get surrounding interval range
