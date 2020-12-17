@@ -32,11 +32,12 @@ import Base.length, Base.iterate
 ########################## AnlmModes: define ordering of modes in data vector ########
 
 ## Note: The maximum is lmax=3*nside-1, which is OK for bandpower limited
-## functions. In general, it may be better to use lmax=2*nside.
+## functions. In general, it may be better to use lmax=2*nside. Furthermore,
+## our algorithms frequently need to reference quantities up to L=2*lmax.
 #estimate_nside(lmax) = 2^max(2, ceil(Int, log2((lmax + 1) / 3)))
-#estimate_nside(lmax) = 2^max(2, ceil(Int, log2(lmax / 2)))
+estimate_nside(lmax) = 2^max(2, ceil(Int, log2((2*lmax + 1) / 2)))
 #estimate_nside(lmax) = 4 * 2^max(2, ceil(Int, log2((lmax + 1) / 3)))
-estimate_nside(lmax) = 32 * 2^max(2, ceil(Int, log2((lmax + 1) / 3)))
+#estimate_nside(lmax) = 32 * 2^max(2, ceil(Int, log2((lmax + 1) / 3)))
 
 
 @doc raw"""

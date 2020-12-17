@@ -38,6 +38,7 @@ module Windows
 export ConfigurationSpaceModes
 export window_r, apply_window, apodize_window
 export win_rhat_ln, integrate_window, calc_wmix, power_win_mix, win_lnn
+export check_nsamp
 
 using ..Modes
 using ..HealPy
@@ -662,6 +663,27 @@ function calc_angular_mixing_matrix(lmax, wlm)
 end
 
 
+function check_nsamp(amodes, wmodes)
+    max_Nsamp = 0
+    lmax = amodes.lmax
+    nmax_l = amodes.nmax_l
+    for L=0:lmax, N=1:nmax_l[L+1]
+        for l=0:lmax, n=1:nmax_l[l+1]
+            # sanity check
+            Nsamp = 8 * (n + N) + l + L
+            max_Nsamp = max(max_Nsamp, Nsamp)
+            if Nsamp > wmodes.nr
+                @warn "Radial integral may not converge" Nsamp wmodes.nr n l N L amodes.rmin amodes.rmax amodes.lmax amodes.nmax_l[l+1] amodes.nmax_l[L+1] amodes.nmax_l
+            end
+        end
+    end
+    if max_Nsamp > wmodes.nr
+        @error "Radial integral may not converge" max_Nsamp wmodes.nr amodes.rmin amodes.rmax amodes.lmax amodes.nmax_l
+        throw(ErrorException("Nsamp > nr"))
+    end
+end
+
+
 # calculate radial mixers
 function calc_radial_mixing(lmax, nmax_l, gnlr, phi, r, Δr)
     nmax = maximum(nmax_l)
@@ -673,7 +695,7 @@ function calc_radial_mixing(lmax, nmax_l, gnlr, phi, r, Δr)
             # sanity check
             Nsamp = 8 * (n + N) + l + L
             if Nsamp > length(r)
-                @error "Radial integral may not converge" Nsamp length(r) n l N L cmodes.amodes.knl[n,l+1] cmodes.amodes.knl[N,L+1] cmodes.amodes.rmin cmodes.amodes.rmax extrema(r) Δr
+                @error "Radial integral may not converge" Nsamp length(r) n l N L extrema(r) Δr
                 throw(ErrorException("Nsamp > nr"))
             end
             @. ggϕint = r^2 * gnlr[:,n,l+1] * gnlr[:,N,L+1] * phi
