@@ -196,7 +196,7 @@ function calc_covariance_exact2(CNlnn, wmix, cmodes, Veff)
 end
 
 
-function calc_covariance_exact_chain(CNlnn, win, wmodes, cmodes)
+function calc_covariance_exact_chain(CNlnn, win, wmodes, cmodes; Δℓ=1, Δn=1)
     amodes = cmodes.amodes
     I_LM_ln_ln, LMcache = WindowChains.calc_I_LM_nl_nl(win, wmodes, amodes)
     lnnsize = getlnnsize(cmodes)
@@ -204,8 +204,7 @@ function calc_covariance_exact_chain(CNlnn, win, wmodes, cmodes)
     for j=1:lnnsize, i=j:lnnsize
         l, n, n′ = getlnn(cmodes, i)
         L, N, N′ = getlnn(cmodes, j)
-        @show i,(l,n,n′),j,(L,N,N′)
-        if abs(L-l) > 1 || abs(n-N) > 1 || abs(n′-N′) > 1
+        if abs(L-l) > Δℓ || abs(n-N) > Δn || abs(n′-N′) > Δn
             continue
         end
         @show i,(l,n,n′),j,(L,N,N′)
@@ -225,11 +224,13 @@ function calc_covariance_exact_chain(CNlnn, win, wmodes, cmodes)
                 enn[3] = n4
                 enn′[3] = n3
                 W4[m] = window_chain(ell, enn, enn′, I_LM_ln_ln, LMcache)
+                enn[2], enn′[2] = enn′[2], enn[2]
+                W4[m] += window_chain(ell, enn, enn′, I_LM_ln_ln, LMcache)
             end
             A += CNlnn[k] * (CNlnn' * W4)
         end
         A /= (2*l+1) * (2*L+1)
-        A1[i,j] = A[j,i] = A
+        A1[i,j] = A1[j,i] = A
     end
     return A1
 end
