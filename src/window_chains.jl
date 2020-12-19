@@ -198,6 +198,7 @@ end
 
 # calculate window function given l,m,L,M.
 function window_wmix(l, m, L, M, I_LM, LMcache)
+    T = Float64
     wigs000 = wigner3j_f(l, L, 0, 0)
     #@show l,L,-m,M
     wigs = wigner3j_f(l, L, -m, M)
@@ -205,16 +206,16 @@ function window_wmix(l, m, L, M, I_LM, LMcache)
     #@show length(wigs000) length(wigs)
     @assert length(wigs000) >= length(wigs)
     M1 = m - M
-    w = 0.0*im
+    w = T(0)*im
     for L1 in eachindex(wigs)
         L1M1 = LMcache[L1+1][abs(M1)+1]
         Iterm = I_LM[L1M1]
         if M1 < 0
             Iterm = (-1)^M1 * conj(Iterm)
         end
-        w += √(2*L1 + 1) * wigs000[L1] * wigs[L1] * Iterm
+        w += √T(2*L1 + 1) * wigs000[L1] * wigs[L1] * Iterm
     end
-    return (-1)^m * √((2*l + 1)*(2*L + 1) / (4*π)) * w
+    return (-1)^m * √((2*l + 1)*(2*L + 1) / (4*T(π))) * w
 end
 
 

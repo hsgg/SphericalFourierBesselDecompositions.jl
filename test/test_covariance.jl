@@ -54,7 +54,7 @@ using Profile
     @show VW_chain[1:2,1:2]
     @show VW_direct[1:2,1:2]
     @show VW_chain[1:2,1:2] ./ VW_direct[1:2,1:2]
-    #@test VW_chain ≈ VW_direct
+    @test VW_chain ≈ VW_direct  rtol=5e-2
 end
 
 
