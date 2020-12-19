@@ -45,8 +45,7 @@ using Test
             l, n1, n2 = SFB.getlnn(cmodes, i)
             wk = wk_lnni[i] / (2*l+1)
             @show l,n1,n2,wk_lnni[i],wk,wlnn[i]
-            rtol = 1e-3
-            @test wk ≈ wlnn[i] rtol=rtol
+            @test wk ≈ wlnn[i] rtol=1e-3
         end
     end
 

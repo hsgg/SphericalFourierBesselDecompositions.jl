@@ -22,6 +22,12 @@ using Profile
     @time wmix = SFB.calc_wmix(win, wmodes, amodes)  # too big!
     @time wmix′ = SFB.calc_wmix(win, wmodes, amodes, neg_m=true)  # too big!
 
+    I_LM_ln_ln, LMcache = SFB.WindowChains.calc_I_LM_nl_nl(win, wmodes, amodes)
+    wmix1 = SFB.window_wmix(1, 0, 0, 1, 0, 0, I_LM_ln_ln, LMcache)
+    @show wmix1 wmix[1]
+    @test wmix1 ≈ wmix[1]  rtol=2e-3
+
+
     w̃mat, vmat = SFB.bandpower_binning_weights(cmodes; Δℓ=1, ΔΔn=1, Δn̄=1)
     bcmodes = SFB.ClnnBinnedModes(w̃mat, vmat, cmodes)
     bcmix = SFB.power_win_mix(win, w̃mat, vmat, wmodes, bcmodes)
@@ -36,8 +42,8 @@ using Profile
     CN_th = C_th .+ N_th
 
     @time VW_direct = SFB.calc_covariance_exact_direct(CN_th, wmix, wmix′, cmodes)
-
     @time VW_chain = SFB.calc_covariance_exact_chain(CN_th, win, wmodes, cmodes)
+
     Profile.clear()
     @profile SFB.calc_covariance_exact_chain(CN_th, win, wmodes, cmodes)
     Profile.print()

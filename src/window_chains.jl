@@ -4,9 +4,11 @@
 module WindowChains
 
 export window_chain
+export window_wmix
 
 using ..Windows
 using WignerSymbols
+using WignerFamilies
 using ..HealPy
 using ..NDIterators
 using ..SeparableArrays
@@ -23,9 +25,8 @@ struct NeqLView{T}
 end
 NeqLView(I, ell, n1, n2) = NeqLView(I, convert(Array{Int}, ell), convert(Array{Int}, n1), convert(Array{Int}, n2))
 
-Base.getindex(v::NeqLView, LM::Int, i::Int, j::Int) = begin
-    v.I_LM_ln_ln[LM, v.ell[i]+1, v.n1[i], v.ell[j]+1, v.n2[j]]
-end
+Base.getindex(v::NeqLView, LM::Int, i::Int, j::Int) = v.I_LM_ln_ln[LM, v.ell[i]+1, v.n1[i], v.ell[j]+1, v.n2[j]]
+Base.getindex(v::NeqLView, ::Colon, i::Int, j::Int) = v.I_LM_ln_ln[:, v.ell[i]+1, v.n1[i], v.ell[j]+1, v.n2[j]]
 
 
 
@@ -55,7 +56,8 @@ function window_chain(ell, n1, n2, I_LM_ln_ln, LMcache)
     I_LM_l_l = NeqLView(I_LM_ln_ln, ell, n2, n1)
     return window_chain(ell, I_LM_l_l, LMcache)
 end
-function window_chain(ell, I_LM_l_l, LMcache)
+function window_chain_old(ell, I_LM_l_l, LMcache)
+    # This implementation is actually quite slow. Instead, use 'window_chain()' below.
     T = Float64
     k = length(ell)
 
@@ -188,6 +190,54 @@ function calc_I_LM_nl_nl(win, wmodes, amodes)
     end
 
     return I_LM_ln_ln, LMcache
+end
+
+
+
+####################### window function W_nlm^NLM ############################
+
+# calculate window function given l,m,L,M.
+function window_wmix(l, m, L, M, I_LM, LMcache)
+    wigs000 = wigner3j_f(l, L, 0, 0)
+    #@show l,L,-m,M
+    wigs = wigner3j_f(l, L, -m, M)
+    #@show eachindex(wigs000) eachindex(wigs)
+    #@show length(wigs000) length(wigs)
+    @assert length(wigs000) >= length(wigs)
+    M1 = m - M
+    w = 0.0*im
+    for L1 in eachindex(wigs)
+        L1M1 = LMcache[L1+1][abs(M1)+1]
+        Iterm = I_LM[L1M1]
+        if M1 < 0
+            Iterm = (-1)^M1 * conj(Iterm)
+        end
+        w += √(2*L1 + 1) * wigs000[L1] * wigs[L1] * Iterm
+    end
+    return (-1)^m * √((2*l + 1)*(2*L + 1) / (4*π)) * w
+end
+
+
+# calculate window function given nlm,NLM.
+function window_wmix(n, l, m, N, L, M, I_LM_ln_ln, LMcache)
+    return window_wmix(l, m, L, M, I_LM_ln_ln[:,l+1,n,L+1,N], LMcache)
+end
+
+
+# Faster implementation using a direct summation.
+function window_chain(ell, I_LM_l_l, LMcache)
+    T = Float64
+    k = length(ell)
+    wk = T(0)
+    m = NDIterator(-ell, ell)
+    while advance(m)
+        w = window_wmix(ell[end], m[end], ell[1], m[1], I_LM_l_l[:,k,1], LMcache)
+        for i=2:k
+            w *= window_wmix(ell[i-1], m[i-1], ell[i], m[i], I_LM_l_l[:,i-1,i], LMcache)
+        end
+        wk += real(w)
+    end
+    return wk
 end
 
 
