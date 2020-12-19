@@ -8,6 +8,7 @@ using Test
 
 
 @testset "Window Chains" begin
+    # Note: a lot of the differences here come down to the choice of nside.
     @testset "k = 1" begin
         k = 1
         rmin = 500.0
@@ -17,6 +18,9 @@ using Test
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
         win = SFB.make_window(wmodes, :radial, :ang_quarter)
 
+        wlnn = SFB.win_lnn(win, wmodes, cmodes)
+        @show wlnn
+
         # single modes
         I_LM_ln_ln, LMcache = SFB.WindowChains.calc_I_LM_nl_nl(win, wmodes, amodes)
         ell = [1]
@@ -24,8 +28,10 @@ using Test
         n2 = [1]
         I_LM_l_l = SFB.WindowChains.NeqLView(I_LM_ln_ln, ell, n1, n2)
         wk = SFB.window_chain(ell, I_LM_l_l, LMcache)
+        wlnn_i = wlnn[SFB.getidx(cmodes, ell[1], n1[1], n2[1])]
         @show wk
-        @test wk ≈ 0.08538664002556066 * (2*ell[1]+1) rtol=1e-6
+        @show wlnn_i
+        @test wk ≈ wlnn_i * (2*ell[1]+1) rtol=1e-3
 
 
         # all modes
@@ -34,14 +40,13 @@ using Test
         @test all(isreal.(wk_lnni))
         wk_lnni = real.(wk_lnni)
 
-        wlnn = SFB.win_lnn(win, wmodes, cmodes)
-        @show wlnn
         @show size(wk_lnni) size(wlnn)
         for i=1:SFB.getlnnsize(cmodes)
             l, n1, n2 = SFB.getlnn(cmodes, i)
             wk = wk_lnni[i] / (2*l+1)
             @show l,n1,n2,wk_lnni[i],wk,wlnn[i]
-            @test wk ≈ wlnn[i] rtol=1e-6
+            rtol = 1e-3
+            @test wk ≈ wlnn[i] rtol=rtol
         end
     end
 
@@ -71,7 +76,7 @@ using Test
         lnnB = SFB.getidx(cmodes,ell[1],n[1],n′[1])
         Mab = M′[lnnA, lnnB]
         @show wk Mab*(2*ell[2]+1)
-        @test wk ≈ Mab * (2*ell[2]+1)
+        @test wk ≈ Mab * (2*ell[2]+1)  rtol=1e-3
 
         # another mode
         I_LM_ln_ln, LMcache = SFB.WindowChains.calc_I_LM_nl_nl(win, wmodes, amodes)
@@ -85,7 +90,7 @@ using Test
         lnnB = SFB.getidx(cmodes,ell[1],n[1],n′[1])
         Mab = M′[lnnA, lnnB]
         @show wk Mab*(2*ell[2]+1)
-        @test wk ≈ Mab * (2*ell[2]+1)
+        @test wk ≈ Mab * (2*ell[2]+1)  rtol=1e-2 atol=2e-4
 
         # yet another mode
         I_LM_ln_ln, LMcache = SFB.WindowChains.calc_I_LM_nl_nl(win, wmodes, amodes)
@@ -99,7 +104,7 @@ using Test
         lnn1 = SFB.getidx(cmodes,ell[1],n[1],n′[1])
         Mab = M′[lnn2, lnn1]
         @show wk Mab*(2*ell[2]+1)
-        @test wk ≈ Mab * (2*ell[2]+1)
+        @test wk ≈ Mab * (2*ell[2]+1)  rtol=1e-2
 
         # guess what? another mode
         I_LM_ln_ln, LMcache = SFB.WindowChains.calc_I_LM_nl_nl(win, wmodes, amodes)
@@ -114,7 +119,7 @@ using Test
         Mab = M[lnn2, lnn1]
         Mab′ = M′[lnn2, lnn1]
         @show wk Mab*(2*ell[2]+1) Mab′*(2*ell[2]+1)
-        @test wk ≈ Mab′ * (2*ell[2]+1)
+        @test wk ≈ Mab′ * (2*ell[2]+1)  rtol=1e-2
 
 
         # all modes
@@ -131,7 +136,7 @@ using Test
             i2′ = SFB.getidx(cmodes, l2, n2′, n2)
             wk = wk_lnni[i1,i2′] / (2*l2+1)
             @show l1,n1,n1′,l2,n2,n2′,wk,M′[i2,i1]
-            @test wk ≈ M′[i2,i1]
+            @test wk ≈ M′[i2,i1]  rtol=1e-2 atol=5e-4
         end
     end
 end
