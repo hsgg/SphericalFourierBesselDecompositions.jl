@@ -21,17 +21,31 @@ using Test
         wlnn = SFB.win_lnn(win, wmodes, cmodes)
         @show wlnn
 
+        cache1 = SFB.WindowChains.WindowChainsCacheWignerChain(win, wmodes, amodes)
+        cache2 = SFB.WindowChains.WindowChainsCacheFullWmix(win, wmodes, amodes)
+        cache3 = SFB.WindowChains.WindowChainsCacheFullWmixOntheflyWmix(win, wmodes, amodes)
+        cache4 = SFB.WindowChains.WindowChainsCacheSeparableWmix(win, wmodes, amodes)
+        cache5 = SFB.WindowChains.WindowChainsCacheSeparableWmixOntheflyWlmlm(win, wmodes, amodes)
+        cache = SFB.WindowChainsCache(win, wmodes, amodes)
+
         # single modes
-        I_LM_ln_ln, LMcache = SFB.WindowChains.calc_I_LM_nl_nl(win, wmodes, amodes)
         ell = [1]
         n1 = [1]
         n2 = [1]
-        I_LM_l_l = SFB.WindowChains.NeqLView(I_LM_ln_ln, ell, n1, n2)
-        wk = SFB.window_chain(ell, I_LM_l_l, LMcache)
-        wlnn_i = wlnn[SFB.getidx(cmodes, ell[1], n1[1], n2[1])]
-        @show wk
-        @show wlnn_i
-        @test wk ≈ wlnn_i * (2*ell[1]+1) rtol=1e-3
+        wk0 = (2*ell[1] + 1) * wlnn[SFB.getidx(cmodes, ell[1], n1[1], n2[1])]
+        wk1 = SFB.window_chain(ell, n1, n2, cache1)
+        wk2 = SFB.window_chain(ell, n1, n2, cache2)
+        wk3 = SFB.window_chain(ell, n1, n2, cache3)
+        wk4 = SFB.window_chain(ell, n1, n2, cache4)
+        wk5 = SFB.window_chain(ell, n1, n2, cache5)
+        wk = SFB.window_chain(ell, n1, n2, cache)
+        @show wk wk0 wk1 wk2 wk3 wk4 wk5
+        @test wk ≈ wk0
+        @test wk ≈ wk1
+        @test wk ≈ wk2
+        @test wk ≈ wk3
+        @test wk ≈ wk4
+        @test wk ≈ wk5
 
 
         # all modes
@@ -70,7 +84,9 @@ using Test
         n′ = [1, 1]
         I_LM_l_l = SFB.WindowChains.NeqLView(I_LM_ln_ln, ell, n, n′)
         @show ell,n,n′
+        wk0 = SFB.WindowChains.window_chain_old(ell, I_LM_l_l, LMcache)
         wk = SFB.window_chain(ell, I_LM_l_l, LMcache)
+        @test wk0 ≈ wk
         lnnA = SFB.getidx(cmodes,ell[2],n′[2],n[2])
         lnnB = SFB.getidx(cmodes,ell[1],n[1],n′[1])
         Mab = M′[lnnA, lnnB]
@@ -84,7 +100,9 @@ using Test
         n′ = [2, 1]
         I_LM_l_l = SFB.WindowChains.NeqLView(I_LM_ln_ln, ell, n, n′)
         @show ell,n,n′
+        wk0 = SFB.WindowChains.window_chain_old(ell, I_LM_l_l, LMcache)
         wk = SFB.window_chain(ell, I_LM_l_l, LMcache)
+        @test wk0 ≈ wk
         lnnA = SFB.getidx(cmodes,ell[2],n′[2],n[2])
         lnnB = SFB.getidx(cmodes,ell[1],n[1],n′[1])
         Mab = M′[lnnA, lnnB]
@@ -98,7 +116,9 @@ using Test
         n′ = [1, 2]
         I_LM_l_l = SFB.WindowChains.NeqLView(I_LM_ln_ln, ell, n, n′)
         @show ell,n,n′
+        wk0 = SFB.WindowChains.window_chain_old(ell, I_LM_l_l, LMcache)
         wk = SFB.window_chain(ell, I_LM_l_l, LMcache)
+        @test wk0 ≈ wk
         lnn2 = SFB.getidx(cmodes,ell[2],n′[2],n[2])
         lnn1 = SFB.getidx(cmodes,ell[1],n[1],n′[1])
         Mab = M′[lnn2, lnn1]
@@ -112,7 +132,9 @@ using Test
         n′ = [2, 2]
         I_LM_l_l = SFB.WindowChains.NeqLView(I_LM_ln_ln, ell, n, n′)
         @show ell,n,n′
+        wk0 = SFB.WindowChains.window_chain_old(ell, I_LM_l_l, LMcache)
         wk = SFB.window_chain(ell, I_LM_l_l, LMcache)
+        @test wk0 ≈ wk
         lnn1 = SFB.getidx(cmodes,ell[1],n[1],n′[1])
         lnn2 = SFB.getidx(cmodes,ell[2],n′[2],n[2])
         Mab = M[lnn2, lnn1]

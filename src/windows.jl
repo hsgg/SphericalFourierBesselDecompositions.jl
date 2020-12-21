@@ -207,9 +207,8 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
     nr = length(r)
 
     LMAX = 2 * amodes.lmax
-    Wnside = estimate_nside(LMAX)
-    Wr_lm = calc_Wr_lm(win, LMAX, Wnside)
-    @debug "Wr_lm" LMAX Wnside size(Wr_lm) Wr_lm[:,1] Wr_lm[:,2]
+    Wr_lm = calc_Wr_lm(win, LMAX, amodes.nside)
+    @debug "Wr_lm" LMAX amodes.nside size(Wr_lm) Wr_lm[:,1] Wr_lm[:,2]
 
     LMLM = fill(0, LMAX+1, LMAX+1)
     for L=0:LMAX, M=0:L
@@ -295,8 +294,7 @@ function win_lnn(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes)
     nr = size(win, 1)
     r, Δr = window_r(wmodes)
 
-    Wnside = hp.npix2nside(size(win,2))
-    Wr_00 = Array{Float64,1}(calc_Wr_lm(win, 0, Wnside)[:,1])
+    Wr_00 = Array{Float64,1}(calc_Wr_lm(win, 0, cmodes.amodes.nside)[:,1])
     @show size(Wr_00) typeof(Wr_00)
     @assert all(isfinite.(Wr_00))
 
@@ -536,8 +534,7 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
     r, Δr = window_r(wmodes)
 
     LMAX = 2 * amodes.lmax
-    Wnside = estimate_nside(LMAX)
-    Wr_lm = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, Wnside))
+    Wr_lm = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, amodes.nside))
 
     # the gnl precomputation only saves about 10% time
     gnl = amodes.basisfunctions
@@ -763,8 +760,7 @@ function power_win_mix(win, w̃mat, vmat, wmodes::ConfigurationSpaceModes, bcmod
 
     println("Calculate Wr_lm:")
     LMAX = 2 * amodes.lmax
-    Wnside = estimate_nside(LMAX)
-    @time Wr_lm = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, Wnside))
+    @time Wr_lm = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, amodes.nside))
 
     println("Calculate gnlr:")
     gnl = amodes.basisfunctions
