@@ -208,7 +208,7 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
 
     LMAX = 2 * amodes.lmax
     Wr_lm = calc_Wr_lm(win, LMAX, amodes.nside)
-    @debug "Wr_lm" LMAX amodes.nside size(Wr_lm) Wr_lm[:,1] Wr_lm[:,2]
+    @debug "Wr_lm" LMAX amodes.nside size(Wr_lm) Wr_lm[:,1]
 
     LMLM = fill(0, LMAX+1, LMAX+1)
     for L=0:LMAX, M=0:L
@@ -294,7 +294,9 @@ function win_lnn(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes)
     nr = size(win, 1)
     r, Δr = window_r(wmodes)
 
-    Wr_00 = Array{Float64,1}(calc_Wr_lm(win, 0, cmodes.amodes.nside)[:,1])
+    # Note: the maximum ℓ we need is 0. However, healpy changes precision, and
+    # for comparison we use the same lmax as elsewhere.
+    Wr_00 = Array{Float64,1}(calc_Wr_lm(win, 2*cmodes.amodes.lmax, cmodes.amodes.nside)[:,1])
     @show size(Wr_00) typeof(Wr_00)
     @assert all(isfinite.(Wr_00))
 
