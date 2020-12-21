@@ -3,10 +3,8 @@
 
 module Covariance
 
-export calc_covariance_exact_direct,
-       calc_covariance_volumescaling,
+export calc_covariance_volumescaling,
        calc_covariance_efstathiou,
-       calc_covariance_exact2,
        calc_covariance_exact_chain
 
 using ..Modes
@@ -14,60 +12,6 @@ using ..Windows
 using ..SeparableArrays
 using ..Theory
 using ..WindowChains
-
-
-function get_wmix(w, w′, nl, m, NL, M)
-    (m >= 0 && M >= 0) && return w[nl+m, NL+M]
-    (m >= 0 && M < 0)  && return w′[nl+m, NL-M]
-    (m < 0  && M >= 0) && return (-1)^(m+M) * conj(w′[nl-m, NL+M])
-    return (-1)^(m-M) * conj(w[nl-m, NL-M])
-end
-
-
-# used to be calc_covariance_exact()
-function calc_covariance_exact_direct(CNlnn, wmix, wmix′, cmodes; Δℓ=1, Δn=1)
-    amodes = cmodes.amodes
-    lnnsize = getlnnsize(cmodes)
-    VWlnnLNN = fill(0.0, lnnsize, lnnsize)
-    for j=1:lnnsize, i=j:lnnsize
-        l, n, n′ = getlnn(cmodes, i)
-        L, N, N′ = getlnn(cmodes, j)
-        if abs(L-l) > Δℓ || abs(n-N) > Δn || abs(n′-N′) > Δn
-            continue
-        end
-        @show i,(l,n,n′),j,(L,N,N′)
-        V = 0.0
-        for i334=1:lnnsize, i112=1:lnnsize
-            l1, n1, n2 = getlnn(cmodes, i112)
-            l3, n3, n4 = getlnn(cmodes, i334)
-            nl = getidx(amodes, n, l, 0)
-            n1l1 = getidx(amodes, n1, l1, 0)
-            n2l1 = getidx(amodes, n2, l1, 0)
-            NL = getidx(amodes, N, L, 0)
-            N′L = getidx(amodes, N′, L, 0)
-            n4l3 = getidx(amodes, n4, l3, 0)
-            n3l3 = getidx(amodes, n3, l3, 0)
-            n′l = getidx(amodes, n′, l, 0)
-            wwww = 0.0
-            for m1=-l1:l1, M=-L:L, m3=-l3:l3, m=-l:l
-                wwww += real(get_wmix(wmix, wmix′, nl, m, n1l1, m1)
-                             * (conj(get_wmix(wmix, wmix′, n2l1, m1, NL, M))
-                                * conj(get_wmix(wmix, wmix′, N′L, M, n4l3, m3))
-                                + conj(get_wmix(wmix, wmix′, n2l1, m1, N′L, M))
-                                * conj(get_wmix(wmix, wmix′, NL, M, n4l3, m3)))
-                             * get_wmix(wmix, wmix′, n3l3, m3, nl, m))
-            end
-            V += CNlnn[i112] * CNlnn[i334] * wwww
-        end
-        VWlnnLNN[i,j] = V / (2*l+1) / (2*L+1)
-        VWlnnLNN[j,i] = V / (2*l+1) / (2*L+1)
-    end
-    return VWlnnLNN
-end
-
-
-function get_near_clnn(Clnn, l, k, k′)
-end
 
 
 function calc_covariance_volumescaling(CBlnn, bcmodes, Veff, Vsfb, Δℓ, Δn)
@@ -152,55 +96,12 @@ function calc_covariance_efstathiou(CBlnn, win, wmodes, w̃mat, vmat, bcmodes)
 end
 
 
-function calc_covariance_exact2(CNlnn, wmix, cmodes, Veff)
-    amodes = cmodes.amodes
-    CNAnlmNLM = calc_CNAnlmNLM(CNlnn, wmix, cmodes, Veff)
-    #CNAnlmNLM_negm = calc_CNAnlmNLM(CNlnn, wmix, cmodes, Veff; neg_m=true)
-    CNAnlmNLM_negm = CNAnlmNLM
-    CNWAnlmNLM = wmix * CNAnlmNLM * wmix'
-    lnnsize = getlnnsize(cmodes)
-    VWAlnnLNN = fill(NaN, lnnsize, lnnsize)
-    for j=1:lnnsize, i=j:lnnsize
-        l, n, n′ = getlnn(cmodes, i)
-        L, N, N′ = getlnn(cmodes, j)
-        i==j && @show (l,n,n′),(L,N,N′)
-        #if abs(L-l) > 1 || abs(n-N) > 1 || abs(n′-N′) > 1
-        #    continue
-        #end
-        V = 0.0
-        nl = getidx(amodes, n, l, 0)
-        n′l = getidx(amodes, n′, l, 0)
-        NL = getidx(amodes, N, L, 0)
-        N′L = getidx(amodes, N′, L, 0)
-        for m=0:l, M=0:L
-            # Note: this part needs improvement for sign(m)≠sign(M).
-            V += real(CNWAnlmNLM[nl+m,NL+M] * conj(CNWAnlmNLM[n′l+m,N′L+M])
-                      + CNWAnlmNLM[nl+m,N′L+M] * conj(CNWAnlmNLM[n′l+m,NL+M]))
-            if m > 0
-                V += (-1)^m * real(CNWAnlmNLM[nl+m,NL+M] * CNWAnlmNLM[n′l+m,N′L+M]
-                          + CNWAnlmNLM[nl+m,N′L+M] * CNWAnlmNLM[n′l+m,NL+M])
-            end
-            if M > 0
-                V += (-1)^M * real(CNWAnlmNLM[nl+m,NL+M] * CNWAnlmNLM[n′l+m,N′L+M]
-                          + CNWAnlmNLM[nl+m,N′L+M] * CNWAnlmNLM[n′l+m,NL+M])
-            end
-            if m > 0 && M > 0
-                V += (-1)^(m+M) * real(CNWAnlmNLM[nl+m,NL+M] * conj(CNWAnlmNLM[n′l+m,N′L+M])
-                          + CNWAnlmNLM[nl+m,N′L+M] * conj(CNWAnlmNLM[n′l+m,NL+M]))
-            end
-        end
-        VWAlnnLNN[i,j] = V / (2*l+1) / (2*L+1)
-        VWAlnnLNN[j,i] = VWAlnnLNN[i,j]
-    end
-    return VWAlnnLNN
-end
-
-
 function calc_covariance_exact_chain(CNlnn, win, wmodes, cmodes; Δℓ=1, Δn=1)
+    T = Float64
     amodes = cmodes.amodes
-    I_LM_ln_ln, LMcache = WindowChains.calc_I_LM_nl_nl(win, wmodes, amodes)
+    wccache = WindowChainsCache(win, wmodes, cmodes.amodes)
     lnnsize = getlnnsize(cmodes)
-    A1 = fill(0.0, lnnsize, lnnsize)
+    A1 = fill(T(0), lnnsize, lnnsize)
     for j=1:lnnsize, i=j:lnnsize
         l, n, n′ = getlnn(cmodes, i)
         L, N, N′ = getlnn(cmodes, j)
@@ -211,7 +112,7 @@ function calc_covariance_exact_chain(CNlnn, win, wmodes, cmodes; Δℓ=1, Δn=1)
         ell = [0, L, 0, l]
         enn = [0, N, 0, n′]
         enn′ = [0, N′, 0, n]
-        A = 0.0
+        A = T(0)
         for k=1:lnnsize
             l1, n1, n2 = getlnn(cmodes, k)
             ell[1] = l1
@@ -223,9 +124,9 @@ function calc_covariance_exact_chain(CNlnn, win, wmodes, cmodes; Δℓ=1, Δn=1)
                 ell[3] = l3
                 enn[3] = n4
                 enn′[3] = n3
-                W4[m] = window_chain(ell, enn, enn′, I_LM_ln_ln, LMcache)
+                W4[m] = window_chain(ell, enn, enn′, wccache)
                 enn[2], enn′[2] = enn′[2], enn[2]
-                W4[m] += window_chain(ell, enn, enn′, I_LM_ln_ln, LMcache)
+                W4[m] += window_chain(ell, enn, enn′, wccache)
             end
             A += CNlnn[k] * (CNlnn' * W4)
         end
@@ -234,6 +135,7 @@ function calc_covariance_exact_chain(CNlnn, win, wmodes, cmodes; Δℓ=1, Δn=1)
     end
     return A1
 end
+
 
 
 end
