@@ -339,27 +339,15 @@ function amln2clnn(anlm, cmodes::ClnnModes)
 end
 
 
-function correct_pixwin!(clnn, cmodes)
-    @show cmodes.amodes.nside
-    pixwin = hp.pixwin(cmodes.amodes.nside, lmax=cmodes.amodes.lmax, pol=false)
+function pixwin(cmodes)
+    hppwin = hp.pixwin(cmodes.amodes.nside, lmax=cmodes.amodes.lmax, pol=false)
     lnnsize = getlnnsize(cmodes)
+    sfbpwin = fill(NaN, lnnsize)
     for i=1:lnnsize
         l, = getlnn(cmodes, i)
-        clnn[i] /= pixwin[l+1]^2
+        sfbpwin[i] = hppwin[l+1]
     end
-    return clnn
-end
-
-
-function sfbpixwin(cmodes)
-    pixwin = hp.pixwin(cmodes.amodes.nside, lmax=cmodes.amodes.lmax, pol=false)
-    lnnsize = getlnnsize(cmodes)
-    sfbpixwin = fill(NaN, lnnsize)
-    for i=1:lnnsize
-        l, = getlnn(cmodes, i)
-        sfbpixwin[i] = pixwin[l+1]
-    end
-    return sfbpixwin
+    return sfbpwin
 end
 
 

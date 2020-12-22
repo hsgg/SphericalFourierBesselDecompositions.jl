@@ -105,6 +105,7 @@ function calc_covariance_exact_chain(CNlnn, win, wmodes, cmodes; Δℓ=1, Δn=1)
     for j=1:lnnsize, i=j:lnnsize
         l, n, n′ = getlnn(cmodes, i)
         L, N, N′ = getlnn(cmodes, j)
+        #L + l > 2 && continue
         if abs(L-l) > Δℓ || abs(n-N) > Δn || abs(n′-N′) > Δn
             continue
         end
