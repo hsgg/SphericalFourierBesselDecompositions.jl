@@ -64,12 +64,27 @@ using LinearAlgebra
     end
 
     @testset "ClnnBinnedModes" begin
+        rmin = 1370.0
+        rmax = 3540.0
+        kmax = 0.04
+        amodes = SFB.AnlmModes(kmax, rmin, rmax)
+        cmodes = SFB.ClnnModes(amodes, Δnmax=0)
+        @time w̃, v = SFB.bandpower_binning_weights(cmodes, Δℓ=18)
+        @time bcmodes = SFB.ClnnBinnedModes(w̃, v, cmodes)
+        @show unique(sort(bcmodes.LKK[1,:]))
+        incomplete_bins = SFB.get_incomplete_bins(w̃)
+        @show incomplete_bins
+        @show bcmodes.LKK[2,incomplete_bins]
+        @show maximum(kmax .- bcmodes.LKK[2,incomplete_bins])
+        @test all(bcmodes.LKK[2,incomplete_bins] .>= kmax - 0.002884)
+
+
         rmin = 500.0
         rmax = 2000.0
         nmax = 10
         lmax = 11
         amodes = SFB.AnlmModes(nmax, lmax, rmin, rmax)
-        cmodes = SFB.ClnnModes(amodes, Δnmax=4)
+        cmodes = SFB.ClnnModes(amodes, Δnmax=0)
 
         @time w̃, v = SFB.bandpower_binning_weights(cmodes, Δℓ=1)
         @time bcmodes = SFB.ClnnBinnedModes(w̃, v, cmodes)
@@ -85,6 +100,7 @@ using LinearAlgebra
         @time bcmodes = SFB.ClnnBinnedModes(w̃, v, cmodes)
         @show bcmodes.LKK[1,:]
         @show unique(bcmodes.LKK[1,:])
+        @show unique(SFB.getlkk(bcmodes)[1,:])
         @test all(unique(bcmodes.LKK[1,:]) .≈ 1:3:lmax)
 
 

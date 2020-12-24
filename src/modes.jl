@@ -25,6 +25,7 @@ export getnlmsize, getlmsize, getnlm, getidx
 export getlnnsize, getlnn, isvalidlnn
 export getlkk, getidxapprox
 export bandpower_binning_weights, bandpower_eigen_weights
+export get_incomplete_bins
 
 import Base.length, Base.iterate
 
@@ -370,8 +371,9 @@ function ClnnBinnedModes(w̃, v, cmodes::ClnnModes)
     @assert all(sum(w̃, dims=2) .≈ 1)  # ensure w̃ is normalized
     LKK = getlkk(cmodes) * w̃'
     if cmodes.symmetric
+        # ensure k1 <= k2
         for i=1:size(LKK,2)
-            LKK[2:3,i] .= extrema(LKK[2:3,i])  # ensure k1 <= k2
+            LKK[2:3,i] .= extrema(LKK[2:3,i])
         end
     end
     return ClnnBinnedModes(cmodes, LKK)
@@ -431,7 +433,10 @@ end
 
 ########## calculate binning and debinning matrices
 
-function bandpower_binning_weights(cmodes::ClnnModes; Δℓ=1, ΔΔn=1, Δn̄=1)
+function bandpower_binning_weights(cmodes::ClnnModes; Δℓ=1, Δn=1)
+    # Note: Should really change this to bin in only Δℓ and Δn. Binning in ΔΔn
+    # and Δn̄ is untested.
+    ΔΔn, Δn̄ = Δn, Δn
     @show Δℓ, ΔΔn, Δn̄
     lmax = cmodes.amodes.lmax
     Δnmax_l = cmodes.Δnmax_l
@@ -526,6 +531,33 @@ function bandpower_eigen_weights(cmix; ϱ=1.5)
     @show sum(Θ*w, dims=2)
     @assert R * Rinv ≈ I
     return w, Θ
+end
+
+
+function get_incomplete_bins(w̃; nmodes_per_bin=nothing)
+    if isnothing(nmodes_per_bin)
+        # Guess normal number of modes per bin
+        nbins = Int[]  # histogram of number of modes per bin
+        for i=1:size(w̃, 1)
+            nmodes = sum(@. w̃[i,:] != 0)
+            if nmodes > length(nbins)
+                append!(nbins, fill(0, nmodes - length(nbins)))
+            end
+            nbins[nmodes] += 1
+        end
+        nmodes_per_bin = length(nbins)
+        @show nbins
+    end
+    @show nmodes_per_bin
+
+    incomplete_bins = Int[]
+    for i=1:size(w̃, 1)
+        nmodes = sum(@. w̃[i,:] != 0)
+        if nmodes != nmodes_per_bin
+            push!(incomplete_bins, i)
+        end
+    end
+    return incomplete_bins
 end
 
 
