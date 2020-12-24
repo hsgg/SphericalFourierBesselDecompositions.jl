@@ -96,7 +96,7 @@ using LinearAlgebra
         # Bandpower binning basics
         fsky = sum(win[1,:]) / size(win,2)
         Δℓ = round(Int, 1 / fsky)
-        w̃, v = SFB.bandpower_binning_weights(cmodes; Δℓ=Δℓ, ΔΔn=1, Δn̄=1)
+        w̃, v = SFB.bandpower_binning_weights(cmodes; Δℓ=Δℓ, Δn=1)
         N = w̃ * M * v
         w = inv(N) * w̃ * M
         ṽ = M * v * inv(N)

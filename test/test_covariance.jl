@@ -22,7 +22,7 @@ using Profile
         win = SFB.make_window(wmodes, :radial, :ang_quarter)
 
         # calc shot noise
-        w̃mat, vmat = SFB.bandpower_binning_weights(cmodes; Δℓ=1, ΔΔn=1, Δn̄=1)
+        w̃mat, vmat = SFB.bandpower_binning_weights(cmodes; Δℓ=1, Δn=1)
         bcmodes = SFB.ClnnBinnedModes(w̃mat, vmat, cmodes)
         bcmix = SFB.power_win_mix(win, w̃mat, vmat, wmodes, bcmodes)
         NW_th = SFB.win_lnn(win, wmodes, cmodes) ./ nbar
