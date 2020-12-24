@@ -36,7 +36,7 @@ import Base.length, Base.iterate
 ## functions. In general, it may be better to use lmax=2*nside. Furthermore,
 ## our algorithms frequently need to reference quantities up to L=2*lmax.
 #estimate_nside(lmax) = 2^max(2, ceil(Int, log2((lmax + 1) / 3)))
-estimate_nside(lmax) = 2 * 2^max(2, ceil(Int, log2((2*lmax + 1) / 2)))
+estimate_nside(lmax) = 2^max(2, ceil(Int, log2((2*lmax + 1) / 2)))
 #estimate_nside(lmax) = 4 * 2^max(2, ceil(Int, log2((lmax + 1) / 3)))
 #estimate_nside(lmax) = 32 * 2^max(2, ceil(Int, log2((lmax + 1) / 3)))
 
