@@ -160,15 +160,9 @@ function win_rhat_ln(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes)
     nr = size(win, 1)
     r, Δr = window_r(wmodes)
     W_rhat_ln = fill(NaN, size(win,2), amodes.lmax+1, amodes.nmax)
+    check_nsamp_1gnl(amodes, wmodes)
     for n=1:amodes.nmax, l=0:amodes.lmax_n[n]
         l==0 && @show n,l
-        # sanity check
-        Nsamp = 8 * n + l
-        if Nsamp > nr
-            @error "Radial integral may not converge" Nsamp nr n l amodes.knl[n,l+1] amodes.rmin amodes.rmax Δr
-            throw(ErrorException("Nsamp > nr"))
-        end
-
         int_nowin = @. r^2 * gnl(n, l, r)
         W_rhat_ln[:,l+1,n] .= win' * int_nowin
     end
@@ -183,14 +177,9 @@ function win_rhat_ln(win::SeparableArray, wmodes::ConfigurationSpaceModes, amode
     nr = size(win, 1)
     r, Δr = window_r(wmodes)
     W_ln = fill(NaN, amodes.lmax+1, amodes.nmax)
+    check_nsamp_1gnl(amodes, wmodes)
     for n=1:amodes.nmax, l=0:amodes.lmax_n[n]
         l==0 && @show n,l,amodes.nmax
-        # sanity check
-        Nsamp = 8 * n + l
-        if Nsamp > nr
-            @error "Radial integral may not converge" Nsamp nr n l amodes.knl[n,l+1] amodes.rmin amodes.rmax Δr
-            throw(ErrorException("Nsamp > nr"))
-        end
         W_ln[l+1,n] = Δr * sum(@. r^2 * gnl(n, l, r) * win.phi)
     end
     return SeparableArray(win.mask, W_ln, name1=:mask, name2=:w_ln)
@@ -216,18 +205,13 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
     end
     @debug "LMLM" size(LMLM)
 
+    check_nsamp(amodes, wmodes)
+
     gnl = amodes.basisfunctions
     @time for n′=1:amodes.nmax, n=1:amodes.nmax, l′=0:amodes.lmax_n[n′], l=0:amodes.lmax_n[n]
         ibase = getidx(amodes, n, l, 0)
         i′base = getidx(amodes, n′, l′, 0)
         ibase==1 && @show ibase,i′base, n,n′, l,l′, nlmsize
-
-        # sanity check
-        Nsamp = 8 * (n + n′) + l + l′
-        if Nsamp > nr
-            @error "Radial integral may not converge" Nsamp nr n l n′ l′ amodes.knl[n,l+1] amodes.knl[n′,l′+1] amodes.rmin amodes.rmax Δr
-            throw(ErrorException("Nsamp > nr"))
-        end
 
         gg1 = @. r^2 * gnl(n,l,r) * gnl(n′,l′,r)
         ## debug
@@ -300,17 +284,12 @@ function win_lnn(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes)
     @show size(Wr_00) typeof(Wr_00)
     @assert all(isfinite.(Wr_00))
 
+    check_nsamp(cmodes.amodes, wmodes)
+
     gnl = cmodes.amodes.basisfunctions
     @time for i=1:lnnsize
         l, n, n′ = getlnn(cmodes, i)
         #@show i, l,n,n′, lnnsize
-
-        # sanity check
-        Nsamp = 8 * (n + n′) + l + l
-        if Nsamp > nr
-            @error "Radial integral may not converge" Nsamp nr n l n′ l′ cmodes.amodes.knl[n,l+1] cmodes.amodes.knl[n′,l′+1] wmodes.rmin wmodes.rmax extrema(r) Δr
-            throw(ErrorException("Nsamp > nr"))
-        end
 
         gg = @. r^2 * gnl(n,l,r) * gnl(n′,l,r) * Wr_00
 
@@ -468,20 +447,6 @@ function calc_cmixii(i, i′, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache,
     showthis && @show "huzzah",i,i′, n,n′, N,N′, l,L
     #@show i,i′, (l,n,n′), (L,N,N′)
 
-    # sanity check
-    Nsamp1 = 8 * (n + N) + l + L
-    Nsamp2 = 8 * (n′ + N′) + l + L
-    @assert Nsamp1 <= length(r)
-    @assert Nsamp2 <= length(r)
-    if Nsamp1 > length(r)
-        @error "Radial integral may not converge" Nsamp1 length(r) n l N L cmodes.amodes.knl[n,l+1] cmodes.amodes.knl[N,L+1] cmodes.amodes.rmin cmodes.amodes.rmax extrema(r) Δr
-        throw(ErrorException("Nsamp > nr"))
-    end
-    if Nsamp2 > length(r)
-        @error "Radial integral may not converge" Nsamp2 length(r) n′ l N′ L cmodes.amodes.knl[n′,l+1] cmodes.amodes.knl[N′,L+1] cmodes.amodes.rmin cmodes.amodes.rmax extrema(r) Δr
-        throw(ErrorException("Nsamp > nr"))
-    end
-
     gg1 = @. r^2 * gnlr[:,n,l+1] * gnlr[:,N,L+1]
     gg2 = @. r^2 * gnlr[:,n′,l+1] * gnlr[:,N′,L+1]
 
@@ -544,8 +509,10 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
     @time for l=0:amodes.lmax, n=1:amodes.nmax_l[l+1]
         @. gnlr[:,n,l+1] = gnl(n,l,r)
     end
+    check_nsamp(amodes, wmodes)
 
     L1M1cache = [hp.Alm.getidx.(LMAX, L, 0:L) .+ 1 for L=0:LMAX]
+
 
     ## crashes at end:
     #@time @threads for i′=1:lnnsize
@@ -662,23 +629,44 @@ function calc_angular_mixing_matrix(lmax, wlm)
 end
 
 
-function check_nsamp(amodes, wmodes)
+check_nsamp_1gnl(amodes, wmodes::ConfigurationSpaceModes) = check_nsamp_1gnl(amodes, wmodes.nr)
+function check_nsamp_1gnl(amodes, nr)
+    num_imprecise = 0
+    max_Nsamp = 0
+    lmax = amodes.lmax
+    nmax_l = amodes.nmax_l
+    for L=0:lmax, N=1:nmax_l[L+1]
+        Nsamp = 8 * N  # + L
+        max_Nsamp = max(max_Nsamp, Nsamp)
+        if Nsamp > nr
+            num_imprecise += 1
+        end
+    end
+    if num_imprecise > 0
+        @warn "Radial integral over one gnl(r) unlikely to converge" num_imprecise max_Nsamp nr amodes.rmin amodes.rmax amodes.lmax amodes.nmax amodes.nmax_l
+        #throw(ErrorException("Nsamp > nr"))
+    end
+end
+
+
+check_nsamp(amodes, wmodes::ConfigurationSpaceModes) = check_nsamp(amodes, wmodes.nr)
+function check_nsamp(amodes, nr)
+    num_imprecise = 0
     max_Nsamp = 0
     lmax = amodes.lmax
     nmax_l = amodes.nmax_l
     for L=0:lmax, N=1:nmax_l[L+1]
         for l=0:lmax, n=1:nmax_l[l+1]
-            # sanity check
-            Nsamp = 8 * (n + N) + l + L
+            Nsamp = 8 * (n + N)  # + l + L
             max_Nsamp = max(max_Nsamp, Nsamp)
-            if Nsamp > wmodes.nr
-                @warn "Radial integral may not converge" Nsamp wmodes.nr n l N L amodes.rmin amodes.rmax amodes.lmax amodes.nmax_l[l+1] amodes.nmax_l[L+1] amodes.nmax_l
+            if Nsamp > nr
+                num_imprecise += 1
             end
         end
     end
-    if max_Nsamp > wmodes.nr
-        @error "Radial integral may not converge" max_Nsamp wmodes.nr amodes.rmin amodes.rmax amodes.lmax amodes.nmax_l
-        throw(ErrorException("Nsamp > nr"))
+    if num_imprecise > 0
+        @warn "Radial integrals unlikely to converge" num_imprecise max_Nsamp nr amodes.rmin amodes.rmax amodes.lmax amodes.nmax amodes.nmax_l
+        #throw(ErrorException("Nsamp > nr"))
     end
 end
 
@@ -691,12 +679,6 @@ function calc_radial_mixing(lmax, nmax_l, gnlr, phi, r, Δr)
     for L=0:lmax, N=1:nmax_l[L+1]
         for l=0:lmax, n=1:nmax_l[l+1]
             !isnan(gnlgNLϕ[n,l+1,N,L+1]) && continue
-            # sanity check
-            Nsamp = 8 * (n + N) + l + L
-            if Nsamp > length(r)
-                @error "Radial integral may not converge" Nsamp length(r) n l N L extrema(r) Δr
-                throw(ErrorException("Nsamp > nr"))
-            end
             @. ggϕint = r^2 * gnlr[:,n,l+1] * gnlr[:,N,L+1] * phi
             gg = Δr * sum(ggϕint)
             gnlgNLϕ[n,l+1,N,L+1] = gg
@@ -718,6 +700,7 @@ function power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm::SeparableArray, L1M1ca
     @show length(mix), size(mix)
 
     println("Calculate angular and radial mixing:")
+    check_nsamp(cmodes.amodes, length(gnlr[:,1,1]))
     lmax = bcmodes.cmodes.amodes.lmax
     nmax_l = bcmodes.cmodes.amodes.nmax_l
     @time ang_mix = calc_angular_mixing_matrix(lmax, Wr_lm.wlm)
@@ -770,6 +753,7 @@ function power_win_mix(win, w̃mat, vmat, wmodes::ConfigurationSpaceModes, bcmod
     @time for l=0:amodes.lmax, n=1:amodes.nmax_l[l+1]
         @. gnlr[:,n,l+1] = gnl(n,l,r)
     end
+    check_nsamp(amodes, wmodes)
 
     L1M1cache = [hp.Alm.getidx.(LMAX, L, 0:L) .+ 1 for L=0:LMAX]
 
