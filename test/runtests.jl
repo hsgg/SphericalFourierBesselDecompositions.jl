@@ -12,6 +12,7 @@ Random.seed!(randseed)
 
 ## runtests:
 include("test_separablearrays.jl")
+include("test_sfb.jl")
 include("test_windows.jl")
 include("test_theory.jl")  # should probably rename from "theory" to "lnn<->nlm conversion"
 include("test_modes.jl")
