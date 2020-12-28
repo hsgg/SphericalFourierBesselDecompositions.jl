@@ -9,7 +9,7 @@ using LinearAlgebra
 using Profile
 
 
-@testset "SFB decomposition" begin
+@testset "Cat2Anlm" begin
     rmin = 500.0
     rmax = 1000.0
     kmax = 0.05
