@@ -280,36 +280,6 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
 end
 
 
-############################ ToDO #################################
-# - Remove non-vector lnn representation: may still be needed for plotting.
-# - covariance matrix of C: how to plot?
-#   * marginalized error bars on Cℓ(n,n')
-#   * covariance and correlation matrices
-
-# Done:
-# - Use ArbFloats to calculate knl and gnl, move splines inside SphericalBesselGnl
-# - window function: calculate from W_nlm. (complicated, needs ∫gnl gnl gnl dr)
-# - angular window function:
-#   - MASTER approach: I suspect this works great for an indicator window, not
-#     so much if we want to allow for LOS-dependent depth.
-#   - Samushia angular limits: This is ideal, but potentially a lot more work.
-#   - Allow binnings to be a float
-# - Samushia in radial direction: rmin and rmax
-# - kmin, kmax determine nmin(ℓ), nmax(ℓ), ℓmin, ℓmax
-# - (ℓ,m) are already combined into a single dimension. Now include 'n' in that
-#   dimension as well. This has the advantage that I can more easily make n(ℓ)
-#   non-uniform, and I can more easily represent the mixing matrix as a matrix.
-# - Check normalization of transformed window" do we include δ^D(k - k')?
-# - Code problems:
-#   * Where does (4π)^2/2 come from? Ans: use correct jl normalization
-#   * Error that goes as ∝-√ℓ/k^2 Ans: use correct jl normalization
-# - Use different boundary condition: potential should be best: continous and
-#   smooth at boundary.
-# - normalization: Why do I need to divide by nbar? Use ΔΩpix.
-# - Why is the constant c different from the monopole? Is this just noise? Use ΔΩpix.
-# - Correct pixwin
-# - validate with MC
-
 
 end
 
