@@ -94,6 +94,8 @@ function calc_covariance_efstathiou(CBlnn, win, wmodes, w̃mat, vmat, bcmodes)
 end
 
 
+################ exact calculation ################
+
 function calc_covariance_exact_chain(CNlnn, win, wmodes, cmodes; Δℓ=1, Δn=1)
     T = Float64
     amodes = cmodes.amodes
@@ -124,8 +126,12 @@ function calc_covariance_exact_chain(CNlnn, win, wmodes, cmodes; Δℓ=1, Δn=1)
                 enn[3] = n4
                 enn′[3] = n3
                 W4[m] = window_chain(ell, enn, enn′, wccache)
-                enn[2], enn′[2] = enn′[2], enn[2]
-                W4[m] += window_chain(ell, enn, enn′, wccache)
+                if enn[2] == enn′[2]
+                    W4[m] *= 2
+                else
+                    enn[2], enn′[2] = enn′[2], enn[2]
+                    W4[m] += window_chain(ell, enn, enn′, wccache)
+                end
             end
             A += CNlnn[k] * (CNlnn' * W4)
         end
