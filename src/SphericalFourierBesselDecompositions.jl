@@ -260,6 +260,12 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
         features = filter(i -> i != :ang_eighth, features)
     end
 
+    if :rotate in features
+        r = hp.Rotator(coord=["G", "E"])
+        mask = r.rotate_map_pixel(mask)
+        features = filter(i -> i != :rotate, features)
+    end
+
     win = phi * mask'
     maxwin = maximum(win)
 
