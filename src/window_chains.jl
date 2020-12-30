@@ -119,6 +119,7 @@ end
 function WindowChainsCacheFullWmix(win, wmodes, amodes)
     wmix = calc_wmix(win, wmodes, amodes)
     wmix′ = calc_wmix(win, wmodes, amodes, neg_m=true)
+    wmix′ = collect(wmix′')  # put negative m into the second index
     return WindowChainsCacheFullWmix(wmix, wmix′, amodes)
 end
 
@@ -174,6 +175,7 @@ function window_chain(ell, n1, n2, cache::WindowChainsCacheFullWmix{T}) where {T
             w *= get_wmix(cache.wmix, cache.wmix_negm, nl2, m[i-1], nl1, m[i])
         end
         Wk += real(w)
+        #@show m,w
     end
     return Wk
 end
@@ -195,6 +197,7 @@ function window_chain(ell, n1, n2, cache::WindowChainsCacheSeparableWmix{T}) whe
         for i=2:length(ell)
             w *= get_wlmlm(cache, ell[i-1], m[i-1], ell[i], m[i])
         end
+        #@show m,w
         Wk += real(w)
     end
     Ik = calc_kprod(cache.Ilnln, ell .+ 1, n1, n2)
@@ -281,14 +284,19 @@ end
 function get_wlmlm(cache::WindowChainsCacheSeparableWmix, l::Int, m::Int, L::Int, M::Int)
     i = cache.LMcache[l+1][abs(m)+1]
     j = cache.LMcache[L+1][abs(M)+1]
-    if m >= 0 && M >= 0
-        return cache.Wlmlm[i,j]
-    elseif m >= 0 && M < 0
-        return cache.Wlmlm_negm[i,j]
-    elseif m < 0 && M >= 0
-        return (-1)^(m+M) * conj(cache.Wlmlm_negm[i,j])
-    else # both negative
-        return (-1)^(m+M) * conj(cache.Wlmlm[i,j])
+    if m >= 0
+        if M >= 0
+            return cache.Wlmlm[i,j]
+        else
+            return cache.Wlmlm_negm[i,j]
+        end
+    else # m < 0
+        w = if M >= 0
+            cache.Wlmlm_negm[i,j]
+        else
+            cache.Wlmlm[i,j]
+        end
+        return conj(isodd(m+M) ? -w : w)
     end
 end
 
@@ -417,6 +425,7 @@ function window_chain_onthefly_wmix(ell, I_LM_l_l::NeqLView, LMcache)
             w *= window_wmix(ell[i-1], m[i-1], ell[i], m[i], I_LM_l_l[:,i-1,i], LMcache)
         end
         wk += real(w)
+        #@show m,w
     end
     return wk
 end

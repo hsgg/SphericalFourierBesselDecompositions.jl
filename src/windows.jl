@@ -270,7 +270,7 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
                 #@debug "Wr_lm" L[j],M Wr_lm[1,LM] Wr_lm[1,LM]/√(4*π)
             end
             if M < 0
-                w_ang = conj(w_ang)
+                w_ang = (-1)^M * conj(w_ang)
             end
             #@debug "wmix" i,i′ l,m l′,m′ w_ang gg1sum
             wmix[i,i′] = (-1)^m * w_ang * Δr

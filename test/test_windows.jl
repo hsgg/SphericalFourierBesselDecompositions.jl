@@ -4,6 +4,7 @@
 using SphericalFourierBesselDecompositions
 SFB = SphericalFourierBesselDecompositions
 
+using Test
 using LinearAlgebra
 
 @testset "Mixing matrices" begin

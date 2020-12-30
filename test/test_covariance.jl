@@ -16,7 +16,7 @@ using Profile
         rmin = 500.0
         rmax = 1000.0
         nbar = 3e-4
-        amodes = SFB.AnlmModes(2, 0, rmin, rmax)
+        amodes = SFB.AnlmModes(4, 4, rmin, rmax)
         cmodes = SFB.ClnnModes(amodes, Δnmax=1)
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
         win = SFB.make_window(wmodes, :radial, :ang_quarter)
@@ -52,8 +52,10 @@ using Profile
 
         #@test issymmetric(VW_direct)
         @test issymmetric(VW_chain)
+        #@test all(isfinite.(VW_direct))
+        @test all(isfinite.(VW_chain))
 
-        @show VW_chain
+        #@show VW_chain
         #@show VW_direct
         #@show VW_chain ./ VW_direct
         #@test VW_chain ≈ VW_direct
