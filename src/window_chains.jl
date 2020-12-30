@@ -313,14 +313,19 @@ end
 function get_wlmlm(cache::WindowChainsCacheSeparableWmix, l::Int, m::Int, L::Int, M::Int)
     i = cache.LMcache[l+1][abs(m)+1]
     j = cache.LMcache[L+1][abs(M)+1]
-    if m >= 0 && M >= 0
-        return cache.Wlmlm[i,j]
-    elseif m >= 0 && M < 0
-        return cache.Wlmlm_negm[i,j]
-    elseif m < 0 && M >= 0
-        return (-1)^(m+M) * conj(cache.Wlmlm_negm[i,j])
-    else # both negative
-        return (-1)^(m+M) * conj(cache.Wlmlm[i,j])
+    if m >= 0
+        if M >= 0
+            return cache.Wlmlm[i,j]
+        else
+            return cache.Wlmlm_negm[i,j]
+        end
+    else # m < 0
+        w = if M >= 0
+            cache.Wlmlm_negm[i,j]
+        else
+            cache.Wlmlm[i,j]
+        end
+        return conj(isodd(m+M) ? -w : w)
     end
 end
 

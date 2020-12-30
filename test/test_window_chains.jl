@@ -205,6 +205,7 @@ using Test
         test_single([2,0], [1,1], [2,1])
         test_single([0,0], [1,1], [1,2])
         test_single([0,0], [1,1], [2,2])
+        test_single([0,1], [1,1], [1,1])
 
         # all modes
         @time wk_lnni = SFB.window_chain(k, win, wmodes, cmodes)
@@ -221,6 +222,69 @@ using Test
             @show l1,n1,n1′,l2,n2,n2′,wk,M′[i2,i1]
             @test wk ≈ M′[i2,i1]
         end
+    end
+
+
+    @testset "k = 4" begin
+        rmin = 500.0
+        rmax = 1000.0
+        amodes = SFB.AnlmModes(1, 5, rmin, rmax)
+        cmodes = SFB.ClnnModes(amodes, Δnmax=0)
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
+        win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate)
+
+        cache1 = SFB.WindowChains.WindowChainsCacheWignerChain(win, wmodes, amodes)
+        cache2 = SFB.WindowChains.WindowChainsCacheFullWmix(win, wmodes, amodes)
+        cache3 = SFB.WindowChains.WindowChainsCacheFullWmixOntheflyWmix(win, wmodes, amodes)
+        cache4 = SFB.WindowChains.WindowChainsCacheSeparableWmix(win, wmodes, amodes)
+        cache5 = SFB.WindowChains.WindowChainsCacheSeparableWmixOntheflyWlmlm(win, wmodes, amodes)
+        cache = SFB.WindowChainsCache(win, wmodes, amodes)
+
+        ell = [2, 3, 4, 5]
+        #ell = [0, 0, 0, 1]
+        n1 = [1, 1, 1, 1]
+        n2 = [1, 1, 1, 1]
+        #ell = [0, 1]
+        #n1 = [1, 1]
+        #n2 = [1, 1]
+
+        println("Compiling...")
+        @time wk1 = SFB.window_chain(ell, n1, n2, cache1)
+        @time wk2 = SFB.window_chain(ell, n1, n2, cache2)
+        @time wk3 = SFB.window_chain(ell, n1, n2, cache3)
+        @time wk4 = SFB.window_chain(ell, n1, n2, cache4)
+        @time wk5 = SFB.window_chain(ell, n1, n2, cache5)
+        @time wk = SFB.window_chain(ell, n1, n2, cache)
+        @show wk1
+        @show wk2
+        @show wk3
+        @show wk4
+        @show wk5
+        @show wk
+
+        @test_skip wk1 ≈ wk
+        @test wk2 ≈ wk
+        @test wk3 ≈ wk
+        @test wk4 ≈ wk
+        @test wk5 ≈ wk
+
+        #cc = SFB.NDIterator([0,0,0,0], [1,1,1,1])
+        #while SFB.advance(cc)
+        #    wk = SFB.window_chain(ell, n1, n2, cache2, cc)
+        #    @show cc,wk
+        #end
+        #@test isfinite(wk)
+        return
+
+        # benchmark
+        lnnsize = SFB.getlnnsize(cmodes)
+        @show lnnsize lnnsize^2
+        #@time for i=1:lnnsize; SFB.window_chain(ell, n1, n2, cache1); end
+        @time for i=1:lnnsize; SFB.window_chain(ell, n1, n2, cache2); end
+        @time for i=1:lnnsize; SFB.window_chain(ell, n1, n2, cache3); end
+        @time for i=1:lnnsize; SFB.window_chain(ell, n1, n2, cache4); end
+        @time for i=1:lnnsize; SFB.window_chain(ell, n1, n2, cache5); end
+        @time for i=1:lnnsize; SFB.window_chain(ell, n1, n2, cache); end
     end
 end
 
