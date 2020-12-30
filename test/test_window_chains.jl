@@ -8,7 +8,104 @@ using Test
 
 
 @testset "Window Chains" begin
-    # Note: a lot of the differences here come down to the choice of nside.
+    # Note: a lot of the differences here come down to the choice of nside and
+    # details of how healpy is used.
+
+
+    @testset "Wmix" begin
+        rmin = 500.0
+        rmax = 1000.0
+        amodes = SFB.AnlmModes(3, 5, rmin, rmax)
+        cmodes = SFB.ClnnModes(amodes, Δnmax=1)
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
+        win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate)
+
+        cache2 = SFB.WindowChains.WindowChainsCacheFullWmix(win, wmodes, amodes)
+        cache3 = SFB.WindowChains.WindowChainsCacheFullWmixOntheflyWmix(win, wmodes, amodes)
+        cache4 = SFB.WindowChains.WindowChainsCacheSeparableWmix(win, wmodes, amodes)
+        cache5 = SFB.WindowChains.WindowChainsCacheSeparableWmixOntheflyWlmlm(win, wmodes, amodes)
+
+        ## test cache2 consistency
+        #@show real.(cache2.wmix') real.(cache2.wmix)
+        #@show imag.(cache2.wmix') imag.(cache2.wmix)
+        @test cache2.wmix' ≈ cache2.wmix
+        #@show real.(cache2.wmix_negm') real.(cache2.wmix_negm)
+        #@show imag.(cache2.wmix_negm') imag.(cache2.wmix_negm)
+        nlmsize = SFB.getnlmsize(amodes)
+        for i=1:nlmsize, i′=1:nlmsize
+            n1, l1, m1 = SFB.getnlm(amodes, i)
+            n2, l2, m2 = SFB.getnlm(amodes, i′)
+            @test cache2.wmix_negm[i′,i] ≈ (-1)^(m1+m2) * cache2.wmix_negm[i,i′]
+        end
+
+        get_win(nlm1, nlm2; verbose=false) = begin
+            n1, l1, m1 = nlm1
+            n2, l2, m2 = nlm2
+
+            nl1 = SFB.getidx(cache2.amodes, n1, l1, 0)
+            nl2 = SFB.getidx(cache2.amodes, n2, l2, 0)
+            w2 = SFB.WindowChains.get_wmix(cache2.wmix, cache2.wmix_negm,
+                                           nl1, m1, nl2, m2)
+            verbose && @show cache2.wmix[nl1+abs(m1),nl2+abs(m2)]
+            verbose && @show cache2.wmix'[nl1+abs(m1),nl2+abs(m2)]
+            verbose && @show conj(cache2.wmix[nl2+abs(m2),nl1+abs(m1)])
+            verbose && @show cache2.wmix_negm[nl1+abs(m1),nl2+abs(m2)]
+            verbose && @show cache2.wmix_negm'[nl1+abs(m1),nl2+abs(m2)]
+            verbose && @show conj(cache2.wmix_negm[nl2+abs(m2),nl1+abs(m1)])
+
+            wlmlm4 = SFB.WindowChains.get_wlmlm(cache4, l1, m1, l2, m2)
+            inlnl4 = cache4.Ilnln[l1+1,n1,l2+1,n2]
+            w4 = inlnl4 * wlmlm4
+
+            wlmlm5 = SFB.WindowChains.window_wmix(l1, m1, l2, m2,
+                                                  cache5.Wlm, cache5.LMcache)
+            inlnl5 = cache5.Ilnln[l1+1,n1,l2+1,n2]
+            w5 = inlnl5 * wlmlm5
+            return w2, w4, w5
+        end
+
+        test_mode(nlm1, nlm2; verbose=true) = begin
+            w2a, w4a, w5a = get_win(nlm1, nlm2; verbose=verbose)
+            verbose && @show nlm1,nlm2
+            verbose && @show w2a w4a w5a
+            @test w2a ≈ w4a ≈ w5a
+
+            w2b, w4b, w5b = get_win(nlm2, nlm1; verbose=verbose)
+            verbose && @show nlm2,nlm1
+            verbose && @show w2b w4b w5b
+            @test w2b ≈ w4b ≈ w5b
+
+            nlm1[3] = -nlm1[3]
+            nlm2[3] = -nlm2[3]
+            w2c, w4c, w5c = get_win(nlm1, nlm2; verbose=verbose)
+            verbose && @show nlm1,nlm2,nlm1[3]+nlm2[3]
+            verbose && @show w2c w4c w5c
+            @test w2c ≈ w4c ≈ w5c
+
+            @test w2b ≈ conj(w2a)
+            @test w2c ≈ (-1)^(nlm1[3] + nlm2[3]) * conj(w2a)
+            @test w4b ≈ conj(w4a)
+            @test w4c ≈ (-1)^(nlm1[3] + nlm2[3]) * conj(w4a)
+            @test w5b ≈ conj(w5a)
+            @test w5c ≈ (-1)^(nlm1[3] + nlm2[3]) * conj(w5a)
+        end
+
+        test_mode([1, 1, -1], [1, 0, 0])
+        test_mode([1, 1, 1], [1, 1, 1])
+        test_mode([1, 1, -1], [1, 1, 1])
+
+        nlmsize = SFB.getnlmsize(amodes)
+        for j=1:nlmsize, i=1:nlmsize
+            n1, l1, m1 = SFB.getnlm(amodes, i)
+            n2, l2, m2 = SFB.getnlm(amodes, j)
+            test_mode([n1, l1, m1], [n2, l2, m2]; verbose=false)
+            test_mode([n1, l1, -m1], [n2, l2, m2]; verbose=false)
+            test_mode([n1, l1, m1], [n2, l2, -m2]; verbose=false)
+            test_mode([n1, l1, -m1], [n2, l2, -m2]; verbose=false)
+        end
+    end
+
+
     @testset "k = 1" begin
         k = 1
         rmin = 500.0
