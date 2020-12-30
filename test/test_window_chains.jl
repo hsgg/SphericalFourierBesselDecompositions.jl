@@ -262,7 +262,7 @@ using Test
         @show wk5
         @show wk
 
-        @test_skip wk1 ≈ wk
+        @test_broken wk1 ≈ wk
         @test wk2 ≈ wk
         @test wk3 ≈ wk
         @test wk4 ≈ wk

@@ -16,7 +16,7 @@ using Profile
         rmin = 500.0
         rmax = 1000.0
         nbar = 3e-4
-        amodes = SFB.AnlmModes(5, 5, rmin, rmax)
+        amodes = SFB.AnlmModes(4, 4, rmin, rmax)
         cmodes = SFB.ClnnModes(amodes, Δnmax=1)
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
         win = SFB.make_window(wmodes, :radial, :ang_quarter)
