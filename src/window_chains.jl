@@ -83,6 +83,7 @@ function WindowChainsCacheWignerChain(win, wmodes, amodes)
     lmax = amodes.lmax
     nmax = amodes.nmax
     nmax_l = amodes.nmax_l
+    check_nsamp(amodes, wmodes)
 
     # Wr_lm
     LMAX = 2 * amodes.lmax
@@ -105,7 +106,6 @@ function WindowChainsCacheWignerChain(win, wmodes, amodes)
     for l2=0:lmax, n2=1:nmax_l[l2+1], l1=0:lmax, n1=1:nmax_l[l1+1], iLM=1:lmsize
         #@show l2, n2, l1, n1, iLM, lmsize
         !isnan(I_LM_ln_ln[iLM,l1+1,n1,l2+1,n2]) && continue
-        check_radial_integral_convergence(n1, l1, n2, l2, r, Δr, amodes)
         I = Δr * sum(@. r^2 * gnlr[:,n1,l1+1] * gnlr[:,n2,l2+1] * Wr_lm[:,iLM])
         I_LM_ln_ln[iLM,l1+1,n1,l2+1,n2] = I
         I_LM_ln_ln[iLM,l2+1,n2,l1+1,n1] = I
@@ -262,35 +262,6 @@ function calc_Wlm(mask, lmax, nside)
 end
 
 
-# calculate radial mixers
-function calc_radial_mixing(lmax, nmax_l, gnlr, phi, r, Δr)
-    nmax = maximum(nmax_l)
-    gnlgNLϕ = fill(NaN, nmax, lmax+1, nmax, lmax+1)
-    ggϕint = fill(NaN, length(phi))
-    for L=0:lmax, N=1:nmax_l[L+1]
-        for l=0:lmax, n=1:nmax_l[l+1]
-            !isnan(gnlgNLϕ[n,l+1,N,L+1]) && continue
-            # sanity check
-            check_radial_integral_convergence(n, l, N, L, r, Δr, amodes)
-            @. ggϕint = r^2 * gnlr[:,n,l+1] * gnlr[:,N,L+1] * phi
-            gg = Δr * sum(ggϕint)
-            gnlgNLϕ[n,l+1,N,L+1] = gg
-            gnlgNLϕ[N,L+1,n,l+1] = gg
-        end
-    end
-    return gnlgNLϕ
-end
-
-
-function check_radial_integral_convergence(n1, l1, n2, l2, r, Δr, amodes)
-    Nsamp = 8 * (n1 + n2) + l1 + l2
-    if Nsamp > length(r)
-        @error "Radial integral may not converge" Nsamp length(r) n1 l1 n2 l2 amodes.knl[n,l+1] amodes.knl[N,L+1] amodes.rmin amodes.rmax extrema(r) Δr
-        throw(ErrorException("Nsamp > nr"))
-    end
-end
-
-
 function calc_Wlmlm(mask, lmax, nside)
     wlm, LMcache = calc_Wlm(mask, lmax, nside)
     LMAX = 2 * lmax
@@ -323,6 +294,8 @@ end
 
 
 function calc_Ilnln(phi, wmodes, amodes)
+    check_nsamp(amodes, wmodes)
+
     # gnlr
     r, Δr = window_r(wmodes)
     gnl = amodes.basisfunctions
@@ -330,6 +303,7 @@ function calc_Ilnln(phi, wmodes, amodes)
     for l=0:amodes.lmax, n=1:amodes.nmax_l[l+1]
         @. gnlr[:,n,l+1] = gnl(n,l,r)
     end
+
 
     # Ilnln
     lmax = amodes.lmax
@@ -339,7 +313,6 @@ function calc_Ilnln(phi, wmodes, amodes)
     for l2=0:lmax, n2=1:nmax_l[l2+1], l1=0:lmax, n1=1:nmax_l[l1+1]
         #@show l2, n2, l1, n1
         !isnan(Ilnln[l1+1,n1,l2+1,n2]) && continue
-        check_radial_integral_convergence(n1, l1, n2, l2, r, Δr, amodes)
         I = Δr * sum(@. r^2 * gnlr[:,n1,l1+1] * gnlr[:,n2,l2+1] * phi)
         Ilnln[l1+1,n1,l2+1,n2] = I
         Ilnln[l2+1,n2,l1+1,n1] = I
