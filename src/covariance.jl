@@ -3,7 +3,7 @@
 
 module Covariance
 
-export calc_covariance_volumescaling,
+export calc_covariance_modecounting,
        calc_covariance_efstathiou,
        calc_covariance_exact_chain
 
@@ -14,9 +14,9 @@ using ..Theory
 using ..WindowChains
 
 
-function calc_covariance_volumescaling(CBlnn, bcmodes, Veff, Vsfb, Δℓ, Δn)
+function calc_covariance_modecounting(CBlnn, bcmodes, fvol, Δℓ, Δn)
     lnnsize = getlnnsize(bcmodes)
-    covar_volumescaling = fill(0.0, lnnsize, lnnsize)
+    V_mc = fill(0.0, lnnsize, lnnsize)
     @time for j=1:lnnsize, i=1:lnnsize
         L, K, K′ = getlkk(bcmodes, j)
         l, k, k′ = getlkk(bcmodes, i)
@@ -41,15 +41,13 @@ function calc_covariance_volumescaling(CBlnn, bcmodes, Veff, Vsfb, Δℓ, Δn)
         if typeof(idx) <: Integer
             C4 = CBlnn[idx]
         end
-        if i == j
-            @show i,j,(l,k,k′),(L,K,K′),C1,C2,C3,C4
-        end
+        #(i == j) && @show i,j,(l,k,k′),(L,K,K′),C1,C2,C3,C4
         if l == L
-            Nmodes = (Veff / Vsfb) * (2*L+1) * Δℓ * Δn^2
-            covar_volumescaling[i,j] = (C1*C2 + C3*C4) / Nmodes
+            Nmodes = fvol * (2*L+1) * Δℓ * Δn
+            V_mc[i,j] = (C1*C2 + C3*C4) / Nmodes
         end
     end
-    return covar_volumescaling
+    return V_mc
 end
 
 
