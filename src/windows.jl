@@ -39,6 +39,7 @@ export ConfigurationSpaceModes
 export window_r, apply_window, apodize_window
 export win_rhat_ln, integrate_window, calc_wmix, power_win_mix, win_lnn
 export check_nsamp
+export calc_fvol
 
 using ..Modes
 using ..HealPy
@@ -152,6 +153,19 @@ function integrate_window(win, wmodes::ConfigurationSpaceModes)
     radial = [sum(win[i,:]) for i=1:size(win,1)]
     Veff = Δr * ΔΩpix * sum(@. radial * r^2)
     return Veff
+end
+
+
+function calc_fvol(win, wmodes::ConfigurationSpaceModes; Wthreshold=0.1)
+    nr = size(win, 1)
+    npix = size(win,2)
+    r = wmodes.r
+    Δr = wmodes.Δr
+    ΔΩpix = 4*π / npix
+    radial = [sum(w->w>Wthreshold, win[i,:]) for i=1:size(win,1)]
+    V = Δr * ΔΩpix * sum(@. radial * r^2)
+    Vsfb = (4*π/3) * (wmodes.rmax^3 - wmodes.rmin^3)
+    return V / Vsfb
 end
 
 
