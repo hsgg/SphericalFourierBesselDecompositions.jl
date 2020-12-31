@@ -228,7 +228,7 @@ using Test
     @testset "Wk method agreement" begin
         rmin = 500.0
         rmax = 1000.0
-        amodes = SFB.AnlmModes(3, 5, rmin, rmax)
+        amodes = SFB.AnlmModes(8, 4, rmin, rmax)
         cmodes = SFB.ClnnModes(amodes, Δnmax=0)
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
         win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate)
@@ -266,10 +266,61 @@ using Test
                 end
             end
         end
-        test_individual([0, 0, 0, 1], [1, 1, 1, 1], [1, 1, 1, 1])
-        test_individual([1, 3, 4, 5], [1, 1, 1, 1], [1, 1, 1, 1])
-        test_individual([2, 3, 4, 5], [1, 1, 1, 1], [1, 1, 1, 1])
-        test_individual([3, 3, 3, 3], [1, 1, 2, 2], [2, 2, 1, 1])
+        #test_individual([0, 0, 0, 1], [1, 1, 1, 1], [1, 1, 1, 1])
+        #test_individual([1, 3, 4, 5], [1, 1, 1, 1], [1, 1, 1, 1])
+        #test_individual([2, 3, 4, 5], [1, 1, 1, 1], [1, 1, 1, 1])
+        #test_individual([3, 3, 3, 3], [1, 1, 2, 2], [2, 2, 1, 1])
+
+        # check n ↔ n′ symmetry doesn't exist
+        ell = [2, 1, 0]
+        n1 = [4, 2, 2]
+        n2 = [2, 3, 3]
+        test_individual(ell, n1, n2)
+        test_individual(ell, n2, n1)
+
+        # check antisymmetry doesn't exist
+        ell = [2, 1, 0, 1]
+        n1 = [4, 2, 2, 2]
+        n2 = [2, 3, 3, 2]
+        test_individual(ell, n1, n2)
+        test_individual(ell, n2, n1)
+        ell[1:2] .= ell[2:-1:1]
+        n1[1:2] .= n1[2:-1:1]
+        n2[1:2] .= n2[2:-1:1]
+        test_individual(ell, n1, n2)
+
+        # check anticyclic symmetry
+        #ell = [2, 1, 0, 1]
+        #n1 = [2, 3, 3, 2]
+        #n2 = [4, 2, 2, 2]
+        for i=1:10
+            k = 4
+            p1 = k:-1:1
+            ell = rand(0:amodes.lmax, k)
+            n1 = rand(1:amodes.nmax, k)
+            n2 = rand(1:amodes.nmax, k)
+            wk = test_individual(ell, n1, n2)
+            wkp1 = test_individual(ell[p1], n2[p1], n1[p1])
+            @show wk wkp1
+            @test wk ≈ wkp1
+        end
+
+        return
+
+        # These checks can fail:
+        # check k=3 n,N ↔ n′,N′ symmetry, Nah, not a symmetry
+        for i=1:10
+            k = 3
+            ell = rand(0:amodes.lmax, k)
+            n1 = rand(1:amodes.nmax, k)
+            n2 = rand(1:amodes.nmax, k)
+            wk = test_individual(ell, n1, n2)
+            n1[2:3] .= n1[3:-1:2]
+            n2[2:3] .= n2[3:-1:2]
+            wkp1 = test_individual(ell, n2, n1)
+            @show wk wkp1
+            @test wk ≈ wkp1
+        end
     end
 end
 
