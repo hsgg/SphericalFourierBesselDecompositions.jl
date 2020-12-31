@@ -11,15 +11,15 @@ using LinearAlgebra
 using Profile
 
 
-@testset "Covariance Matrices" begin
+@testset "Covariance Matrix" begin
     @testset "Full window" begin
         rmin = 500.0
         rmax = 1000.0
         nbar = 3e-4
-        amodes = SFB.AnlmModes(4, 4, rmin, rmax)
-        cmodes = SFB.ClnnModes(amodes, Δnmax=1)
+        amodes = SFB.AnlmModes(2, 2, rmin, rmax)
+        cmodes = SFB.ClnnModes(amodes, Δnmax=0)
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
-        win = SFB.make_window(wmodes, :radial, :ang_quarter)
+        win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate)
 
         # calc shot noise
         w̃mat, vmat = SFB.bandpower_binning_weights(cmodes; Δℓ=1, Δn=1)
@@ -27,7 +27,6 @@ using Profile
         bcmix = SFB.power_win_mix(win, w̃mat, vmat, wmodes, bcmodes)
         NW_th = SFB.win_lnn(win, wmodes, cmodes) ./ nbar
         N_th = bcmix \ NW_th
-        N_th = 0
 
         # calc theoretical power
         pkdata, header = readdlm((@__DIR__)*"/data/pk_m.dat", header=true)
@@ -36,29 +35,26 @@ using Profile
         C_th = SFB.gen_Clnn_theory(pk, cmodes)
         CN_th = C_th .+ N_th
 
-        ## calc covariance, direct
-        #@time wmix = SFB.calc_wmix(win, wmodes, amodes)  # too big!
-        #@time wmix′ = SFB.calc_wmix(win, wmodes, amodes, neg_m=true)  # too big!
-        #@time VW_direct = SFB.calc_covariance_exact_direct(CN_th, wmix, wmix′, cmodes)
-
         # calc covariance, chain
-        @time VW_chain = SFB.calc_covariance_exact_chain(CN_th, win, wmodes, cmodes)
-        Profile.clear()
-        @time @profile SFB.calc_covariance_exact_chain(CN_th, win, wmodes, cmodes)
-        Profile.print()
+        @time VW_A1 = SFB.Covariance.calc_covariance_exact_A1(CN_th, win, wmodes, cmodes)
+        @time VW_chain = SFB.calc_covariance_exact_chain(C_th, nbar, win, wmodes, cmodes)
 
-        #@show size(VW_direct) size(VW_chain)
-        #@test size(VW_direct) == size(VW_chain)
+        #Profile.clear()
+        #@time @profile SFB.calc_covariance_exact_chain(CN_th, win, wmodes, cmodes)
+        #Profile.print()
 
-        #@test issymmetric(VW_direct)
+        @show size(VW_A1) size(VW_chain)
+        @test size(VW_A1) == size(VW_chain)
+
+        @test issymmetric(VW_A1)
         @test issymmetric(VW_chain)
-        #@test all(isfinite.(VW_direct))
+        @test all(isfinite.(VW_A1))
         @test all(isfinite.(VW_chain))
 
-        #@show VW_chain
-        #@show VW_direct
-        #@show VW_chain ./ VW_direct
-        #@test VW_chain ≈ VW_direct
+        @show VW_chain
+        @show VW_A1
+        @show VW_chain ./ VW_A1
+        @test_broken VW_chain ≈ VW_A1  # We don't really expect these to agree.
     end
 end
 

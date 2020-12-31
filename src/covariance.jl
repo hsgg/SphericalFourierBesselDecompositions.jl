@@ -96,16 +96,24 @@ end
 
 ################ exact calculation ################
 
-function calc_covariance_exact_chain(CNlnn, win, wmodes, cmodes; Δℓ=1, Δn=1)
+function calc_covariance_exact_chain(Clnn, nbar, win, wmodes, cmodes; Δℓ=1, Δn=1)
+    @time VW = calc_covariance_exact_A1(Clnn, win, wmodes, cmodes, Δℓ=Δℓ, Δn=Δn)
+    @time VW .+= calc_covariance_exact_A2(Clnn, nbar, win, wmodes, cmodes, Δℓ=Δℓ, Δn=Δn)
+    @time VW .+= calc_covariance_exact_A3(nbar, win, wmodes, cmodes, Δℓ=Δℓ, Δn=Δn)
+    return VW
+end
+
+
+function calc_covariance_exact_A1(Clnn, win, wmodes, cmodes; Δℓ=1, Δn=1)
     T = Float64
     amodes = cmodes.amodes
     wccache = WindowChainsCache(win, wmodes, cmodes.amodes)
     lnnsize = getlnnsize(cmodes)
+    symmetries = [1=>1, 2=>2, 3=>1]
     A1 = fill(T(0), lnnsize, lnnsize)
     for j=1:lnnsize, i=j:lnnsize
         l, n, n′ = getlnn(cmodes, i)
         L, N, N′ = getlnn(cmodes, j)
-        #L + l > 2 && continue
         if abs(L-l) > Δℓ || abs(n-N) > Δn || abs(n′-N′) > Δn
             continue
         end
@@ -125,20 +133,76 @@ function calc_covariance_exact_chain(CNlnn, win, wmodes, cmodes; Δℓ=1, Δn=1)
                 ell[3] = l3
                 enn[3] = n4
                 enn′[3] = n3
-                W4[m] = window_chain(ell, enn, enn′, wccache)
-                if enn[2] == enn′[2]
-                    W4[m] *= 2
-                else
-                    enn[2], enn′[2] = enn′[2], enn[2]
-                    W4[m] += window_chain(ell, enn, enn′, wccache)
-                end
+                W4[m] = window_chain(ell, enn, enn′, wccache, symmetries)
             end
-            A += CNlnn[k] * (CNlnn' * W4)
+            A += Clnn[k] * (Clnn' * W4)
         end
         A /= (2*l+1) * (2*L+1)
         A1[i,j] = A1[j,i] = A
     end
     return A1
+end
+
+
+function calc_covariance_exact_A2(Clnn, nbar, win, wmodes, cmodes; Δℓ=1, Δn=1)
+    T = Float64
+    amodes = cmodes.amodes
+    wccache = WindowChainsCache(win, wmodes, cmodes.amodes)
+    lnnsize = getlnnsize(cmodes)
+    symmetries = [1=>1, 2=>2, 3=>2]
+    A2 = fill(T(0), lnnsize, lnnsize)
+    for j=1:lnnsize, i=j:lnnsize
+        l, n, n′ = getlnn(cmodes, i)
+        L, N, N′ = getlnn(cmodes, j)
+        if abs(L-l) > Δℓ || abs(n-N) > Δn || abs(n′-N′) > Δn
+            continue
+        end
+        @show i,(l,n,n′),j,(L,N,N′)
+        ell = [0, L, l]
+        enn = [0, N, n′]
+        enn′ = [0, N′, n]
+        W3 = fill(NaN, lnnsize)
+        for k=1:lnnsize
+            l1, n1, n2 = getlnn(cmodes, k)
+            ell[1] = l1
+            enn[1] = n1
+            enn′[1] = n2
+            W3[k] = window_chain(ell, enn, enn′, wccache, symmetries)
+        end
+        A = (Clnn' * W3) / ((2*l+1) * (2*L+1) * nbar)
+        A2[i,j] = A2[j,i] = A
+    end
+    return A2
+end
+
+
+function calc_covariance_exact_A3(nbar, win, wmodes, cmodes; Δℓ=1, Δn=1)
+    T = Float64
+    amodes = cmodes.amodes
+    wccache = WindowChainsCache(win, wmodes, cmodes.amodes)
+    lnnsize = getlnnsize(cmodes)
+    A3 = fill(T(0), lnnsize, lnnsize)
+    for j=1:lnnsize, i=j:lnnsize
+        l, n, n′ = getlnn(cmodes, i)
+        L, N, N′ = getlnn(cmodes, j)
+        if abs(L-l) > Δℓ || abs(n-N) > Δn || abs(n′-N′) > Δn
+            continue
+        end
+        @show i,(l,n,n′),j,(L,N,N′)
+        ell = [L, l]
+        enn = [N, n′]
+        enn′ = [N′, n]
+        W2 = window_chain(ell, enn, enn′, wccache)
+        if N == N′
+            W2 *= 2
+        else
+            enn[1], enn′[1] = N′, N
+            W2 += window_chain(ell, enn, enn′, wccache)
+        end
+        A = W2 / ((2*l+1) * (2*L+1) * nbar^2)
+        A3[i,j] = A3[j,i] = A
+    end
+    return A3
 end
 
 

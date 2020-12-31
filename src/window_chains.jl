@@ -254,7 +254,7 @@ equal or not.
 """
 function window_chain(ell, n1, n2, cache, symmetries)
     if isempty(symmetries)
-        @show ell n1 n2
+        #@show ell n1 n2
         return window_chain(ell, n1, n2, cache)
     end
 
