@@ -254,6 +254,7 @@ using Test
             @test wk3 ≈ wk
             @test wk4 ≈ wk
             @test wk5 ≈ wk
+            return wk
         end
 
         println("Testing individual modes...")
