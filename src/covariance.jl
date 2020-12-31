@@ -97,9 +97,13 @@ end
 ################ exact calculation ################
 
 function calc_covariance_exact_chain(Clnn, nbar, win, wmodes, cmodes; Δℓ=1, Δn=1)
-    @time VW = calc_covariance_exact_A1(Clnn, win, wmodes, cmodes, Δℓ=Δℓ, Δn=Δn)
-    @time VW .+= calc_covariance_exact_A2(Clnn, nbar, win, wmodes, cmodes, Δℓ=Δℓ, Δn=Δn)
-    @time VW .+= calc_covariance_exact_A3(nbar, win, wmodes, cmodes, Δℓ=Δℓ, Δn=Δn)
+    if any(@. Clnn != 0) && nbar != 0
+        @time VW = calc_covariance_exact_A1(Clnn, win, wmodes, cmodes, Δℓ=Δℓ, Δn=Δn)
+        @time VW .+= calc_covariance_exact_A2(Clnn, nbar, win, wmodes, cmodes, Δℓ=Δℓ, Δn=Δn)
+        @time VW .+= calc_covariance_exact_A3(nbar, win, wmodes, cmodes, Δℓ=Δℓ, Δn=Δn)
+    else
+        @time VW = calc_covariance_exact_A3(nbar, win, wmodes, cmodes, Δℓ=Δℓ, Δn=Δn)
+    end
     return VW
 end
 
