@@ -213,6 +213,8 @@ function window_chain(ell, n1, n2, cache::WindowChainsCacheSeparableWmixOnthefly
 end
 
 
+############ specialty window_chain() ############
+
 # calculate full window chain matrix
 function window_chain(k, win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes; cache=nothing)
     if isnothing(cache)
@@ -233,6 +235,45 @@ function window_chain(k, win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes
         end
         Wk[lnn...] = window_chain(ell, nn1, nn2, cache)
     end
+    return Wk
+end
+
+
+# symmetry for some of the n1,n2
+@doc raw"""
+    window_chain(ell, n1, n2, cache, symmetries)
+
+This version adds up several window chains taking into account the
+`symmetries`. `symmetries` is an array of pairs of numbers specifying the
+symmetries to consider. Each pair specifies the `ℓnn′` index and the type of
+symmetry. For example, when `k≥3`, then `symmetries = [1=>0, 2=>1, 3=>2]`
+would specify that no symmetries are taken into account for the first `lnn′`
+combination, the second symmetry will flip `n` and `n′` and add the result only
+when `n ≠ n′`, and the third will add the result regardless whether the `n`
+equal or not.
+"""
+function window_chain(ell, n1, n2, cache, symmetries)
+    if isempty(symmetries)
+        @show ell n1 n2
+        return window_chain(ell, n1, n2, cache)
+    end
+
+    Wk = window_chain(ell, n1, n2, cache, symmetries[2:end])
+
+    i, sym = symmetries[1]
+
+    if sym >= 1
+        if n1[i] == n2[i]
+            if sym == 2
+                Wk *= 2
+            end
+        else
+            n1[i], n2[i] = n2[i], n1[i]
+            Wk += window_chain(ell, n1, n2, cache, symmetries[2:end])
+            n1[i], n2[i] = n2[i], n1[i]
+        end
+    end
+
     return Wk
 end
 

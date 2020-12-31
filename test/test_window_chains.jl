@@ -323,6 +323,25 @@ using Test
             @test wk ≈ wkp1
         end
     end
+
+
+    @testset "Symmetricizing" begin
+        rmin = 500.0
+        rmax = 1000.0
+        amodes = SFB.AnlmModes(8, 4, rmin, rmax)
+        cmodes = SFB.ClnnModes(amodes, Δnmax=0)
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
+        win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate)
+        cache = SFB.WindowChainsCache(win, wmodes, amodes)
+
+        ell = [1, 2, 3, 4]
+        n1 = [1, 2, 3, 4]
+        n2 = [5, 6, 7, 8]
+        symmetries = [1=>0, 2=>1, 3=>2]
+        wkfull = SFB.window_chain(ell, n1, n2, cache, symmetries)
+        @show wkfull
+        @test wkfull ≈ -1.2707026010569427e-8  # only useful for detecting changes
+    end
 end
 
 
