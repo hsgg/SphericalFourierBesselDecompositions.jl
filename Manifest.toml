@@ -2,9 +2,9 @@
 
 [[Adapt]]
 deps = ["LinearAlgebra"]
-git-tree-sha1 = "42c42f2221906892ceb765dbcb1a51deeffd86d7"
+git-tree-sha1 = "345a14764e43fe927d6f5c250fe4c8e4664e6ee8"
 uuid = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
-version = "2.3.0"
+version = "2.4.0"
 
 [[ArbNumerics]]
 deps = ["Arb_jll", "BinaryProvider", "FLINT_jll", "GMP_jll", "GenericSVD", "GenericSchur", "Libdl", "LinearAlgebra", "MPFR_jll", "Printf", "Random", "Readables", "SpecialFunctions"]
@@ -139,10 +139,10 @@ uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[MPFR_jll]]
-deps = ["GMP_jll", "Libdl", "Pkg"]
-git-tree-sha1 = "301ce96952df90bbaa2c66112b7c1f15ced2b55b"
+deps = ["Artifacts", "GMP_jll", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "36fd989c8d239b33a86f5f721f6649dbe237e678"
 uuid = "3a97d323-0669-5f0c-9066-3539efd106a3"
-version = "4.1.0+1"
+version = "4.0.2+4"
 
 [[MacroTools]]
 deps = ["Markdown", "Random"]
@@ -164,9 +164,9 @@ version = "0.2.2"
 
 [[OffsetArrays]]
 deps = ["Adapt"]
-git-tree-sha1 = "b0cc1c42b63e30b759f4e1cf045ad8a51069d6cc"
+git-tree-sha1 = "5b9ed21d50a91bb783c87f37c8da9266f0265504"
 uuid = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
-version = "1.4.2"
+version = "1.4.4"
 
 [[OpenSpecFun_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
