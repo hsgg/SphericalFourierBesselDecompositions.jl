@@ -156,7 +156,7 @@ using Test
             l, n1, n2 = SFB.getlnn(cmodes, i)
             wk = wk_lnni[i] / (2*l+1)
             @show l,n1,n2,wk_lnni[i],wk,wlnn[i]
-            @test wk ≈ wlnn[i] rtol=1e-3
+            @test wk ≈ wlnn[i]
         end
     end
 
@@ -250,7 +250,7 @@ using Test
             @show ell n1 n2
             @show wk1 wk2 wk3 wk4 wk5 wk
             @test_skip wk1 ≈ wk
-            @test wk2 ≈ wk  rtol=1e-5 atol=1e-9
+            @test wk2 ≈ wk
             @test wk3 ≈ wk
             @test wk4 ≈ wk
             @test wk5 ≈ wk
@@ -341,6 +341,55 @@ using Test
         wkfull = SFB.window_chain(ell, n1, n2, cache, symmetries)
         @show wkfull
         @test wkfull ≈ -1.2707026010569427e-8  # only useful for detecting changes
+    end
+
+
+    @testset "Wk single pixel mask" begin
+        rmin = 500.0
+        rmax = 1000.0
+        nside = 16
+        amodes = SFB.AnlmModes(8, 4, rmin, rmax; nside=nside)
+        cmodes = SFB.ClnnModes(amodes, Δnmax=0)
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
+        mask = fill(0.0, SFB.hp.nside2npix(amodes.nside))
+        mask[805+1] = 1.0
+        phi = fill(1.0, wmodes.nr)
+        win = SFB.SeparableArray(phi, mask, name1=:phi, name2=:mask)
+
+        cache1 = SFB.WindowChains.WindowChainsCacheWignerChain(win, wmodes, amodes)
+        cache2 = SFB.WindowChains.WindowChainsCacheFullWmix(win, wmodes, amodes)
+        cache3 = SFB.WindowChains.WindowChainsCacheFullWmixOntheflyWmix(win, wmodes, amodes)
+        cache4 = SFB.WindowChains.WindowChainsCacheSeparableWmix(win, wmodes, amodes)
+        cache5 = SFB.WindowChains.WindowChainsCacheSeparableWmixOntheflyWlmlm(win, wmodes, amodes)
+        cache = SFB.WindowChainsCache(win, wmodes, amodes)
+
+        test_individual(ell, n1, n2) = begin
+            @time wk1 = SFB.window_chain(ell, n1, n2, cache1)
+            @time wk2 = SFB.window_chain(ell, n1, n2, cache2)
+            @time wk3 = SFB.window_chain(ell, n1, n2, cache3)
+            @time wk4 = SFB.window_chain(ell, n1, n2, cache4)
+            @time wk5 = SFB.window_chain(ell, n1, n2, cache5)
+            @time wk = SFB.window_chain(ell, n1, n2, cache)
+            @show ell n1 n2
+            @show wk1 wk2 wk3 wk4 wk5 wk
+            @test_skip wk1 ≈ wk
+            @test wk2 ≈ wk
+            @test wk3 ≈ wk
+            @test wk4 ≈ wk
+            @test wk5 ≈ wk
+            return wk
+        end
+
+        println("Testing individual modes...")
+        for l1=0:amodes.lmax
+            test_individual([l1], [1], [1])
+            for l2=0:amodes.lmax
+                test_individual([l1, l2], [1, 1], [1, 1])
+                for l3=0:amodes.lmax
+                    test_individual([l1, l2, l3], [1, 1, 1], [1, 1, 1])
+                end
+            end
+        end
     end
 end
 
