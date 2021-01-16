@@ -47,8 +47,8 @@ using ..SeparableArrays
 using LinearAlgebra
 using SpecialFunctions
 using WignerSymbols
+using WignerFamilies
 using SparseArrays
-#using WignerFamilies  # needs some fixes, but will be much faster than WignerSymbols
 
 using Distributed
 using SharedArrays
@@ -241,17 +241,20 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
             i′ = i′base + m′
             M = m - m′
 
-            L1 = max(abs(l-l′),abs(M)):(l+l′)
-            w3j1 = wigner3j.(Float64, l, l′, L1, -m, m′)
-            #w3j_f = wigner3j_f(Float64, l, l′, -m, m′)
-            #w3j2 = w3j_f.symbols
-            #L2 = eachindex(w3j_f)
+            #L1 = max(abs(l-l′),abs(M)):(l+l′)
+            #w3j1 = wigner3j.(Float64, l, l′, L1, -m, m′)
+
+            w3j_f = wigner3j_f(Float64, l, l′, -m, m′)
+            w3j2 = w3j_f.symbols
+            L2 = eachindex(w3j_f)
+
             #@show l,l′ m,m′ M L1 L2
             #@show w3j1 w3j2
             #@assert all(@. abs(w3j1 - w3j2) < eps(1.0))
             #@assert all(L1 .== L2)
-            L = L1
-            w3j = w3j1
+
+            L = L2
+            w3j = w3j2
             #@show w3j
 
             w3j000 = @. wigner3j000(L, l, l′)

@@ -492,14 +492,15 @@ end
 
 
 # calculate window function given lm,LM.
-function window_wmix(l, m, L, M, Wlm, LMcache)
+function window_wmix_wignerfamilies(l, m, L, M, Wlm, LMcache)
     T = Float64
     wigs000 = wigner3j_f(l, L, 0, 0)
     #@show l,L,-m,M
     wigs = wigner3j_f(l, L, -m, M)
     #@show eachindex(wigs000) eachindex(wigs)
     #@show length(wigs000) length(wigs)
-    @assert length(wigs000) >= length(wigs)
+    #@assert length(wigs000) >= length(wigs)
+    #@show wigs000 wigs
     M1 = m - M
     w = T(0)*im
     for L1 in eachindex(wigs)
@@ -512,6 +513,25 @@ function window_wmix(l, m, L, M, Wlm, LMcache)
     end
     return (-1)^m * √((2*l + 1)*(2*L + 1) / (4*T(π))) * w
 end
+function window_wmix_wignersymbols(l, m, L, M, Wlm, LMcache)
+    T = Float64
+    M1 = m - M
+    w = T(0)*im
+    for L1 in max(abs(L-l),abs(M1)):(L+l)
+        L1M1 = LMcache[L1+1][abs(M1)+1]
+        Iterm = Wlm[L1M1]
+        if M1 < 0
+            Iterm = (-1)^M1 * conj(Iterm)
+        end
+        wig000 = Windows.wigner3j000(l, L, L1)
+        w3j = wigner3j(T, l, L, L1, -m, M)
+        w += √T(2*L1 + 1) * wig000 * w3j * Iterm
+    end
+    return (-1)^m * √((2*l + 1)*(2*L + 1) / (4*T(π))) * w
+end
+window_wmix = window_wmix_wignerfamilies
+#window_wmix = window_wmix_wignersymbols
+
 
 
 function get_wmix(w, w′, nl, m, NL, M)

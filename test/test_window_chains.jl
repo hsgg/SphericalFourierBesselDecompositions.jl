@@ -391,6 +391,80 @@ using Test
             end
         end
     end
+
+
+    @testset "Other tests" begin
+        rmin = 0.0
+        rmax = 2000.0
+        amodes = SFB.AnlmModes(0.03, rmin, rmax)
+        cmodes = SFB.ClnnModes(amodes, Δnmax=0)
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
+        @show amodes.lmax_n
+
+        phi = fill(1.0, wmodes.nr)
+        mask = fill(1.0, SFB.hp.nside2npix(amodes.nside))
+        win = SFB.SeparableArray(phi, mask, name1=:phi, name2=:mask)
+
+        wlm, LMcache = SFB.WindowChains.calc_Wlm(mask, amodes.lmax, amodes.nside)
+        lrange = 48:48
+        for l1=lrange, l2=lrange, m1=-l1:l1, m2=-l2:l2
+            w = SFB.WindowChains.window_wmix(l1, m1, l2, m2, wlm, LMcache)
+            if l1 == l2 && m1 == m2
+                @test w ≈ 1
+                if !(w ≈ 1)
+                    @error "Wlmlm unexpected result" l1,l2 m1,m2 w
+                end
+            else
+                @test w ≈ 0  atol=1e-10
+                if !(abs(w) <= 1e-10)
+                    @error "Wlmlm unexpected result" l1,l2 m1,m2 w
+                end
+            end
+        end
+
+        #return
+
+        # Note: the following tests can only be done reasonably fast with
+        # WignerFamilies instead of WignerSymbols in the window chain.
+
+        cache = SFB.WindowChainsCache(win, wmodes, amodes)
+        @show typeof(cache)
+        for l=0:amodes.lmax
+            nmax = amodes.nmax_l[l+1]
+            @test cache.Ilnln[l+1,1:nmax,l+1,1:nmax] ≈ I  atol=1e-4
+            Ik = SFB.WindowChains.calc_kprod(cache.Ilnln, [l,l] .+ 1, [1,1], [1,1])
+            @test Ik ≈ 1  atol=1e-4
+        end
+
+        ell = [48, 48]
+        n1 = [1, 1]
+        n2 = [1, 1]
+        wk = SFB.window_chain(ell, n1, n2, cache)
+        @show wk wk/(2*ell[1]+1)
+        @test wk/(2*ell[1]+1) ≈ 1
+
+        for m1=-ell[1]:ell[1], m2=-ell[2]:ell[2]
+            w = SFB.WindowChains.get_wlmlm(cache, ell[end], m2, ell[1], m1)
+            w2 = SFB.WindowChains.window_wmix(ell[end], m2, ell[1], m1, wlm, LMcache)
+            if m1 != m2 || ell[1] != ell[2]
+                @test w ≈ 0  atol=1e-10
+                @test w2 ≈ 0  atol=1e-10
+            else
+                @test w ≈ 1
+                @test w2 ≈ 1
+                if !(w ≈ 1)
+                    @error "Wlmlm unexpected result" ell m1,m2 w w2
+                end
+            end
+        end
+
+
+        ell = [48, 0]
+        n1 = [1, 1]
+        n2 = [2, 2]
+        wk = SFB.window_chain(ell, n1, n2, cache)
+        @show wk
+    end
 end
 
 
