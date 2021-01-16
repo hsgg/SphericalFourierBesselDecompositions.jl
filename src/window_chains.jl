@@ -285,14 +285,14 @@ function calc_Wr_lm(win, LMAX, Wnside)
     Wr_lm = fill(NaN*im, nr, getlmsize(LMAX))
     for i=1:nr
         W = hp.ud_grade(win[i,:], Wnside)
-        Wr_lm[i,:] .= hp.map2alm(W, lmax=LMAX)
+        Wr_lm[i,:] .= hp.map2alm(W, lmax=LMAX, use_weights=true)
     end
     return Wr_lm
 end
 
 function calc_Wr_lm(win::SeparableArray, LMAX, Wnside)  # specialize
     mask = hp.ud_grade(win.mask, Wnside)
-    wlm = hp.map2alm(mask, lmax=LMAX)
+    wlm = hp.map2alm(mask, lmax=LMAX, use_weights=true)
     return SeparableArray(win.phi, wlm, name1=:phi, name2=:wlm)
 end
 
@@ -300,7 +300,7 @@ end
 function calc_Wlm(mask, lmax, nside)
     LMAX = 2 * lmax
     mask = hp.ud_grade(mask, nside)
-    Wlm = hp.map2alm(mask, lmax=LMAX)
+    Wlm = hp.map2alm(mask, lmax=LMAX, use_weights=true)
     LMcache = [hp.Alm.getidx.(LMAX, L, 0:L) .+ 1 for L=0:LMAX]
     return Wlm, LMcache
 end

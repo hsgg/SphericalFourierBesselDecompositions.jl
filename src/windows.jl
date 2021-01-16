@@ -370,7 +370,7 @@ function calc_Wr_lm(win, LMAX, Wnside)
     Wr_lm = fill(NaN*im, nr, getlmsize(LMAX))
     @time for i=1:nr
         W = hp.ud_grade(win[i,:], Wnside)
-        Wr_lm[i,:] .= hp.map2alm(W, lmax=LMAX)
+        Wr_lm[i,:] .= hp.map2alm(W, lmax=LMAX, use_weights=true)
     end
     return Wr_lm
 end
@@ -378,7 +378,7 @@ end
 # specialize
 function calc_Wr_lm(win::SeparableArray, LMAX, Wnside)
     mask = hp.ud_grade(win.mask, Wnside)
-    wlm = hp.map2alm(mask, lmax=LMAX)
+    wlm = hp.map2alm(mask, lmax=LMAX, use_weights=true)
     return SeparableArray(win.phi, wlm, name1=:phi, name2=:wlm)
 end
 

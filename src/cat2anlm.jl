@@ -222,7 +222,7 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln)
             # TODO: check manual implementation for a single ℓ, check libsharp,
             #       how does healpix do it?
             # TODO: start with small nside for small ℓ, dangerous for pixel window
-            alm = hp.map2alm(map, lmax=l)
+            alm = hp.map2alm(map, lmax=l, use_weights=true)
             idx = hp.Alm.getidx.(l, l, 0:l) .+ 1  # python is 0-indexed
             baseidx = getidx(amodes, n, l, 0)
             @. anlm[baseidx:(baseidx+l)] = alm[idx]
