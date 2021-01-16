@@ -25,7 +25,7 @@ export getnlmsize, getlmsize, getnlm, getidx
 export getlnnsize, getlnn, isvalidlnn
 export getlkk, getidxapprox
 export bandpower_binning_weights, bandpower_eigen_weights
-export get_incomplete_bins
+export get_incomplete_bins, find_most_hi_k_convolved_mode, find_klarge, get_hi_k_affection
 
 import Base.length, Base.iterate
 
@@ -368,7 +368,7 @@ iterate(s::ClnnBinnedModes, x) = nothing
 
 
 function ClnnBinnedModes(w̃, v, cmodes::ClnnModes)
-    @assert all(sum(w̃, dims=2) .≈ 1)  # ensure w̃ is normalized
+    (w̃ != I) && @assert all(sum(w̃, dims=2) .≈ 1)  # ensure w̃ is normalized
     LKK = getlkk(cmodes) * w̃'
     if cmodes.symmetric
         # ensure k1 <= k2
@@ -558,6 +558,61 @@ function get_incomplete_bins(w̃; nmodes_per_bin=nothing)
         end
     end
     return incomplete_bins
+end
+
+
+# find_most_hi_k_convolved_mode(): Here find the mode that is most affected by
+# mode mixing from hi-k modes. This is useful to find the maximum k that is
+# needed to get unbiased results from the deconvolution step. `bcmixinv` is the
+# inverse of the mixing matrix, `lkk` describes the modes, `kmax` is the
+# maximum mode we are interested in, and `ktrans` is the current best estimate
+# for the largest needed k.
+function find_most_hi_k_convolved_mode(bcmixinv, lkk, kmax, ktrans)
+    s_hi = @. lkk[2,:] > ktrans
+    s_lo = @. lkk[2,:] <= ktrans
+    idxmax = 1
+    ratiomax = 0.0
+    for idx in 1:size(lkk, 2)
+        (lkk[2,idx] <= kmax) || continue
+        hi = sum(abs.(bcmixinv[idx,s_hi]))
+        lo = sum(abs.(bcmixinv[idx,s_lo]))
+        ratio = hi / (lo + hi)
+        if ratio >= ratiomax
+            idxmax = idx
+            ratiomax = ratio
+        end
+    end
+    return idxmax, ratiomax
+end
+
+
+function find_klarge(bcmixinv, lkk, kmax; threshold=0.01)
+    zerofn(klarge) = begin
+        idx, hifraction = find_most_hi_k_convolved_mode(bcmixinv, lkk, kmax, klarge)
+        return hifraction - threshold
+    end
+
+    karr = sort(lkk[2,:])
+
+    idx = findfirst(k -> zerofn(k) < 0, karr)
+
+    klarge = nextfloat(karr[idx])
+
+    return klarge
+end
+
+
+function get_hi_k_affection(bcmixinv, lkk, klarge)
+    s_hi = @. lkk[2,:] > klarge
+    s_lo = @. lkk[2,:] <= klarge
+    lnnsize = length(lkk[2,:])
+    hifracts = fill(NaN, lnnsize)
+    for idx in 1:lnnsize
+        hi = sum(abs.(bcmixinv[idx,s_hi]))
+        lo = sum(abs.(bcmixinv[idx,s_lo]))
+        hifracts[idx] = hi / (lo + hi)
+    end
+    return hifracts
 end
 
 

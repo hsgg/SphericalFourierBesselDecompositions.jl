@@ -5,12 +5,12 @@ using SphericalFourierBesselDecompositions
 SFB = SphericalFourierBesselDecompositions
 
 using Test
+using LinearAlgebra
 
 
 @testset "Window Chains" begin
     # Note: a lot of the differences here come down to the choice of nside and
     # details of how healpy is used.
-
 
     @testset "Wmix" begin
         rmin = 500.0
