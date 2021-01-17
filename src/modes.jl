@@ -430,6 +430,29 @@ getidxapprox(bcmodes::ClnnBinnedModes, ℓ, k1in, k2in) = begin
     return i
 end
 
+# Same as getidxapprox(), except that the agreement needs to be ~machine precision.
+getidx(bcmodes::ClnnBinnedModes, ℓ, k1in, k2in) = begin
+    @assert bcmodes.cmodes.symmetric
+    return getidx(bcmodes.LKK, ℓ, k1in, k2in)
+end
+getidx(LKK::AbstractArray{T,2}, ℓ, k1in, k2in) where {T<:Real} = begin
+    lnnsize = size(LKK,2)
+    k1 = min(k1in, k2in)
+    k2 = max(k1in, k2in)
+    i = findfirst(i -> begin
+                      L = LKK[1,i]
+                      (L ≈ ℓ) || return false
+                      k1 = LKK[2,i]
+                      (k1 ≈ k1in) || return false
+                      k2 = LKK[3,i]
+                      (k2 ≈ k2in) || return false
+                      return true
+                  end,
+                  1:lnnsize)
+    return i
+end
+
+
 
 ########## calculate binning and debinning matrices
 
