@@ -18,4 +18,11 @@ WignerFamilies = "a8f88a7a-0a89-491c-8ecb-051e99aa9f5e"
 WignerSymbols = "9f57e263-0b3d-5e2e-b1be-24f2bb48858b"
 
 [compat]
+julia = "1"
+ArbNumerics = "^1.2"
+PyCall = "^1.92"
+QuadGK = "^2.4"
+Roots = "1"
+SpecialFunctions = "1"
 WignerFamilies = "^1.0.1"
+WignerSymbols = "^1.1"
