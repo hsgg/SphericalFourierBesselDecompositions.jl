@@ -62,17 +62,24 @@ where `rθϕ` is a `3 × Ngalaxies` array with the `r`, `θ`, and `ϕ` coordinat
 of each galaxy in the survey, and `nbar = Ngalaxies / Veff` is the average
 number density. The second line calculates the pseudo-SFB power spectrum.
 
-Window-deconvolution is performed with bandpower binning.
+Shot noise and pixel window are calculated with
+```julia
+julia> Nobs_th = SFB.win_lnn(win, wmodes, cmodes) ./ nbar
+julia> pixwin = SFB.pixwin(cmodes)
+```
+
+Window-deconvolution is performed with bandpower binning:
 ```julia
 julia> w̃mat, vmat = SFB.bandpower_binning_weights(cmodes; Δℓ=Δℓ, Δn=Δn)
 julia> bcmodes = SFB.ClnnBinnedModes(w̃mat, vmat, cmodes)
 julia> bcmix = SFB.power_win_mix(win, w̃mat, vmat, wmodes, bcmodes)
-julia> CN = bcmix \ (w̃mat * CNobs)
+julia> Cobs = @. (CNobs - Nobs_th) / pixwin ^ 2
+julia> C = bcmix \ (w̃mat * Cobs)
 ```
 The first line calculates binning matrices `w̃` and `v` for bin sizes `Δℓ ~
-1/fsky` and `Δn = 1`, the second calculates modes similar to `cmodes` but for
-bandpower binned modes. The coupling matrix is calculated in the third line,
-and the last line could also be written `CN = inv(bcmix) * w̃mat * CNobs`.
+1/fsky` and `Δn = 1`, the second line describes modes similar to `cmodes` but
+for bandpower binned modes. The coupling matrix is calculated in the third
+line, and the last line could also be written `C = inv(bcmix) * w̃mat * Cobs`.
 
 To compare with a theoretical prediction, we calculate the deconvolved binning
 matrix `wmat`,
@@ -81,13 +88,6 @@ julia> using LinearAlgebra
 julia> wmat = bcmix * SFB.power_win_mix(win, w̃mat, I, wmodes, bcmodes)
 ```
 
-Shot noise and pixel window are calculated with
-```julia
-julia> Nobs_th = SFB.win_lnn(win, wmodes, cmodes) ./ nbar
-julia> N_th = bcmix \ (w̃mat * Nobs_th)
-julia> pixwin = SFB.pixwin(cmodes)
-julia> C = @. (CN - N_th) / pixwin ^ 2
-```
 The modes of the pseudo-SFB power spectrum are given by
 ```julia
 julia> lkk = SFB.getlkk(bcmodes)
