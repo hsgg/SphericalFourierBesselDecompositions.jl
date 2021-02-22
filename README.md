@@ -10,6 +10,10 @@ To install *SuperFaB*, start the [Julia](https://julialang.org/) REPL and type
 ```julia
 ]add SphericalFourierBesselDecompositions
 ```
+If that doesn't work (there is a mandatory waiting period for the Julia General registry), install it directly
+```julia
+]add https://github.com/hsgg/SphericalFourierBesselDecompositions.jl.git
+```
 
 The package makes use of some python packages (e.g. healpy) that are only
 supported on MacOSX and Linux. The above command *should* work if healpy is
