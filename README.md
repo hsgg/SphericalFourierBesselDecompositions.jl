@@ -13,13 +13,14 @@ To install *SuperFaB*, start the [Julia](https://julialang.org/) REPL and type
 
 The package makes use of some python packages (e.g. healpy) that are only
 supported on MacOSX and Linux. The above command *should* work if healpy is
-Already installed, but if problems occur when first using the package, see
-[PyCall](https://github.com/JuliaPy/PyCall.jl).
+already installed, but if problems occur when first using the package, see
+[PyCall](https://github.com/JuliaPy/PyCall.jl). Specifically, try
+`ENV["PYTHON"]=""; ]build PyCall`.
 
 
 ## Basic Usage
 
-First, load the package:
+Load the package:
 ```julia
 julia> using SphericalFourierBesselDecompositions
 julia> SFB = SphericalFourierBesselDecompositions
@@ -28,7 +29,7 @@ The second line is only for convenience, but will be assumed for the rest of
 this document.
 
 To perform a SFB decomposition, a few caches need to be created that contain
-the the basis functions
+the basis functions
 ```julia
 julia> amodes = SFB.AnlmModes(kmax, rmin, rmax)
 julia> cmodes = SFB.ClnnModes(amodes, Δnmax=0)
@@ -51,7 +52,8 @@ dimension is radial, and the second dimension is the HEALPix mask at each
 radius. Using a `SeparableArray` makes dispatches to more efficient specialized
 algorithms when the radial and angular window are separable.
 `SFB.win_rhat_ln()` performs the radial transform of the window,
-`SFB.integrate_window()` is for convenience.
+`SFB.integrate_window()` is a convenient way to calculate the effective volume
+`Veff`.
 
 The SFB decomposition is now performed with
 ```julia
@@ -68,7 +70,7 @@ julia> Nobs_th = SFB.win_lnn(win, wmodes, cmodes) ./ nbar
 julia> pixwin = SFB.pixwin(cmodes)
 ```
 
-Window-deconvolution is performed with bandpower binning:
+Window deconvolution is performed with bandpower binning:
 ```julia
 julia> w̃mat, vmat = SFB.bandpower_binning_weights(cmodes; Δℓ=Δℓ, Δn=Δn)
 julia> bcmodes = SFB.ClnnBinnedModes(w̃mat, vmat, cmodes)
