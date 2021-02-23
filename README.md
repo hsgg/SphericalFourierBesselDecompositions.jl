@@ -24,24 +24,22 @@ already installed, but if problems occur when first using the package, see
 
 ## Basic Usage
 
-Load the package:
+Load the package and create a shortcut
 ```julia
 julia> using SphericalFourierBesselDecompositions
 julia> SFB = SphericalFourierBesselDecompositions
 ```
-The second line is only for convenience, but will be assumed for the rest of
-this document.
 
-To perform a SFB decomposition, a few caches need to be created that contain
-the basis functions
+To perform a SFB decomposition, we create a modes object `amodes` that contains
+the modes and basis functions, and for the pseudo-SFB power spectrum we create
+`cmodes`,
 ```julia
 julia> amodes = SFB.AnlmModes(kmax, rmin, rmax)
 julia> cmodes = SFB.ClnnModes(amodes, Δnmax=0)
 ```
 Here, `kmax` is the maximum k-mode to be calculated, `rmin` and `rmax` are the
-radial boundaries. `amodes` is used for the SFB decomposition, `cmodes` is used
-to calculate the SFB power spectrum, and `Δnmax` specifies how many
-off-diagonals `k ≠ k'` to include.
+radial boundaries. `Δnmax` specifies how many off-diagonals `k ≠ k'` to
+include.
 
 The window function is described by
 ```julia
@@ -53,9 +51,9 @@ julia> Veff = SFB.integrate_window(win, wmodes)
 where `nr` is the number of radial bins, `phi` is an array of length `nr`, and
 `mask` is a HEALPix mask. In general, `win` can be a 2D-array, where the first
 dimension is radial, and the second dimension is the HEALPix mask at each
-radius. Using a `SeparableArray` makes dispatches to more efficient specialized
-algorithms when the radial and angular window are separable.
-`SFB.win_rhat_ln()` performs the radial transform of the window,
+radius. Using a `SeparableArray` uses Julia's dispatch mechanism to call more
+efficient specialized algorithms when the radial and angular window are
+separable. `SFB.win_rhat_ln()` performs the radial transform of the window,
 `SFB.integrate_window()` is a convenient way to calculate the effective volume
 `Veff`.
 
@@ -85,7 +83,8 @@ julia> C = bcmix \ (w̃mat * Cobs)
 The first line calculates binning matrices `w̃` and `v` for bin sizes `Δℓ ~
 1/fsky` and `Δn = 1`, the second line describes modes similar to `cmodes` but
 for bandpower binned modes. The coupling matrix is calculated in the third
-line, and the last line could also be written `C = inv(bcmix) * w̃mat * Cobs`.
+line, the shot noise and pixel window are corrected in the fourth line, and the
+last line deconvolves the window function.
 
 To compare with a theoretical prediction, we calculate the deconvolved binning
 matrix `wmat`,
@@ -98,8 +97,9 @@ The modes of the pseudo-SFB power spectrum are given by
 ```julia
 julia> lkk = SFB.getlkk(bcmodes)
 ```
-`lkk[1,:]` are the ℓ-modes, `lkk[2,:]` are the `n`-modes, `lkk[3,:]` the
-`n'`-modes for the pseudo-SFB power spectrum `C[:]`.
+where for a given `i` the element `lkk[1,i]` is the ℓ-mode, `lkk[2,i]` is the
+`n`-mode, `lkk[3,i]` is the `n'`-mode of the pseudo-SFB power spectrum element
+`C[i]`.
 
 An unoptimized way to calculate the covariance matrix is
 ```julia
