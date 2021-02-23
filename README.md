@@ -84,7 +84,7 @@ The first line calculates binning matrices `w̃` and `v` for bin sizes `Δℓ ~
 1/fsky` and `Δn = 1`, the second line describes modes similar to `cmodes` but
 for bandpower binned modes. The coupling matrix is calculated in the third
 line, the shot noise and pixel window are corrected in the fourth line, and the
-last line deconvolves the window function.
+last line does the binning and deconvolves the window function.
 
 To compare with a theoretical prediction, we calculate the deconvolved binning
 matrix `wmat`,
