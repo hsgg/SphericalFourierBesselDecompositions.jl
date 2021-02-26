@@ -122,7 +122,7 @@ function Base.getproperty(s::SeparableArray, f::Symbol)
 end
 
 
-function Base.propertynames(s::SeparableArray, private=false)
+function Base.propertynames(s::SeparableArray, private::Bool=false)
     tuple = (s.name1, s.name2)
     if private
         tuple = tuple..., fieldnames(typeof(s))...
