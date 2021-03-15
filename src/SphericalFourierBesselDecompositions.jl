@@ -239,6 +239,7 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
 
     phi = fill(1.0, nr)
     mask = fill(1.0, wmodes.npix)
+    features = filter(i -> i != :fullsky, features)
 
     if :radial in features
         r0 = rmax * 0.55
@@ -288,7 +289,7 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
     end
 
     if :rotate in features
-        r = hp.Rotator(coord=["G", "E"])
+        r = hp.Rotator(coord=["E", "G"])
         mask = r.rotate_map_pixel(mask)
         features = filter(i -> i != :rotate, features)
     end
@@ -305,8 +306,7 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
     end
 
     if length(features) != 0
-        @error "Did not recognize all features" features
-        @assert false
+        @warn "Did not recognize all features" features
     end
 
     return win
