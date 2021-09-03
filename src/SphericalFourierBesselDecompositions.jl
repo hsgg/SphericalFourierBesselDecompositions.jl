@@ -139,7 +139,7 @@ end
 
 
 function pixwin(cmodes)
-    hppwin = hp.pixwin(cmodes.amodes.nside, lmax=cmodes.amodes.lmax, pol=false)
+    hppwin = pixwin(cmodes.amodes.nside, pol=false)
     lnnsize = getlnnsize(cmodes)
     sfbpwin = fill(NaN, lnnsize)
     for i=1:lnnsize
