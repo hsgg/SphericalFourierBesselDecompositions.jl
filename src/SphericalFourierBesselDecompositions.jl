@@ -30,9 +30,9 @@
 
 module SphericalFourierBesselDecompositions
 
-include("lib/HealPy.jl")
-include("lib/SciPy.jl")
-include("lib/Splines.jl")
+include("HealPy.jl")
+include("SciPy.jl")
+include("Splines.jl")
 include("gnl.jl")  # SphericalBesselGnls
 include("modes.jl")  # AnlmModes, ClnnModes, ClnnBinnedModes
 include("SeparableArrays.jl")
