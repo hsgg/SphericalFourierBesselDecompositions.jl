@@ -31,7 +31,6 @@
 module SphericalFourierBesselDecompositions
 
 include("HealPy.jl")
-include("SciPy.jl")
 include("Splines.jl")
 include("gnl.jl")  # SphericalBesselGnls
 include("modes.jl")  # AnlmModes, ClnnModes, ClnnBinnedModes
@@ -45,9 +44,9 @@ include("covariance.jl")  # mostly theory, may be split at some point
 include("cat2anlm.jl")
 
 using Statistics
+using Healpix
 #using Roots
 using .HealPy
-using .SciPy
 using .Splines
 using .GNL
 using .Modes
@@ -69,14 +68,6 @@ using Distributed
 #using MeasureAngularPowerSpectra
 #using Profile
 #using PyPlot
-
-
-################# spherical Bessel function jl ##########################3
-
-function sphericalharmonicsy(l, m, θ, ϕ)
-    # scipy has ℓ,m and θ,ϕ reversed
-    return scipy.special.sph_harm(m, l, ϕ, θ)
-end
 
 
 ###################### utility functions #########################
