@@ -34,7 +34,8 @@ export cat2amln
 
 
 using SharedArrays
-using ..HealPy
+using Healpix
+#using ..HealPy
 using ..SeparableArrays
 using ..Modes
 
@@ -51,7 +52,7 @@ function sortout(rθϕ, nside)
     ## variables being recomputed much more frequently in the spline for gnl(r).
     #θ = collect(rθϕ[2,:])
     #ϕ = collect(rθϕ[3,:])
-    #pix = hp.ang2pix(nside, θ, ϕ)
+    #pix = ang2pixRing(nside, θ, ϕ)
     #p = sortperm(pix)
     #rθϕ = rθϕ[:,p]
 
@@ -201,10 +202,10 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln)
     @show nbar length(r)
     sphbesg = amodes.basisfunctions
     knl = amodes.knl
-    pix = hp.ang2pix(amodes.nside, θ, ϕ) .+ 1  # python is 0-indexed
+    pix = ang2pixRing.(Ref(Resolution(amodes.nside)), θ, ϕ) # .+ 1  # python is 0-indexed
     pmu, pmupix = make_pmu_pmupix(pix)
     @show typeof(pmu) typeof(pmupix)
-    npix = hp.nside2npix(amodes.nside)
+    npix = nside2npix(amodes.nside)
     ΔΩpix = 4π / npix
     #anlm = fill(NaN+im*NaN, getnlmsize(amodes))
     anlm = SharedArray{Complex{Float64}}(getnlmsize(amodes))
@@ -249,10 +250,18 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln)
             # TODO: check manual implementation for a single ℓ, check libsharp,
             #       how does healpix do it?
             # TODO: start with small nside for small ℓ, dangerous for pixel window
-            alm = hp.map2alm(map, lmax=l, use_weights=true)
-            idx = hp.Alm.getidx.(l, l, 0:l) .+ 1  # python is 0-indexed
+
+            # HealPy:
+            #alm = hp.map2alm(map, lmax=l, use_weights=true)
+            #idx = hp.Alm.getidx.(l, l, 0:l) .+ 1  # python is 0-indexed
+
+            # Healpix.jl:
+            maphp = HealpixMap{Float64,Healpix.RingOrder}(map)
+            alm = map2alm(maphp, lmax=l)  # TODO: readFullWeights, applyFullWeights!
+            idx = almIndex(alm, l, 0:l)
+
             baseidx = getidx(amodes, n, l, 0)
-            @. anlm[baseidx:(baseidx+l)] = alm[idx]
+            @. anlm[baseidx:(baseidx+l)] = alm.alm[idx]
         end
     end
     @assert all(isfinite.(anlm))

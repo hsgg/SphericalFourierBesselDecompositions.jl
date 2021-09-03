@@ -201,10 +201,20 @@ end
 
 ############################ Window function stuff #####################
 
+function Healpix.pix2angRing(nside::Integer, pix::AbstractArray)
+    reso = Resolution(nside)
+    θ = fill(NaN, length(pix))
+    ϕ = fill(NaN, length(pix))
+    for i=1:length(pix)
+        θ[i], ϕ[i] = pix2angRing(reso, pix[i])
+    end
+    return θ, ϕ
+end
+
 function gen_mask(nside, fsky)
-    npix = hp.nside2npix(nside)
+    npix = nside2npix(nside)
     mask = fill(0.0, npix)
-    θ, ϕ = hp.pix2ang(nside, 0:npix-1)
+    θ, ϕ = pix2angRing(nside, 1:npix)
     @show extrema(θ) extrema(ϕ)
     θₘₐₓ = acos(1 - 2*fsky)
     @show θₘₐₓ
