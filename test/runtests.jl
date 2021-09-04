@@ -3,12 +3,18 @@
 
 using SphericalFourierBesselDecompositions
 ENV["JULIA_DEBUG"] = SphericalFourierBesselDecompositions
+SFB = SphericalFourierBesselDecompositions
 
 using Test
+
 using Random
 randseed = rand(UInt64)
 @show randseed
 Random.seed!(randseed)
+
+using LinearAlgebra
+
+long_tests = false
 
 
 ## runtests:

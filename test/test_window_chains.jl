@@ -95,7 +95,7 @@ using LinearAlgebra
         test_mode([1, 1, -1], [1, 1, 1])
 
         nlmsize = SFB.getnlmsize(amodes)
-        for j=1:nlmsize, i=1:nlmsize
+        long_tests && for j=1:nlmsize, i=1:nlmsize
             n1, l1, m1 = SFB.getnlm(amodes, i)
             n2, l2, m2 = SFB.getnlm(amodes, j)
             test_mode([n1, l1, m1], [n2, l2, m2]; verbose=false)
@@ -152,7 +152,7 @@ using LinearAlgebra
         wk_lnni = real.(wk_lnni)
 
         @show size(wk_lnni) size(wlnn)
-        for i=1:SFB.getlnnsize(cmodes)
+        long_tests && for i=1:SFB.getlnnsize(cmodes)
             l, n1, n2 = SFB.getlnn(cmodes, i)
             wk = wk_lnni[i] / (2*l+1)
             @show l,n1,n2,wk_lnni[i],wk,wlnn[i]
@@ -214,7 +214,7 @@ using LinearAlgebra
 
         @show size(wk_lnni) size(M)
         @test size(wk_lnni) == size(M)
-        for i2=1:SFB.getlnnsize(cmodes), i1=1:SFB.getlnnsize(cmodes)
+        long_tests && for i2=1:SFB.getlnnsize(cmodes), i1=1:SFB.getlnnsize(cmodes)
             l1, n1, n1′ = SFB.getlnn(cmodes, i1)
             l2, n2, n2′ = SFB.getlnn(cmodes, i2)
             i2′ = SFB.getidx(cmodes, l2, n2′, n2)
@@ -258,7 +258,7 @@ using LinearAlgebra
         end
 
         println("Testing individual modes...")
-        for l1=0:amodes.lmax
+        long_tests && for l1=0:amodes.lmax
             test_individual([l1], [1], [1])
             for l2=0:amodes.lmax
                 test_individual([l1, l2], [1, 1], [1, 1])
@@ -383,7 +383,7 @@ using LinearAlgebra
         println("Testing individual modes...")
         for l1=0:amodes.lmax
             test_individual([l1], [1], [1])
-            for l2=0:amodes.lmax
+            long_tests && for l2=0:amodes.lmax
                 test_individual([l1, l2], [1, 1], [1, 1])
                 for l3=0:amodes.lmax
                     test_individual([l1, l2, l3], [1, 1, 1], [1, 1, 1])
@@ -407,7 +407,7 @@ using LinearAlgebra
 
         wlm, LMcache = SFB.WindowChains.calc_Wlm(mask, amodes.lmax, amodes.nside)
         lrange = 48:48
-        for l1=lrange, l2=lrange, m1=-l1:l1, m2=-l2:l2
+        long_tests && for l1=lrange, l2=lrange, m1=-l1:l1, m2=-l2:l2
             w = SFB.WindowChains.window_wmix(l1, m1, l2, m2, wlm, LMcache)
             if l1 == l2 && m1 == m2
                 @test w ≈ 1
@@ -443,7 +443,7 @@ using LinearAlgebra
         @show wk wk/(2*ell[1]+1)
         @test wk/(2*ell[1]+1) ≈ 1
 
-        for m1=-ell[1]:ell[1], m2=-ell[2]:ell[2]
+        long_tests && for m1=-ell[1]:ell[1], m2=-ell[2]:ell[2]
             w = SFB.WindowChains.get_wlmlm(cache, ell[end], m2, ell[1], m1)
             w2 = SFB.WindowChains.window_wmix(ell[end], m2, ell[1], m1, wlm, LMcache)
             if m1 != m2 || ell[1] != ell[2]
