@@ -31,6 +31,7 @@
 module SphericalFourierBesselDecompositions
 
 include("HealPy.jl")
+include("healpix_helpers.jl")
 include("Splines.jl")
 include("gnl.jl")  # SphericalBesselGnls
 include("modes.jl")  # AnlmModes, ClnnModes, ClnnBinnedModes
@@ -44,9 +45,10 @@ include("covariance.jl")  # mostly theory, may be split at some point
 include("cat2anlm.jl")
 
 using Statistics
-using Healpix
 #using Roots
+using Healpix
 using .HealPy
+using .HealpixHelpers
 using .Splines
 using .GNL
 using .Modes
@@ -200,16 +202,6 @@ function predict_clnn(knl, pk, rmax, lmin=0)
 end
 
 ############################ Window function stuff #####################
-
-function Healpix.pix2angRing(nside::Integer, pix::AbstractArray)
-    reso = Resolution(nside)
-    θ = fill(NaN, length(pix))
-    ϕ = fill(NaN, length(pix))
-    for i=1:length(pix)
-        θ[i], ϕ[i] = pix2angRing(reso, pix[i])
-    end
-    return θ, ϕ
-end
 
 function gen_mask(nside, fsky)
     npix = nside2npix(nside)

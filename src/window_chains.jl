@@ -63,7 +63,9 @@ export window_chain
 using ..Windows
 using WignerSymbols
 using WignerFamilies
-using ..HealPy
+using Healpix
+using ..HealpixHelpers
+#using ..HealPy
 using ..NDIterators
 using ..SeparableArrays
 using ..WignerChains
@@ -116,8 +118,8 @@ function WindowChainsCacheWignerChain(win, wmodes, amodes)
     # Wr_lm
     LMAX = 2 * amodes.lmax
     Wr_lm = calc_Wr_lm(win, LMAX, amodes.nside)
-    LMcache = [hp.Alm.getidx.(LMAX, L, 0:L) .+ 1 for L=0:LMAX]
-    lmsize = hp.Alm.getsize(LMAX)
+    LMcache = [almIndex(Alm(LMAX,LMAX), L, 0:L) .+ 1 for L=0:LMAX]
+    lmsize = numberOfAlms(LMAX)
     #@show LMcache
     #@show typeof(LMcache)
 
@@ -312,32 +314,32 @@ function calc_Wr_lm(win, LMAX, Wnside)
     nr = size(win,1)
     Wr_lm = fill(NaN*im, nr, getlmsize(LMAX))
     for i=1:nr
-        W = hp.ud_grade(win[i,:], Wnside)
-        Wr_lm[i,:] .= hp.map2alm(W, lmax=LMAX, use_weights=true)
+        W = udgrade(win[i,:], Wnside)
+        Wr_lm[i,:] .= mymap2alm(W, lmax=LMAX).alm
     end
     return Wr_lm
 end
 
 function calc_Wr_lm(win::SeparableArray, LMAX, Wnside)  # specialize
-    mask = hp.ud_grade(win.mask, Wnside)
-    wlm = hp.map2alm(mask, lmax=LMAX, use_weights=true)
+    mask = udgrade(win.mask, Wnside)
+    wlm = mymap2alm(mask, lmax=LMAX).alm
     return SeparableArray(win.phi, wlm, name1=:phi, name2=:wlm)
 end
 
 
 function calc_Wlm(mask, lmax, nside)
     LMAX = 2 * lmax
-    mask = hp.ud_grade(mask, nside)
-    Wlm = hp.map2alm(mask, lmax=LMAX, use_weights=true)
-    LMcache = [hp.Alm.getidx.(LMAX, L, 0:L) .+ 1 for L=0:LMAX]
-    return Wlm, LMcache
+    mask = udgrade(mask, nside)
+    Wlm = mymap2alm(mask, lmax=LMAX)
+    LMcache = [almIndex(Wlm, L, 0:L) for L=0:LMAX]
+    return Wlm.alm, LMcache
 end
 
 
 function calc_Wlmlm(mask, lmax, nside)
     wlm, LMcache = calc_Wlm(mask, lmax, nside)
     LMAX = 2 * lmax
-    lmsize = hp.Alm.getsize(LMAX)
+    lmsize = numberOfAlms(LMAX)
     wlmlm = fill(NaN*im, lmsize, lmsize)
     wlmlm_negm = fill(NaN*im, lmsize, lmsize)
     for l=0:lmax, m=0:l, L=0:lmax, M=0:L

@@ -35,6 +35,7 @@ export cat2amln
 
 using SharedArrays
 using Healpix
+using ..HealpixHelpers
 #using ..HealPy
 using ..SeparableArrays
 using ..Modes
@@ -257,7 +258,7 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln)
 
             # Healpix.jl:
             maphp = HealpixMap{Float64,Healpix.RingOrder}(map)
-            alm = map2alm(maphp, lmax=l)  # TODO: readFullWeights, applyFullWeights!
+            alm = mymap2alm(maphp, lmax=l)
             idx = almIndex(alm, l, 0:l)
 
             baseidx = getidx(amodes, n, l, 0)
