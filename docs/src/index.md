@@ -1,3 +1,7 @@
+```@meta
+CurrentModule = SphericalFourierBesselDecompositions
+```
+
 # SuperFaB Documentation
 
 The purpose of this [Julia](https://julialang.org/) module is to provide an
@@ -9,21 +13,4 @@ field. SuperFaB is implemented in the package
 ## Contents
 
 ```@contents
-```
-
-
-## Reference
-
-```@meta
-CurrentModule = SphericalFourierBesselDecompositions
-```
-
-```@docs
-cat2amln
-```
-
-
-## List of all functions
-
-```@index
 ```
