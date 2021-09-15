@@ -1,18 +1,23 @@
-#push!(LOAD_PATH, "../src/")
+using SphericalFourierBesselDecompositions
+using Documenter
 
-using Pkg
-Pkg.activate(".")
+DocMeta.setdocmeta!(SphericalFourierBesselDecompositions, :DocTestSetup, :(using SphericalFourierBesselDecompositions); recursive=true)
 
-using Documenter, SphericalFourierBesselDecompositions
+makedocs(;
+    modules=[SphericalFourierBesselDecompositions],
+    authors="Henry Gebhardt <henry.s.gebhardt@jpl.nasa.gov> and contributors",
+    repo="https://github.com/hsgg/SphericalFourierBesselDecompositions.jl/blob/{commit}{path}#{line}",
+    sitename="SphericalFourierBesselDecompositions.jl Documentation",
+    format=Documenter.HTML(;
+        prettyurls=get(ENV, "CI", "false") == "true",
+        canonical="https://hsgg.github.io/SphericalFourierBesselDecompositions.jl",
+        assets=String[],
+    ),
+    pages=[
+        "Home" => "index.md",
+    ],
+)
 
-
-makedocs(sitename="SphericalFourierBesselDecompositions.jl Documentation",
-	 format=Documenter.HTML(prettyurls=get(ENV, "CI", nothing) == "true"))
-
-#println(Base.ARGS)
-#if "deploy" in Base.ARGS
-deploydocs(repo="github.com/hsgg/SphericalFourierBesselDecompositions.jl.git")
-#end
-
-
-# vim: set sw=4 et sts=4 :
+deploydocs(;
+    repo="github.com/hsgg/SphericalFourierBesselDecompositions.jl",
+)
