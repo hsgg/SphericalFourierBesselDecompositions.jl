@@ -133,9 +133,13 @@ end
 
 function amln2clnn(anlm, cmodes::ClnnModes)
     clnn = fill(NaN, getlnnsize(cmodes))
-    for n̄=1:cmodes.amodes.nmax, Δn=0:cmodes.Δnmax
+    nmax = cmodes.amodes.nmax
+    for n̄=1:nmax, Δn=0:cmodes.Δnmax
         n1 = n̄ + Δn
         n2 = n̄
+        if n1 > nmax || n2 > nmax
+            continue
+        end
         lmax = minimum(cmodes.amodes.lmax_n[[n1,n2]])
         lmsize = getlmsize(lmax)
         n1_idxs = getnlmsize(cmodes.amodes, n1 - 1) .+ (1:lmsize)
