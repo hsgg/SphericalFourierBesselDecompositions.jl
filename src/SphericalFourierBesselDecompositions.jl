@@ -317,6 +317,19 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
 end
 
 
+@doc raw"""
+    calc_fsky(win, wmodes)
+
+This functions returns a measure of the sky fraction covered by the survey with
+window `win`. The exact implementation is considered an implementation detail
+and can change in the future.
+"""
+function calc_fsky(win, wmodes)
+    meanmask = mean(win, dims=1)[:]
+    fsky = sum(meanmask .> 0) ./ length(meanmask)
+end
+
+
 
 end
 
