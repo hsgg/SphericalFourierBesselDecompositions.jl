@@ -14,14 +14,14 @@ Random.seed!(randseed)
 
 using LinearAlgebra
 
-long_tests = false
+long_tests = true
 
 
 ## runtests:
 @testset "SphericalFourierBesselDecompositions" begin
-    include("test_separablearrays.jl")
-    include("test_gnl.jl")
-    include("test_cat2anlm.jl")
+    #include("test_separablearrays.jl")
+    #include("test_gnl.jl")
+    #include("test_cat2anlm.jl")
     include("test_windows.jl")
     include("test_theory.jl")  # should probably rename from "theory" to "lnn<->nlm conversion"
     include("test_modes.jl")

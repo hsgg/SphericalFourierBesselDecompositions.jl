@@ -42,8 +42,10 @@ export check_nsamp
 export calc_fvol
 
 using ..Modes
-using ..HealPy
+#using ..HealPy
 using ..SeparableArrays
+using ..HealpixHelpers
+using Healpix
 using LinearAlgebra
 using SpecialFunctions
 using WignerSymbols
@@ -81,7 +83,7 @@ Base.iterate(w::ConfigurationSpaceModes, x) = nothing
 function ConfigurationSpaceModes(rmin, rmax, nr, nside)
     Δr = (rmax - rmin) / nr
     r = range(rmin+Δr/2, rmax-Δr/2, length=nr)  # midpoints
-    npix = hp.nside2npix(nside)
+    npix = nside2npix(nside)
     return ConfigurationSpaceModes(rmin, rmax, Δr, r, nr, npix, nside)
 end
 
@@ -95,7 +97,7 @@ function apodize_window(win, wmodes::ConfigurationSpaceModes, smooth=50.0)
     r, Δr = window_r(wmodes)
     nr = length(r)
     npix = size(win,2)
-    nside = hp.npix2nside(npix)
+    nside = npix2nside(npix)
     Δi = ceil(Int, smooth / Δr)
     if iseven(Δi)
         Δi += 1
@@ -114,14 +116,15 @@ end
 
 
 function apply_window(rθϕ, win, rmin, rmax, win_r, win_Δr)
-    nside = hp.npix2nside(size(win,2))
+    nside = npix2nside(size(win,2))
     r_out = Float32[]
     θ_out = Float32[]
     ϕ_out = Float32[]
     r = rθϕ[1,:]
     θ = rθϕ[2,:]
     ϕ = rθϕ[3,:]
-    idx_ang = hp.ang2pix(nside, θ, ϕ) .+ 1
+    reso = Resolution(nside)
+    idx_ang = ang2pixRing.(Ref(reso), θ, ϕ) # .+ 1
     Wmax = maximum(win)
     @show extrema(r)
     for i=1:length(r)
@@ -213,9 +216,10 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
     Wr_lm = calc_Wr_lm(win, LMAX, amodes.nside)
     @debug "Wr_lm" LMAX amodes.nside size(Wr_lm) Wr_lm[:,1]
 
+    alm = Alm(LMAX, LMAX)
     LMLM = fill(0, LMAX+1, LMAX+1)
     for L=0:LMAX, M=0:L
-        LMLM[L+1,M+1] = hp.Alm.getidx(LMAX, L, M) + 1
+        LMLM[L+1,M+1] = almIndex(alm, L, M) # + 1
     end
     @debug "LMLM" size(LMLM)
 
@@ -267,7 +271,7 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
             w_ang = 0.0im
             for j=1:length(L)
                 #@assert -L[j] <= M <= L[j]
-                #LM = hp.Alm.getidx(LMAX, L[j], abs(M)) + 1
+                #LM = almIndex(Alm(LMAX, LMAX), L[j], abs(M)) # + 1
                 LM = LMLM[L[j]+1,abs(M)+1]
                 w_ang += gaunt[j] * (gg1' * Wr_lm[:,LM])
                 #@debug "Wr_lm" L[j],M Wr_lm[1,LM] Wr_lm[1,LM]/√(4*π)
@@ -369,16 +373,16 @@ function calc_Wr_lm(win, LMAX, Wnside)
     nr = size(win,1)
     Wr_lm = fill(NaN*im, nr, getlmsize(LMAX))
     @time for i=1:nr
-        W = hp.ud_grade(win[i,:], Wnside)
-        Wr_lm[i,:] .= hp.map2alm(W, lmax=LMAX, use_weights=true)
+        W = udgrade(win[i,:], Wnside)
+        Wr_lm[i,:] .= mymap2alm(W, lmax=LMAX)
     end
     return Wr_lm
 end
 
 # specialize
 function calc_Wr_lm(win::SeparableArray, LMAX, Wnside)
-    mask = hp.ud_grade(win.mask, Wnside)
-    wlm = hp.map2alm(mask, lmax=LMAX, use_weights=true)
+    mask = udgrade(win.mask, Wnside)
+    wlm = mymap2alm(mask, lmax=LMAX)
     return SeparableArray(win.phi, wlm, name1=:phi, name2=:wlm)
 end
 
@@ -410,9 +414,10 @@ function test_cmix_kernel()
     l = 5
     L = 10
     LMAX = l + L
-    L1M1cache = [hp.Alm.getidx.(LMAX, L, 0:L) .+ 1 for L=0:LMAX]
+    alm = Alm(LMAX, LMAX)
+    L1M1cache = [almIndex(alm, L, 0:L) for L=0:LMAX]
     Wnside = estimate_nside(LMAX)
-    win = rand(100, hp.nside2npix(Wnside))
+    win = rand(100, nside2npix(Wnside))
     @show typeof(win)
     Wr_lm = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, Wnside))
     @show typeof(Wr_lm)
@@ -528,7 +533,8 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
     end
     check_nsamp(amodes, wmodes)
 
-    L1M1cache = [hp.Alm.getidx.(LMAX, L, 0:L) .+ 1 for L=0:LMAX]
+    alm = Alm(LMAX, LMAX)
+    L1M1cache = [almIndex(alm, L, 0:L) for L=0:LMAX]
 
 
     ## crashes at end:
@@ -631,8 +637,7 @@ end
 
 
 function calc_angular_mixing_matrix(lmax, wlm)
-    LMAX = 2 * lmax
-    Wℓ = hp.alm2cl(wlm, lmax=LMAX)
+    Wℓ = alm2cl(wlm)
     ang_mix = fill(NaN, lmax+1, lmax+1)
     for L=0:lmax, l=0:lmax
         s = 0.0
@@ -772,7 +777,8 @@ function power_win_mix(win, w̃mat, vmat, wmodes::ConfigurationSpaceModes, bcmod
     end
     check_nsamp(amodes, wmodes)
 
-    L1M1cache = [hp.Alm.getidx.(LMAX, L, 0:L) .+ 1 for L=0:LMAX]
+    alm = Alm(LMAX, LMAX)
+    L1M1cache = [almIndex(alm, L, 0:L) for L=0:LMAX]
 
     mix = power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes; div2Lp1=div2Lp1, interchange_NN′=interchange_NN′)
 

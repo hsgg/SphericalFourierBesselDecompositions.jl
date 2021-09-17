@@ -7,6 +7,18 @@ export mymap2alm
 using Healpix
 
 
+######## Base piracy
+
+Base.ndims(map::HealpixMap) = 1
+
+Base.ndims(alm::Alm) = ndims(alm.alm)
+Base.size(alm::Alm) = size(alm.alm)
+Base.size(alm::Alm, d::Integer) = size(alm.alm, d)
+Base.getindex(alm::Alm, i::Integer) = alm.alm[i]
+
+
+######## Healpix.jl piracy
+
 function Healpix.pix2angRing(nside::Integer, pix::AbstractArray)
     reso = Resolution(nside)
     θ = fill(NaN, length(pix))
@@ -24,6 +36,8 @@ function Healpix.udgrade(map::Vector, new_nside::Integer)
     return newmap  # will usually want to keep it as a HealpixMap
 end
 
+
+######## convenience functions
 
 function mymap2alm(map::HealpixMap; lmax=3*npix2nside(length(map))-1)
     map2 = deepcopy(map)

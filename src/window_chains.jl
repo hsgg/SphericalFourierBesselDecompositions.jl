@@ -118,7 +118,8 @@ function WindowChainsCacheWignerChain(win, wmodes, amodes)
     # Wr_lm
     LMAX = 2 * amodes.lmax
     Wr_lm = calc_Wr_lm(win, LMAX, amodes.nside)
-    LMcache = [almIndex(Alm(LMAX,LMAX), L, 0:L) .+ 1 for L=0:LMAX]
+    alm = Alm(LMAX, LMAX)
+    LMcache = [almIndex(alm, L, 0:L) for L=0:LMAX]
     lmsize = numberOfAlms(LMAX)
     #@show LMcache
     #@show typeof(LMcache)
