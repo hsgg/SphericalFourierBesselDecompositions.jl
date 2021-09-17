@@ -126,9 +126,13 @@ end
 
 function amln2clnn(anlm, cmodes::ClnnModes)
     clnn = fill(NaN, getlnnsize(cmodes))
-    for n̄=1:cmodes.amodes.nmax, Δn=0:cmodes.Δnmax
+    nmax = cmodes.amodes.nmax
+    for n̄=1:nmax, Δn=0:cmodes.Δnmax
         n1 = n̄ + Δn
         n2 = n̄
+        if n1 > nmax || n2 > nmax
+            continue
+        end
         lmax = minimum(cmodes.amodes.lmax_n[[n1,n2]])
         lmsize = getlmsize(lmax)
         n1_idxs = getnlmsize(cmodes.amodes, n1 - 1) .+ (1:lmsize)
@@ -303,6 +307,19 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
     end
 
     return win
+end
+
+
+@doc raw"""
+    calc_fsky(win, wmodes)
+
+This functions returns a measure of the sky fraction covered by the survey with
+window `win`. The exact implementation is considered an implementation detail
+and can change in the future.
+"""
+function calc_fsky(win, wmodes)
+    meanmask = mean(win, dims=1)[:]
+    fsky = sum(meanmask .> 0) ./ length(meanmask)
 end
 
 
