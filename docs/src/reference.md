@@ -6,8 +6,8 @@ that the user has defined the shortcut to the module:
 SFB = SphericalFourierBesselDecompositions
 ```
 Then, all functions can be called via `SFB.funcname()`. For example, the
-`SphericalBesselGnl()` constructor in the `SFB.GNL` module is called via
-`SFB.SphericalBesselGnl()`.
+`SFB.GNL.SphericalBesselGnl()` constructor in the `SFB.GNL` module is called
+via `SFB.SphericalBesselGnl()`.
 
 ```@contents
 Pages = ["reference.md"]
