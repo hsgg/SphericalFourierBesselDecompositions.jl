@@ -3,6 +3,10 @@ using Documenter
 
 DocMeta.setdocmeta!(SphericalFourierBesselDecompositions, :DocTestSetup, :(using SphericalFourierBesselDecompositions); recursive=true)
 
+cmd = `convert src/assets/favicon.svg -density 300 -background none -define icon:auto-resize=256,128,96,64,48,32,16 src/assets/favicon.ico`
+@show cmd
+run(cmd)
+
 makedocs(;
     modules=[SphericalFourierBesselDecompositions],
     authors="Henry Gebhardt <henry.s.gebhardt@jpl.nasa.gov> and contributors",
@@ -13,7 +17,7 @@ makedocs(;
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
         canonical="https://hsgg.github.io/SphericalFourierBesselDecompositions.jl",
-        assets=String[],
+	assets = ["assets/favicon.ico"],
     ),
     pages=[
         "Home" => "index.md",
