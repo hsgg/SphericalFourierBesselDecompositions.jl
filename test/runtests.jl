@@ -29,6 +29,7 @@ long_tests = true
     include("test_nditerators.jl")
     include("test_window_chains.jl")
     include("test_covariance.jl")
+    include("test_sfb.jl")
 end
 
 

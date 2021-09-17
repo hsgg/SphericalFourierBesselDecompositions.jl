@@ -145,7 +145,7 @@ end
 
 
 function pixwin(cmodes)
-    hppwin = pixwin(cmodes.amodes.nside, pol=false)
+    hppwin = Healpix.pixwin(cmodes.amodes.nside, pol=false)
     lnnsize = getlnnsize(cmodes)
     sfbpwin = fill(NaN, lnnsize)
     for i=1:lnnsize
