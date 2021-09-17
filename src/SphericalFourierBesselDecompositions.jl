@@ -144,6 +144,11 @@ function amln2clnn(anlm, cmodes::ClnnModes)
 end
 
 
+@doc raw"""
+    pixwin(cmodes)
+
+    Return the angular pixel window for application to a Clnn object.
+"""
 function pixwin(cmodes)
     hppwin = Healpix.pixwin(cmodes.amodes.nside, pol=false)
     lnnsize = getlnnsize(cmodes)
