@@ -8,16 +8,17 @@ using Test
 using LinearAlgebra
 using Profile
 
+win_features = [(), (:separable,)]
 
-@testset "Cat2Anlm" begin
+@testset "Cat2Anlm f=$features" for features in win_features
     rmin = 500.0
     rmax = 1000.0
     kmax = 0.05
-    nbar = 3e-4
+    nbar = 1e-4
     nr = 100
     amodes = SFB.AnlmModes(kmax, rmin, rmax)
     wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
-    win = SFB.make_window(wmodes)
+    win = SFB.make_window(wmodes, features...)
     win_rhat_ln = SFB.win_rhat_ln(win, wmodes, amodes)
 
     Ngalaxies = round(Int, (2*rmax)^3 * nbar)

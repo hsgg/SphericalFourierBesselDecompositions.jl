@@ -10,8 +10,9 @@ using LinearAlgebra
 
 using Profile
 
+win_features = [(), (:separable,)]
 
-@testset "Covariance Matrix" begin
+@testset "Covariance Matrix f=$features" for features in win_features
     @testset "Full window" begin
         rmin = 500.0
         rmax = 1000.0
@@ -19,7 +20,7 @@ using Profile
         amodes = SFB.AnlmModes(2, 2, rmin, rmax)
         cmodes = SFB.ClnnModes(amodes, Δnmax=0)
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
-        win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate)
+        win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate, features...)
 
         # calc shot noise
         w̃mat, vmat = SFB.bandpower_binning_weights(cmodes; Δℓ=1, Δn=1)

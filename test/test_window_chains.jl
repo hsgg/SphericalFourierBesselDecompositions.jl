@@ -7,7 +7,6 @@ SFB = SphericalFourierBesselDecompositions
 using Test
 using LinearAlgebra
 
-
 @testset "Window Chains" begin
     # Note: a lot of the differences here come down to the choice of nside and
     # details of how healpy is used.
@@ -18,7 +17,7 @@ using LinearAlgebra
         amodes = SFB.AnlmModes(3, 5, rmin, rmax)
         cmodes = SFB.ClnnModes(amodes, Δnmax=1)
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
-        win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate)
+        win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate, :separable)
 
         cache2 = SFB.WindowChains.WindowChainsCacheFullWmix(win, wmodes, amodes)
         cache3 = SFB.WindowChains.WindowChainsCacheFullWmixOntheflyWmix(win, wmodes, amodes)
@@ -113,7 +112,7 @@ using LinearAlgebra
         amodes = SFB.AnlmModes(3, 5, rmin, rmax)
         cmodes = SFB.ClnnModes(amodes, Δnmax=1)
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
-        win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate)
+        win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate, :separable)
 
         wlnn = SFB.win_lnn(win, wmodes, cmodes)
         @show wlnn
@@ -168,7 +167,7 @@ using LinearAlgebra
         amodes = SFB.AnlmModes(2, 2, rmin, rmax)
         cmodes = SFB.ClnnModes(amodes, Δnmax=1)
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
-        win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate)
+        win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate, :separable)
 
         # comparison
         @time M = SFB.power_win_mix(win, wmodes, cmodes)
@@ -231,7 +230,7 @@ using LinearAlgebra
         amodes = SFB.AnlmModes(8, 4, rmin, rmax)
         cmodes = SFB.ClnnModes(amodes, Δnmax=0)
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
-        win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate)
+        win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate, :separable)
 
         cache1 = SFB.WindowChains.WindowChainsCacheWignerChain(win, wmodes, amodes)
         cache2 = SFB.WindowChains.WindowChainsCacheFullWmix(win, wmodes, amodes)
@@ -325,13 +324,13 @@ using LinearAlgebra
     end
 
 
-    @testset "Symmetricizing" begin
+    @testset "Symmetricizing f=$features" for features in [(), (:separable,)]
         rmin = 500.0
         rmax = 1000.0
         amodes = SFB.AnlmModes(8, 4, rmin, rmax)
         cmodes = SFB.ClnnModes(amodes, Δnmax=0)
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
-        win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate)
+        win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate, features...)
         cache = SFB.WindowChainsCache(win, wmodes, amodes)
 
         ell = [1, 2, 3, 4]

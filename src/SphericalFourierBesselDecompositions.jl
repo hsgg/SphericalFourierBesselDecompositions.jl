@@ -232,7 +232,7 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
     nside = wmodes.nside
     @show rmin rmax nr Δr nside
 
-    features = features..., :separable
+    #features = features..., :separable
 
     phi = fill(1.0, nr)
     mask = fill(1.0, wmodes.npix)

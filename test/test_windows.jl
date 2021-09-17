@@ -14,7 +14,7 @@ using LinearAlgebra
         rmax = 1000.0
         amodes = SFB.AnlmModes(3, 5, rmin, rmax)
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
-        win = SFB.make_window(wmodes)
+        win = SFB.make_window(wmodes, :separable)
 
         # wmix
         wmix = SFB.calc_wmix(win, wmodes, amodes)
@@ -58,10 +58,15 @@ using LinearAlgebra
 
 
     # Test more complex windows
-    win_descriptions = [(:ang_75,),
-                       (:ang_75, :radial),
-                       (:ang_half, :radial),
-                       (:ang_quarter, :radial),
+    win_descriptions = [
+                        (:ang_75,),
+                        (:ang_75, :radial),
+                        (:ang_half, :radial),
+                        (:ang_quarter, :radial),
+                        (:separable, :ang_75,),
+                        (:separable, :ang_75, :radial),
+                        (:separable, :ang_half, :radial),
+                        (:separable, :ang_quarter, :radial),
                       ]
     @testset "Window $(win_features...)" for win_features in win_descriptions
         rmin = 500.0
