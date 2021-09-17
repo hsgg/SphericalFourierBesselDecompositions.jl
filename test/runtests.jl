@@ -11,6 +11,7 @@ using Random
 randseed = rand(UInt64)
 @show randseed
 Random.seed!(randseed)
+#Random.seed!(0xdffe22467edd2cf0)  # needs more lenient SeparableArrays test
 
 using LinearAlgebra
 
