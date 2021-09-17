@@ -7,14 +7,17 @@ export mymap2alm
 using Healpix
 
 
-######## Base piracy
+######## Base interfaces
 
 Base.ndims(map::HealpixMap) = 1
 
 Base.ndims(alm::Alm) = ndims(alm.alm)
 Base.size(alm::Alm) = size(alm.alm)
-Base.size(alm::Alm, d::Integer) = size(alm.alm, d)
-Base.getindex(alm::Alm, i::Integer) = alm.alm[i]
+Base.size(alm::Alm, d) = size(alm.alm, d)
+Base.length(alm::Alm) = length(alm.alm)
+Base.iterate(alm::Alm) = iterate(alm.alm)
+Base.iterate(alm::Alm, i) = iterate(alm.alm, i)
+Base.getindex(alm::Alm, i) = alm.alm[i]
 
 
 ######## Healpix.jl piracy
