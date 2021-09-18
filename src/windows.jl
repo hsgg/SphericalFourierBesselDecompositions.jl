@@ -91,10 +91,10 @@ end
 @doc raw"""
     window_r(wmodes::ConfigurationSpaceModes)
 
-    Get the $r$-values of the radial bins and corresponding widths $\Delta r$, e.g.,
-    ```julia
-    r, Δr = SFB.window_r(wmodes)
-    ```
+Get the $r$-values of the radial bins and corresponding widths $\Delta r$, e.g.,
+```julia
+r, Δr = SFB.window_r(wmodes)
+```
 """
 window_r(wmodes::ConfigurationSpaceModes) = wmodes.r, wmodes.Δr
 
