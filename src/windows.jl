@@ -88,6 +88,14 @@ function ConfigurationSpaceModes(rmin, rmax, nr, nside)
 end
 
 
+@doc raw"""
+    window_r(wmodes::ConfigurationSpaceModes)
+
+    Get the $r$-values of the radial bins and corresponding widths $\Delta r$, e.g.,
+    ```julia
+    r, Δr = SFB.window_r(wmodes)
+    ```
+"""
 window_r(wmodes::ConfigurationSpaceModes) = wmodes.r, wmodes.Δr
 
 
@@ -510,7 +518,28 @@ function calc_cmixii(i, i′, cmodes, r, Δr, gnlgNLϕ, ang_mix::AbstractMatrix,
 end
 
 
-# calculate power spectrum mode-coupling matrix
+@doc raw"""
+    power_win_mix(wmix, wmodes, cmodes; div2Lp1=false, interchange_NN′=false)
+    power_win_mix(win, w̃mat, vmat, wmodes, bcmodes; div2Lp1=false, interchange_NN′=false)
+    power_win_mix(wmix, wmix_negm, cmodes)
+
+This function is used to calculate the coupling matrix $\mathcal{M}_{\ell nn'}^{LNN'}$
+-- the first version without any binning, the second version also takes the
+binning matrices `w̃mat` and `vmat` to calculate the coupling matrix of the
+binned modes $\mathcal{N}_{LNN'}^{lnn'}$. These assume the symmetry between $N$
+and $N'$.
+
+The last version is probably not useful. It takes a fully calculated window
+mixing matrix to calculate the coupling matrix brute-force.
+
+If `div2Lp1=true` then the whole matrix is divided by $2L+1$.
+
+If `interchange_NN′=true` then calculate the same, but with $N$ and $N'$
+interchanged, which might be useful for the covariance matrix.
+
+Either version of `power_win_mix()` will specialize to a separable window
+function if `win` is a `SeparableArray`.
+"""
 function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
                        div2Lp1=false, interchange_NN′=false)
     amodes = cmodes.amodes
@@ -600,7 +629,7 @@ Base.getindex(::UniformScaling{T}, m::Integer, ::Colon) where {T} = sparsevec([m
 
 
 # binned cmix
-function power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes;
+function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes;
                        div2Lp1=false, interchange_NN′=false)
     cmodes = bcmodes.cmodes
     lnnsize = getlnnsize(cmodes)
@@ -712,7 +741,7 @@ end
 
 
 # specialized for separable window
-function power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm::SeparableArray, L1M1cache, bcmodes;
+function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm::SeparableArray, L1M1cache, bcmodes;
                        div2Lp1=false, interchange_NN′)
     cmodes = bcmodes.cmodes
     lnnsize = getlnnsize(cmodes)
@@ -780,7 +809,7 @@ function power_win_mix(win, w̃mat, vmat, wmodes::ConfigurationSpaceModes, bcmod
     alm = Alm(LMAX, LMAX)
     L1M1cache = [almIndex(alm, L, 0:L) for L=0:LMAX]
 
-    mix = power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes; div2Lp1=div2Lp1, interchange_NN′=interchange_NN′)
+    mix = _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes; div2Lp1=div2Lp1, interchange_NN′=interchange_NN′)
 
     @assert all(isfinite.(mix))
     return mix
