@@ -43,6 +43,12 @@ Modules = [SphericalFourierBesselDecompositions.SeparableArrays]
 Modules = [SphericalFourierBesselDecompositions.Cat2Anlm]
 ```
 
+## SFB.Windows
+
+```@autodocs
+Modules = [SphericalFourierBesselDecompositions.Windows]
+```
+
 ## SFB.WindowChains
 
 ```@autodocs
