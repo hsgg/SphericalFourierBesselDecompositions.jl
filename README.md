@@ -1,3 +1,5 @@
+![](https://hsgg.github.io/SphericalFourierBesselDecompositions.jl/dev/assets/logo.svg)
+
 # SuperFaB
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://hsgg.github.io/SphericalFourierBesselDecompositions.jl/stable)
