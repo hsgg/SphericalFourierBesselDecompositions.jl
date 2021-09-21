@@ -54,6 +54,7 @@ using SparseArrays
 
 using Distributed
 using SharedArrays
+using ProgressMeter
 #using Base.Threads  # Threads.@threads macro, export JULIA_NUM_THREADS=8
 
 #using QuadGK  # for testing
@@ -635,20 +636,40 @@ function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes;
     lnnsize = getlnnsize(cmodes)
     LNNsize1 = (typeof(w̃mat) <: UniformScaling) ? lnnsize : size(w̃mat,1)
     LNNsize2 = (typeof(vmat) <: UniformScaling) ? lnnsize : size(vmat,2)
-    mix = fill(NaN, LNNsize1, LNNsize2)
-    #mix = SharedArray{Float64}(LNNsize, LNNsize)
-    @show length(mix), size(mix)
 
-    #@time @sync @distributed for m=1:LNNsize
-    @time for m=1:LNNsize2
-        @show m, LNNsize2
-        vmat_m = vmat[:,m]
-        vnzrange = nzind(vmat_m)
-        #@show typeof(vmat_m) typeof(vnzrange) size(vmat) vnzrange length(vnzrange) vmat_m[vnzrange]
-        @time for n=1:LNNsize1
-            #@show m,n,LNNsize
+    #mix = fill(NaN, LNNsize1, LNNsize2)
+    ##mix = SharedArray{Float64}(LNNsize1, LNNsize2)
+    #@time for m=1:LNNsize2
+    ##@time @sync @distributed for m=1:LNNsize2
+    #    @show m, LNNsize2
+    #    vmat_m = vmat[:,m]
+    #    vnzrange = nzind(vmat_m)
+    #    #@show typeof(vmat_m) typeof(vnzrange) size(vmat) vnzrange length(vnzrange) vmat_m[vnzrange]
+    #    @time for n=1:LNNsize1
+    #        #@show m,n,LNNsize
+    #        w̃mat_n = w̃mat[n,:]
+    #        w̃nzrange = nzind(w̃mat_n)
+    #        c = 0.0
+    #        for i in w̃nzrange, i′ in vnzrange
+    #            v = vmat_m[i′]
+    #            v==0 && continue
+    #            w̃ = w̃mat_n[i]
+    #            w̃==0 && continue
+    #            c += w̃ * v * calc_cmixii(i, i′, cmodes, r, Δr, gnlr, Wr_lm,
+    #                                     L1M1cache, div2Lp1, interchange_NN′)
+    #        end
+    #        mix[n,m] = c
+    #    end
+    #end
+
+    n_idxs = SeparableArray(1:LNNsize1, ones(Int, LNNsize2))
+    m_idxs = SeparableArray(ones(Int, LNNsize1), 1:LNNsize2)
+    @show LNNsize1,LNNsize2
+    mix = @showprogress pmap((n,m) -> begin
             w̃mat_n = w̃mat[n,:]
+            vmat_m = vmat[:,m]
             w̃nzrange = nzind(w̃mat_n)
+            vnzrange = nzind(vmat_m)
             c = 0.0
             for i in w̃nzrange, i′ in vnzrange
                 v = vmat_m[i′]
@@ -658,11 +679,16 @@ function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes;
                 c += w̃ * v * calc_cmixii(i, i′, cmodes, r, Δr, gnlr, Wr_lm,
                                          L1M1cache, div2Lp1, interchange_NN′)
             end
-            mix[n,m] = c
-        end
-    end
+            return c
+        end,
+        n_idxs,
+        m_idxs,
+        #batch_size=1,
+    )
+
     return mix
 end
+
 
 
 function calc_angular_mixing_matrix(lmax, wlm)
@@ -742,7 +768,7 @@ end
 
 # specialized for separable window
 function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm::SeparableArray, L1M1cache, bcmodes;
-                       div2Lp1=false, interchange_NN′)
+                       div2Lp1=false, interchange_NN′=false)
     cmodes = bcmodes.cmodes
     lnnsize = getlnnsize(cmodes)
     LNNsize1 = (typeof(w̃mat) <: UniformScaling) ? lnnsize : size(w̃mat,1)
