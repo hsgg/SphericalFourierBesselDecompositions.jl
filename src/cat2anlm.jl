@@ -208,9 +208,9 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln)
     @show typeof(pmu) typeof(pmupix)
     npix = nside2npix(amodes.nside)
     ΔΩpix = 4π / npix
-    #anlm = fill(NaN+im*NaN, getnlmsize(amodes))
-    anlm = SharedArray{Complex{Float64}}(getnlmsize(amodes))
-    anlm .= NaN+NaN*im
+    anlm = fill(NaN+im*NaN, getnlmsize(amodes))
+    #anlm = SharedArray{Complex{Float64}}(getnlmsize(amodes))
+    #anlm .= NaN+NaN*im
     for n=1:amodes.nmax
         @show n,amodes.nmax,0:amodes.lmax_n[n]
         #@time @sync @distributed for l=0:amodes.lmax_n[n]
