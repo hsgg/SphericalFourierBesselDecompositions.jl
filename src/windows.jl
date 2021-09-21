@@ -662,9 +662,11 @@ function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes;
     #    end
     #end
 
-    n_idxs = SeparableArray(1:LNNsize1, ones(Int, LNNsize2))
-    m_idxs = SeparableArray(ones(Int, LNNsize1), 1:LNNsize2)
-    @show LNNsize1,LNNsize2
+    # Use pmap() to allow distributed parallel computing:
+    n_idxs = SeparableArray(LNNsize1:-1:1, ones(Int, LNNsize2))
+    m_idxs = SeparableArray(ones(Int, LNNsize1), LNNsize2:-1:1)
+    batchsize = (LNNsize1 * LNNsize2) ÷ (nworkers()^2) + 1
+    @show LNNsize1, LNNsize2, batchsize
     mix = @showprogress pmap((n,m) -> begin
             w̃mat_n = w̃mat[n,:]
             vmat_m = vmat[:,m]
@@ -683,10 +685,10 @@ function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes;
         end,
         n_idxs,
         m_idxs,
-        #batch_size=1,
+        batch_size=batchsize,
     )
 
-    return mix
+    return collect(mix[end:-1:1,end:-1:1])
 end
 
 
