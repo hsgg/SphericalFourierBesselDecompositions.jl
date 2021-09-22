@@ -53,11 +53,11 @@ using .SFB.SeparableArrays
         #S5 = [S[i,j]*S[i,j] for i=1:size(S,1),j=1:size(S,2)]
         S5 = exponentiate(S, 2)
         @show S3 S4 S5
-        @show (S4 .- S3) ./ eps.(2*S3)
-        @show (S5 .- S3) ./ eps.(2*S3)
-        @test all(abs.(S4 .- S3) .<= eps.(2*S4))
-        @test all(abs.(S5 .- S3) .<= eps.(2*S5))
-        @test all(abs.(S5 .- S4) .<= eps.(2*S5))
+        @show (S4 .- S3) ./ eps.(S3)
+        @show (S5 .- S3) ./ eps.(S3)
+        @test all(abs.(S4 .- S3) .<= 10*eps.(S4))
+        @test all(abs.(S5 .- S3) .<= 10*eps.(S5))
+        @test all(abs.(S5 .- S4) .<= 10*eps.(S5))
         #@test typeof(S3) <: SeparableArray
         #@test typeof(S4) <: SeparableArray
         @test typeof(S5) <: SeparableArray
