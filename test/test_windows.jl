@@ -57,7 +57,79 @@ using LinearAlgebra
     end
 
 
-    # Test more complex windows
+    # Inhomogeneous masks
+    @testset "Inhomogeneous Window sep & insep" begin
+        rmin = 500.0
+        rmax = 1000.0
+        amodes = SFB.AnlmModes(2, 5, rmin, rmax)
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
+
+        win1 = SFB.make_window(wmodes, :separable)
+        @. win1.mask = rand()
+        sidx = (1:length(win1.mask))[win1.mask .> 0]
+        sidx = 1:(length(sidx) ÷ 2)
+        @. win1.mask[sidx] = 0.5 * win1.mask[sidx]
+
+        win2 = [win1[i,j] for i=1:size(win1,1), j=1:size(win1,2)]
+        @show sum(win1.mask) ./ length(win1.mask)
+        @show extrema(win1.mask)
+        @show typeof(win1) typeof(win2)
+        @show size(win1) size(win2)
+
+        # wmix
+        wmix1 = SFB.calc_wmix(win1, wmodes, amodes)
+        wmix1_negm = SFB.calc_wmix(win1, wmodes, amodes, neg_m=true)
+        wmix2 = SFB.calc_wmix(win2, wmodes, amodes)
+        wmix2_negm = SFB.calc_wmix(win2, wmodes, amodes, neg_m=true)
+        @show typeof(wmix1) typeof(wmix2)
+        @test wmix1 == wmix2
+
+        # M
+        cmodes = SFB.ClnnModes(amodes, Δnmax=1)
+        M = SFB.power_win_mix(wmix1, wmix1_negm, cmodes)
+        M1 = SFB.power_win_mix(win1, wmodes, cmodes)
+        M2 = SFB.power_win_mix(win2, wmodes, cmodes)
+        @show extrema(M .- M1)
+        @show extrema(M .- M2)
+        @test M ≈ M1
+        @test M ≈ M2
+
+        # CWlnn
+        pk(k) = 1e4 * (k/1e-2)^(-3.1)
+        Clnn = SFB.gen_Clnn_theory(pk, cmodes)
+        CnlmNLM = SFB.Clnn2CnlmNLM(Clnn, cmodes)
+        CWlnn1 = SFB.sum_m_lmeqLM(wmix1 * CnlmNLM * wmix1', cmodes)
+        CWlnn2 = M * Clnn
+        @show extrema((CWlnn1 .- CWlnn2) ./ CWlnn1)
+        @test CWlnn1 ≈ CWlnn2 rtol=1e-2
+
+        # Nshot
+        nbar = 3e-4
+        Nshotobs1 = SFB.win_lnn(win1, wmodes, cmodes) ./ nbar
+        Nshotobs2 = SFB.win_lnn(win2, wmodes, cmodes) ./ nbar
+        @test Nshotobs1 ≈ Nshotobs2
+
+        # Bandpower binning
+        fsky = sum(win1[1,:]) / size(win1,2)
+        Δℓ = round(Int, 1 / fsky)
+        w̃, v = SFB.bandpower_binning_weights(cmodes; Δℓ=Δℓ, Δn=1)
+        bcmodes = SFB.ClnnBinnedModes(w̃, v, cmodes)
+        Nmix1 = SFB.power_win_mix(win1, w̃, v, wmodes, bcmodes)
+        Nmix2 = SFB.power_win_mix(win2, w̃, v, wmodes, bcmodes)
+        @show extrema(Nmix1 .- Nmix2)
+        @test Nmix1 ≈ Nmix2
+        w̃M1 = SFB.power_win_mix(win1, w̃, I, wmodes, bcmodes)
+        Mv1 = SFB.power_win_mix(win1, I, v, wmodes, bcmodes)
+        w̃M2 = SFB.power_win_mix(win2, w̃, I, wmodes, bcmodes)
+        Mv2 = SFB.power_win_mix(win2, I, v, wmodes, bcmodes)
+        @show extrema(w̃M1 .- w̃M2)
+        @test w̃M1 ≈ w̃M2
+        @test inv(Nmix1) * w̃M1 ≈ inv(Nmix2) * w̃M2
+        @test Mv1 * inv(Nmix1) ≈ Mv2 * inv(Nmix2)
+    end
+
+
+    # complex windows
     win_descriptions = [
                         (:ang_75,),
                         (:ang_75, :radial),
