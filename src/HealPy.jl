@@ -10,7 +10,11 @@ using PyCall
 const hp = PyNULL()
 
 function __init__()
-    copy!(hp, pyimport_conda("healpy", "healpy", "conda-forge"))
+    try
+        copy!(hp, pyimport_conda("healpy", "healpy", "conda-forge"))
+    catch
+        @warn "Could not load healpy."
+    end
 end
 
 
