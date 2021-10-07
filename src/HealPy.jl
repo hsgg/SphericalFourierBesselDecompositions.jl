@@ -10,10 +10,10 @@ using PyCall
 const hp = PyNULL()
 
 function __init__()
-    try
+    if Sys.iswindows()
+        @warn "HealPy is not supported on Windows."
+    else
         copy!(hp, pyimport_conda("healpy", "healpy", "conda-forge"))
-    catch
-        @warn "Could not load healpy."
     end
 end
 

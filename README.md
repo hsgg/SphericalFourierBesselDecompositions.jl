@@ -7,5 +7,7 @@
 *SuperFaB* is a code for cosmological spherical Fourier-Bessel (SFB) analysis.
 The details of the code are presented in [2102.10079](https://arxiv.org/abs/2102.10079).
 
+The name of this package is **SphericalFourierBesselDecompositions.jl**.
+
 For installation instructions and a tutorial, see the
 [Documentation](https://hsgg.github.io/SphericalFourierBesselDecompositions.jl/dev).
