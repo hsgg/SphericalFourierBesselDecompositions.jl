@@ -81,6 +81,11 @@ Base.iterate(w::ConfigurationSpaceModes) = s, nothing
 Base.iterate(w::ConfigurationSpaceModes, x) = nothing
 
 
+@doc raw"""
+    ConfigurationSpaceModes(rmin, rmax, nr, nside)
+
+A struct to describe and define the voxelization scheme.
+"""
 function ConfigurationSpaceModes(rmin, rmax, nr, nside)
     Δr = (rmax - rmin) / nr
     r = range(rmin+Δr/2, rmax-Δr/2, length=nr)  # midpoints
