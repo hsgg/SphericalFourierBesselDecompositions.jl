@@ -525,7 +525,7 @@ end
 
 
 @doc raw"""
-    power_win_mix(wmix, wmodes, cmodes; div2Lp1=false, interchange_NN′=false)
+    power_win_mix(win, wmodes, cmodes; div2Lp1=false, interchange_NN′=false)
     power_win_mix(win, w̃mat, vmat, wmodes, bcmodes; div2Lp1=false, interchange_NN′=false)
     power_win_mix(wmix, wmix_negm, cmodes)
 
@@ -607,16 +607,16 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
     #@assert mix == mix1
 
     #@show "symmetric pmap"
-    @time pmap(i′ -> begin
+    @showprogress pmap(i′ -> begin
                    L, = getlnn(cmodes, i′)
-                   @show i′,L,lnnsize
-                   @time for i=i′:lnnsize
+                   #@show i′,L,lnnsize
+                   for i=i′:lnnsize
                        l, = getlnn(cmodes, i)
                        mix[i,i′] = calc_cmixii(i, i′, cmodes, r, Δr, gnlr,
                                                Wr_lm, L1M1cache, div2Lp1,
                                                interchange_NN′)
                        mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
-                       @show i,i′, mix[i,i′]
+                       #@show i,i′, mix[i,i′]
                    end
                    return i′  # return something that doesn't take much memory
                end,
@@ -624,6 +624,15 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
     #@assert mix == mix1
     @assert all(isfinite.(mix))
     return mix
+end
+
+# specialize to Separable window
+function power_win_mix(win::SeparableArray, wmodes::ConfigurationSpaceModes,
+        cmodes::ClnnModes; div2Lp1=false, interchange_NN′=false)
+    # Rather than writing a new specialized method, re-use what we already have:
+    bcmodes = ClnnBinnedModes(I, I, cmodes)
+    return power_win_mix(win, I, I, wmodes, bcmodes;
+        div2Lp1=div2Lp1, interchange_NN′=interchange_NN′)
 end
 
 
@@ -641,31 +650,6 @@ function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes;
     lnnsize = getlnnsize(cmodes)
     LNNsize1 = (typeof(w̃mat) <: UniformScaling) ? lnnsize : size(w̃mat,1)
     LNNsize2 = (typeof(vmat) <: UniformScaling) ? lnnsize : size(vmat,2)
-
-    #mix = fill(NaN, LNNsize1, LNNsize2)
-    ##mix = SharedArray{Float64}(LNNsize1, LNNsize2)
-    #@time for m=1:LNNsize2
-    ##@time @sync @distributed for m=1:LNNsize2
-    #    @show m, LNNsize2
-    #    vmat_m = vmat[:,m]
-    #    vnzrange = nzind(vmat_m)
-    #    #@show typeof(vmat_m) typeof(vnzrange) size(vmat) vnzrange length(vnzrange) vmat_m[vnzrange]
-    #    @time for n=1:LNNsize1
-    #        #@show m,n,LNNsize
-    #        w̃mat_n = w̃mat[n,:]
-    #        w̃nzrange = nzind(w̃mat_n)
-    #        c = 0.0
-    #        for i in w̃nzrange, i′ in vnzrange
-    #            v = vmat_m[i′]
-    #            v==0 && continue
-    #            w̃ = w̃mat_n[i]
-    #            w̃==0 && continue
-    #            c += w̃ * v * calc_cmixii(i, i′, cmodes, r, Δr, gnlr, Wr_lm,
-    #                                     L1M1cache, div2Lp1, interchange_NN′)
-    #        end
-    #        mix[n,m] = c
-    #    end
-    #end
 
     # Use pmap() to allow distributed parallel computing:
     n_idxs = SeparableArray(LNNsize1:-1:1, ones(Int, LNNsize2))
