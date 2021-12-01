@@ -290,10 +290,20 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
         features = filter(i -> i != :ang_eighth, features)
     end
 
+    if :ang_sixteenth in features
+        mask = gen_mask(nside, 1/16)
+        features = filter(i -> i != :ang_sixteenth, features)
+    end
+
     if :rotate in features
         r = hp.Rotator(coord=["E", "G"])
         mask = r.rotate_map_pixel(mask)
         features = filter(i -> i != :rotate, features)
+    end
+
+    if :linear_mask in features
+        pix = @. mask .!= 0
+        features = filter(i -> i != :linear_mask, features)
     end
 
     win = phi * mask'
