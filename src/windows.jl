@@ -129,7 +129,7 @@ function apodize_window(win, wmodes::ConfigurationSpaceModes, smooth=50.0)
 end
 
 
-function apply_window(rθϕ, win, rmin, rmax, win_r, win_Δr)
+function apply_window(rθϕ, win, rmin, rmax, win_r, win_Δr; rng=Random.GLOBAL_RNG)
     nside = npix2nside(size(win,2))
     r_out = Float32[]
     θ_out = Float32[]
@@ -146,7 +146,7 @@ function apply_window(rθϕ, win, rmin, rmax, win_r, win_Δr)
         idx_r = ceil(Int, (r[i] - rmin) / win_Δr)
         (idx_r == 0) && (idx_r += 1)
         (idx_r == size(win,1)+1) && (idx_r -= 1)
-        if rand() <= win[idx_r,idx_ang[i]] / Wmax
+        if rand(rng) <= win[idx_r,idx_ang[i]] / Wmax
             # include in survey
             push!(r_out, r[i])
             push!(θ_out, θ[i])
@@ -156,8 +156,8 @@ function apply_window(rθϕ, win, rmin, rmax, win_r, win_Δr)
     return [r_out θ_out ϕ_out]'
 end
 
-apply_window(rθϕ, win, wmodes::ConfigurationSpaceModes) = begin
-    apply_window(rθϕ, win, wmodes.rmin, wmodes.rmax, wmodes.r, wmodes.Δr)
+apply_window(rθϕ, win, wmodes::ConfigurationSpaceModes; rng=Random.GLOBAL_RNG) = begin
+    apply_window(rθϕ, win, wmodes.rmin, wmodes.rmax, wmodes.r, wmodes.Δr; rng)
 end
 
 
