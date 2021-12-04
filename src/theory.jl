@@ -32,7 +32,11 @@ module Theory
 
 export gen_Clnn_theory
 export Clnn2CnlmNLM, sum_m_lmeqLM
-export add_local_average_effect_nowindow, add_local_average_effect, calc_CNAnlmNLM
+export add_local_average_effect_nowindow
+export calc_NobsA, calc_CobsA, calc_CNobsA
+
+# deprecated:
+export add_local_average_effect, calc_CNAnlmNLM
 
 using ..Modes
 using QuadGK
@@ -152,7 +156,175 @@ function add_local_average_effect_nowindow(CNobs, cmodes, Veff)
 end
 
 
+function calc_dn00(cmodes)
+    nmax = cmodes.amodes.nmax_l[1]
+    dn00 = √(4*π) .* [quadgk(r->r^2 * cmodes.amodes.basisfunctions(n,0,r),
+			     cmodes.amodes.rmin, cmodes.amodes.rmax)[1]
+		      for n=1:nmax]
+    return dn00
+end
+
+function calc_dn00obs(dn00, Wlnn, cmodes)
+    nmax = length(dn00)
+    dn00obs = fill(0.0, nmax)
+    for n=1:nmax
+	for N=1:nmax
+	    if isvalidlnn(cmodes, 0, n, N)
+		idx = getidx(cmodes, 0, n, N)
+		dn00obs[n] += Wlnn[idx] * dn00[N]
+	    end
+	end
+    end
+    return dn00obs
+end
+
+function calc_DWlnn(cmix, cmodes, dn00)
+    lnnsize = size(cmix,2)
+    δdd = fill(0.0, lnnsize)
+    for i=1:lnnsize
+	l, n, n′ = getlnn(cmodes, i)
+	if l == 0
+	    δdd[i] = dn00[n] * dn00[n′]
+	end
+    end
+    DWlnn = cmix * δdd
+    return DWlnn
+end
+
+@doc raw"""
+    calc_NobsA(Nobs_th, cmix, nbar, Veff, cmodes)
+
+Calculate the observed shot noise including the local average effect for a
+constant nbar.
+"""
+function calc_NobsA(Nobs_th, cmix, nbar, Veff, cmodes)
+    dn00 = calc_dn00(cmodes)
+    dn00obs = calc_dn00obs(dn00, nbar .* Nobs_th, cmodes)
+    DWlnn = calc_DWlnn(cmix, cmodes, dn00 / √Veff)
+
+    NobsA = Nobs_th + (-2 + dn00'dn00obs / Veff) * DWlnn / nbar
+    return NobsA
+end
+
+
+function calc_Dlnnobs(cmix, dn00, cmodes)
+    lnnsize = getlnnsize(cmodes)
+    nmax = cmodes.amodes.nmax
+    Dlnnobs = fill(0.0, lnnsize)
+    for i=1:lnnsize
+	l1, n1, n2 = getlnn(cmodes, i)
+	for n1′=1:nmax, n2′=1:nmax
+	    if isvalidlnn(cmodes, 0, n1′, n2′)
+		i′ = getidx(cmodes, 0, n1′, n2′)
+		Dlnnobs[i] += (2*l1 + 1) * cmix[i,i′] * dn00[n1′] * dn00[n2′]
+	    end
+	end
+    end
+    return Dlnnobs
+end
+
+
+function calc_W3l1n1n2(L, N, N′, dn00dn00V, cmodes, wk_cache)
+    lnnsize = getlnnsize(cmodes)
+    nmax = cmodes.amodes.nmax
+    ell = [L, -1, 0]
+    na = [N, 0, 0]
+    nb = [N′, 0, 0]
+    W3nn = fill(NaN, nmax, nmax)
+    W3l1n1n2 = fill(NaN, lnnsize)
+    for i1=1:lnnsize
+	l1, n1, n2 = getlnn(cmodes, i1)
+	ell[2] = l1
+	na[2] = n1
+	nb[2] = n2
+	for n=1:nmax
+	    na[3] = n
+	    for n′=1:nmax
+		nb[3] = n′
+		W3nn[n,n′] = window_chain(ell, na, nb, wk_cache)
+		if na[1] != nb[1]
+		    na[1], nb[1] = nb[1], na[1]
+		    W3nn[n,n′] += window_chain(ell, na, nb, wk_cache)
+		else
+		    W3nn[n,n′] *= 2
+		end
+	    end
+	end
+	W3l1n1n2[i1] = tr(dn00dn00V'W3nn)
+    end
+    return W3l1n1n2
+end
+
+
+@doc raw"""
+    calc_CobsA(Clnn, Nobs_th, cmix, nbar, Veff, cmodes, wk_cache=nothing;
+        method=:fast, Lmax=1)
+
+Calculate the observed power spectrum including the local average effect for a
+constant nbar.
+
+The `method` is by default an approximate formula.
+"""
+function calc_CobsA(Clnn, Nobs_th, cmix, nbar, Veff, cmodes, wk_cache=nothing;
+        method=:fast, Lmax=1)
+    dn00 = calc_dn00(cmodes)
+    dn00obs = calc_dn00obs(dn00, nbar .* Nobs_th, cmodes)
+    DWlnn = calc_DWlnn(cmix, cmodes, dn00 / √Veff)
+    D̃lnnobs = calc_Dlnnobs(cmix, dn00 / √Veff, cmodes)
+    lnnsize = getlnnsize(cmodes)
+
+    CW3 = fill(0.0, lnnsize)
+    if method != :fast
+	LNNidx = Int[]
+	if method == :exact_sparse
+	    # only calculate ℓ < Δℓ to save time.
+	    Lmax = min(cmodes.amodes.lmax, Lmax)
+	    for l=0:Lmax, n=1:2, n′=n:2
+		if isvalidlnn(cmodes, l, n, n′)
+		    push!(LNNidx, getidx(cmodes, l, n, n′))
+		end
+	    end
+	else
+	    LNNidx = collect(1:lnnsize)
+	end
+	dn00dn00V = dn00 * dn00' / Veff
+	for LNN=LNNidx
+	    L, N, N′ = getlnn(cmodes, LNN)
+	    # expensive:
+	    W3l1n1n2 = calc_W3l1n1n2(L, N, N′, dn00dn00V, cmodes, wk_cache)
+	    CW3[LNN] = Clnn'W3l1n1n2 / (2*L+1)
+	end
+    else
+	# approximation
+	CW3 .= 2 * D̃lnnobs'Clnn * DWlnn
+    end
+
+    ClnnobsA = (cmix * Clnn
+                + D̃lnnobs'Clnn * DWlnn  # only lnn=011 really matters
+		- CW3)
+    return ClnnobsA
+end
+
+
+@doc raw"""
+    calc_CNobsA(Clnn, Nobs_th, cmix, nbar, Veff, cmodes, wk_cache=nothing; kwargs...)
+
+Calculate the observed power spectrum including shot noise with the local
+average effect for a constant nbar.
+
+`kwargs` are passed to [calc_CobsA](@ref).
+"""
+function calc_CNobsA(Clnn, Nobs_th, cmix, nbar, Veff, cmodes, wk_cache=nothing; kwargs...)
+    NobsA = calc_NobsA(Nobs_th, cmix, nbar, Veff, cmodes)
+    CobsA = calc_CNobsA(Clnn, Nobs_th, cmix, nbar, Veff, cmodes, wk_cache=nothing; kwargs...)
+    return CobsA .+ NobsA
+end
+
+
+#################### obsolete local average effect functions ###################
+
 function add_local_average_effect(CNlnn, cmix, Wlnn, cmodes, Veff)
+    base.depwarn("'add_local_average_effect()' is deprecated. Use 'calc_NobsA()' and 'calc_CobsA()' instead.", :add_local_average_effect)
     # Note 1: We only implement the δᴷₗ₀ terms, as the others are negligible
     # when Veff is large.
     #
@@ -225,6 +397,7 @@ end
 
 
 function calc_CNAnlmNLM(CNlnn::AbstractVector, wmix, cmodes, Veff)
+    base.depwarn("'calc_CNAnlmNLM()' is deprecated. Use 'calc_NobsA()' and 'calc_CobsA()' instead.", :calc_CNAnlmNLM)
     # Note 1: We only implement the δᴷₗ₀ terms, as the others are negligible
     # when Veff is large.
     #
