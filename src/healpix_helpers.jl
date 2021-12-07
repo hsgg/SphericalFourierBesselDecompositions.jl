@@ -5,6 +5,7 @@ module HealpixHelpers
 export mymap2alm
 
 using Healpix
+using ..HealPy
 
 
 ######## Base interfaces
@@ -42,12 +43,20 @@ end
 
 ######## convenience functions
 
-function mymap2alm(map::HealpixMap; lmax=3*npix2nside(length(map))-1)
+function mymap2alm_healpixjl(map::HealpixMap; lmax=3*npix2nside(length(map))-1)
     map2 = deepcopy(map)
     #applyFullWeights!(map2)  # only nside>=32 is supported
     #return map2alm(map2, lmax=lmax, niter=0)
     return map2alm(map2, lmax=lmax)
 end
+
+function mymap2alm_healpy(map::HealpixMap; lmax=3*npix2nside(length(map))-1)
+    alm = hp.map2alm(Vector(map), lmax=lmax, use_weights=true)
+    return Alm(lmax, lmax, Vector(alm))
+end
+
+mymap2alm = mymap2alm_healpixjl
+#mymap2alm = mymap2alm_healpy
 
 
 end
