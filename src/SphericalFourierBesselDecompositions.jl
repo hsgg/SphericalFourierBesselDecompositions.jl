@@ -227,6 +227,29 @@ function gen_mask(nside, fsky)
     return mask
 end
 
+function gen_win_insep_cossin(mask, rmin, rmax, r, l, m)
+    nr = length(r)
+    win = fill(0.0, nr, length(mask))
+    nside = npix2nside(length(mask))
+    pix = (1:length(mask))[mask .!= 0]
+    θ, ϕ = pix2angRing(nside, pix)
+    @show extrema(ϕ)
+    θmin, θmax = extrema(θ)
+    dr = rmax - rmin
+    dθ = θmax - θmin
+    rmid = (rmax + rmin) / 2
+    #@show l,m dr dθ
+    r0fn(θ, ϕ) = begin
+        rmid - (dr/2) * cos(θ * l*π/dθ) * cos(m*ϕ)
+    end
+    phifn(r,θ,ϕ) = exp(- ((r - r0fn(θ,ϕ)) / dr)^2)
+    for i=1:length(pix)
+        #win[:,pix[i]] .= r0fn(θ[i], ϕ[i])
+        win[:,pix[i]] .= phifn.(r, θ[i], ϕ[i])
+    end
+    win ./= maximum(win)
+    return win
+end
 
 function make_window(wmodes::ConfigurationSpaceModes, features...)
     rmin = wmodes.rmin
@@ -243,42 +266,15 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
     mask = fill(1.0, wmodes.npix)
     features = filter(i -> i != :fullsky, features)
 
-    if :radial in features
-        r0 = rmax * 0.55
-        for i=1:nr
-            phi[i] = exp(- (r[i] / r0)^2)
-        end
-        features = filter(i -> i != :radial, features)
-    end
-
-    if :step_rmin in features
-        r0 = rmin + 100.0
-        for i=1:nr
-            phi[i] = (r[i] < r0) ? 0.0 : phi[i]
-        end
-        features = filter(i -> i != :step_rmin, features)
-    end
-
-    if :step_rmax in features
-        r0 = rmax - 100.0
-        for i=1:nr
-            phi[i] = (r[i] > r0) ? 0.0 : phi[i]
-        end
-        features = filter(i -> i != :step_rmax, features)
-    end
-
-
     if :ang_75 in features
         mask = gen_mask(nside, 0.75)
         features = filter(i -> i != :ang_75, features)
     end
 
-
     if :ang_half in features
         mask = gen_mask(nside, 1/2)
         features = filter(i -> i != :ang_half, features)
     end
-
 
     if :ang_quarter in features
         mask = gen_mask(nside, 1/4)
@@ -306,6 +302,31 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
         features = filter(i -> i != :linear_mask, features)
     end
 
+
+    if :radial in features
+        r0 = rmax * 0.55
+        for i=1:nr
+            phi[i] = exp(- (r[i] / r0)^2)
+        end
+        features = filter(i -> i != :radial, features)
+    end
+
+    if :step_rmin in features
+        r0 = rmin + 100.0
+        for i=1:nr
+            phi[i] = (r[i] < r0) ? 0.0 : phi[i]
+        end
+        features = filter(i -> i != :step_rmin, features)
+    end
+
+    if :step_rmax in features
+        r0 = rmax - 100.0
+        for i=1:nr
+            phi[i] = (r[i] > r0) ? 0.0 : phi[i]
+        end
+        features = filter(i -> i != :step_rmax, features)
+    end
+
     win = phi * mask'
     maxwin = maximum(win)
 
@@ -316,6 +337,21 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
     else
         win ./= maxwin
     end
+
+    # :radial_cossin_l05_m0, :radial_cossin_l1_m1, ...
+    lmax = mmax = 5  # independent l and m, should probably call them something else
+    for l=0:0.5:lmax, m=0:0.5:mmax
+        lshort = filter(c -> c != '.', string(l))
+        mshort = filter(c -> c != '.', string(m))
+        sym = Symbol("radial_cossin_l$(lshort)_m$(mshort)")
+        #@show sym
+        if sym in features
+            win = gen_win_insep_cossin(mask, rmin, rmax, r, l, m)
+            features = filter(i -> i != sym, features)
+        end
+    end
+
+    @assert maximum(win) == 1
 
     if length(features) != 0
         @warn "Did not recognize all features" features
