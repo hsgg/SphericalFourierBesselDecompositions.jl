@@ -85,11 +85,11 @@ function make_pmu_pmupix(pix)
 end
 
 
-function transform_gnl_spmap(npix, pmu, pmupix, r, sphbesg_nl)
+function transform_gnl_spmap(npix, pmu, pmupix, r, sphbesg_nl, weight)
     Ngal = length(pmupix)
     spmap = fill(0.0, length(pmu))
     for i=1:Ngal
-        spmap[pmupix[i]] += sphbesg_nl(r[i])
+        spmap[pmupix[i]] += weight[i] * sphbesg_nl(r[i])
     end
     map = fill(0.0, npix)
     @. map[pmu] = spmap
@@ -198,7 +198,7 @@ julia> using SphericalFourierBesselDecompositions
 julia> cat2amln(rθϕ, ...)
 ```
 """
-function cat2amln(rθϕ, amodes, nbar, win_rhat_ln)
+function cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weight)
     r, θ, ϕ = sortout(rθϕ, amodes.nside)
     @show nbar length(r)
     sphbesg = amodes.basisfunctions
@@ -217,7 +217,7 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln)
         @time for l=0:amodes.lmax_n[n]
             #@show n,l
             #map0 = transform_gnl(npix, pix, r, sphbesg.gnl[n,l+1])
-            map1 = transform_gnl_spmap(npix, pmu, pmupix, r, sphbesg.gnl[n,l+1])
+            map1 = transform_gnl_spmap(npix, pmu, pmupix, r, sphbesg.gnl[n,l+1], weight)
             #@time map2 = transform_jnl_binned_quadratic(npix, pix, knl[n,l+1], l, r, rmax)
             #map3 = transform_jnl_binned_quadratic_cached(npix, pix, knl[n,l+1], l, r, rmax, jl_q, jl[l+1])
             map = map1
