@@ -51,7 +51,7 @@ using SparseArrays
 
 export AnlmModes, ClnnModes, ClnnBinnedModes
 export estimate_nside, estimate_nr
-export getnlmsize, getlmsize, getnlm, getidx
+export getnlmsize, getlmsize, getnlm, getidx, getklm
 export getlnnsize, getlnn, isvalidlnn
 export getlkk, getidxapprox
 export bandpower_binning_weights, bandpower_eigen_weights
@@ -199,6 +199,18 @@ function getidx(modes::AnlmModes, n, l, m)
     idx += getlmsize(l-1)
     idx += m
     return idx
+end
+
+
+function getklm(modes::AnlmModes, n, l, m)
+    k = modes.knl[n,l+1]
+    return k, l, m
+end
+
+function getklm(modes::AnlmModes, idx)
+    n, l, m = getnlm(modes, idx)
+    k, l, m = getklm(modes, n, l, m)
+    return k, l, m
 end
 
 
