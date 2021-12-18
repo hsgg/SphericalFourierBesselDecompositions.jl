@@ -189,7 +189,6 @@ end
 
 function win_rhat_ln(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes)
     gnl = amodes.basisfunctions
-    nr = size(win, 1)
     r, Δr = window_r(wmodes)
     W_rhat_ln = fill(NaN, size(win,2), amodes.lmax+1, amodes.nmax)
     check_nsamp_1gnl(amodes, wmodes)
@@ -206,7 +205,6 @@ end
 # specialize on separable windows
 function win_rhat_ln(win::SeparableArray, wmodes::ConfigurationSpaceModes, amodes::AnlmModes)
     gnl = amodes.basisfunctions
-    nr = size(win, 1)
     r, Δr = window_r(wmodes)
     W_ln = fill(NaN, amodes.lmax+1, amodes.nmax)
     check_nsamp_1gnl(amodes, wmodes)
@@ -311,7 +309,6 @@ function win_lnn(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes)
     Wlnn = fill(NaN, lnnsize)
     @show length(Wlnn), size(Wlnn)
 
-    nr = size(win, 1)
     r, Δr = window_r(wmodes)
 
     # Note: the maximum ℓ we need is 0. However, healpy changes precision, and
@@ -705,7 +702,7 @@ function check_nsamp_1gnl(amodes, nr)
     lmax = amodes.lmax
     nmax_l = amodes.nmax_l
     for L=0:lmax, N=1:nmax_l[L+1]
-        Nsamp = 8 * N  # + L
+        Nsamp = 8 * N
         max_Nsamp = max(max_Nsamp, Nsamp)
         if Nsamp > nr
             num_imprecise += 1
@@ -726,7 +723,7 @@ function check_nsamp(amodes, nr)
     nmax_l = amodes.nmax_l
     for L=0:lmax, N=1:nmax_l[L+1]
         for l=0:lmax, n=1:nmax_l[l+1]
-            Nsamp = 8 * (n + N)  # + l + L
+            Nsamp = 8 * (n + N)
             max_Nsamp = max(max_Nsamp, Nsamp)
             if Nsamp > nr
                 num_imprecise += 1
