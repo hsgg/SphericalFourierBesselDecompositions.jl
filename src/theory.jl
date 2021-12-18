@@ -192,18 +192,20 @@ function calc_DWlnn(cmix, cmodes, dn00)
 end
 
 @doc raw"""
-    calc_NobsA(Nobs_th, cmix, nbar, Veff, cmodes)
+    calc_NobsA(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes)
 
 Calculate the observed shot noise including the local average effect for a
 constant nbar.
 """
-function calc_NobsA(Nobs_th, cmix, nbar, Veff, cmodes)
+function calc_NobsA(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes)
     dn00 = calc_dn00(cmodes)
-    dn00obs = calc_dn00obs(dn00, nbar .* Nobs_th, cmodes)
-    DWlnn = calc_DWlnn(cmix, cmodes, dn00 / √Veff)
+    dn00obs = calc_dn00obs(dn00, nbar .* NW_th, cmodes)
 
-    NobsA = Nobs_th + (-2 + dn00'dn00obs / Veff) * DWlnn / nbar
-    return NobsA
+    trNWD = dn00'dn00obs / (Veff * nbar)
+    DWlnn = calc_DWlnn(cmix_wW, cmodes, dn00 / √Veff)
+
+    NwWA = NwW_th - (2/nbar - trNWD) * DWlnn
+    return NwWA
 end
 
 
