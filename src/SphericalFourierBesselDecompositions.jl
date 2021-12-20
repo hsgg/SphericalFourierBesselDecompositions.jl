@@ -292,14 +292,9 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
     end
 
     if :rotate in features
-        r = hp.Rotator(coord=["E", "G"])
-        mask = r.rotate_map_pixel(mask)
+        rot = hp.Rotator(coord=["E", "G"])
+        mask = rot.rotate_map_pixel(mask)
         features = filter(i -> i != :rotate, features)
-    end
-
-    if :linear_mask in features
-        pix = @. mask .!= 0
-        features = filter(i -> i != :linear_mask, features)
     end
 
 
