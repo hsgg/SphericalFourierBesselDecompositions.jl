@@ -34,7 +34,7 @@ include.
 
 The objects `amodes` and `cmodes` are used to access elements in the arrays
 produced by the routines below. For example, performing the SFB transform on a
-catalog, we use `anlm = SFB.cat2anlm(...)`, and the individual modes can be
+catalog, we use `anlm = SFB.cat2amln(...)`, and the individual modes can be
 accessed via `anlm[SFB.getidx(amodes, n, l, m)]`.
 
 The window function is described by
@@ -56,12 +56,15 @@ volume `Veff`.
 
 The SFB decomposition for a catalogue of galaxies is now performed with
 ```julia
-anlm = SFB.cat2amln(rθϕ, amodes, nbar, win_rhat_ln)
+weights = ones(size(rθϕ,2))
+anlm = SFB.cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weights)
 CNobs = SFB.amln2clnn(anlm, cmodes)
 ```
 where `rθϕ` is a `3 × Ngalaxies` array with the `r`, `θ`, and `ϕ` coordinates
 of each galaxy in the survey, and `nbar = Ngalaxies / Veff` is the average
-number density. The second line calculates the pseudo-SFB power spectrum.
+number density. An array `weights` needs to be passed that contains a weight,
+e.g., an FKP weight, for each galaxy. The last line calculates the pseudo-SFB
+power spectrum.
 
 Shot noise and pixel window are removed with
 ```julia

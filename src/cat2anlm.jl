@@ -184,13 +184,33 @@ function transform_jnl_binned_quadratic_cached(npix, pix, k, l, r, rmax, jl_q, j
 end
 
 
+function get_masked_pixels(win_rhat_ln)
+    masked_pixels = Int[]
+    npix = size(win_rhat_ln,1)
+    for i=1:npix
+        if all(win_rhat_ln[i,:,:] .== 0)
+            push!(masked_pixels, i)
+        end
+    end
+    return masked_pixels
+end
+
+function set_masked_pixels!(map, masked_pixels)
+    for p in masked_pixels
+        map[p] = UNSEEN
+    end
+end
+
+
 ####################### catalogue -> a_nlm #####################################
 @doc raw"""
-    cat2amln(rθϕ, amodes, nbar, win_rhat_ln)
+    cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weights)
 
 Computes the spherical Fourier-Bessel decomposition coefficients from a
 catalogue of sources. The number density is measured from the survey as $\bar n
 = N_\mathrm{gals} / V_\mathrm{eff}$.
+
+`weights` is an array containing a weight for each galaxy.
 
 # Example
 ```julia-repl
@@ -205,6 +225,7 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weight)
     knl = amodes.knl
     pix = ang2pixRing.(Ref(Resolution(amodes.nside)), θ, ϕ) # .+ 1  # python is 0-indexed
     pmu, pmupix = make_pmu_pmupix(pix)
+    #@time masked_pixels = get_masked_pixels(win_rhat_ln)  # doesn't seem to help
     @show typeof(pmu) typeof(pmupix)
     npix = nside2npix(amodes.nside)
     ΔΩpix = 4π / npix
@@ -251,6 +272,8 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weight)
             # TODO: check manual implementation for a single ℓ, check libsharp,
             #       how does healpix do it?
             # TODO: start with small nside for small ℓ, dangerous for pixel window
+
+            #set_masked_pixels!(map, masked_pixels)
 
             # HealPy:
             #alm = hp.map2alm(map, lmax=l, use_weights=true)

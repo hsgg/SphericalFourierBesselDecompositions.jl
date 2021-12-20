@@ -37,9 +37,11 @@ win_features = [(), (:separable,)]
     rθϕ = SFB.apply_window(rθϕ, win, wmodes)
     @assert all(@. rmin <= rθϕ[1,:] <= rmax)
 
-    anlm = SFB.cat2amln(rθϕ, amodes, nbar, win_rhat_ln)  #compile
+    weights = ones(size(rθϕ,2))
+
+    anlm = SFB.cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weights)  #compile
     Profile.clear()
-    @time @profile SFB.cat2amln(rθϕ, amodes, nbar, win_rhat_ln)
+    @time @profile SFB.cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weights)
     Profile.print()
 end
 
