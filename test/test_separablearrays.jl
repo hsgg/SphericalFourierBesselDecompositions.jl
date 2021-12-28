@@ -113,6 +113,9 @@ using .SFB.SeparableArrays
         @test propertynames(S2) == (:phi, :mask)
         @test S2.phi == S.phi
         @test S2.mask == S.mask
+
+        F2 = S2[:,:,:,:]
+        @test typeof(F2) <: Array{eltype(S2),ndims(S2)}
     end
 
 
