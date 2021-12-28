@@ -216,6 +216,50 @@ function win_rhat_ln(win::SeparableArray, wmodes::ConfigurationSpaceModes, amode
 end
 
 
+function calc_wmix_ii_dr(l, m, l′, m′, gg1Wrlm, LMLM)
+    M = m - m′
+
+    #L1 = max(abs(l-l′),abs(M)):(l+l′)
+    #w3j1 = wigner3j.(Float64, l, l′, L1, -m, m′)
+
+    w3j_f = wigner3j_f(Float64, l, l′, -m, m′)
+    w3j2 = w3j_f.symbols
+    L2 = eachindex(w3j_f)
+
+    #@show l,l′ m,m′ M L1 L2
+    #@show w3j1 w3j2
+    #@assert all(@. abs(w3j1 - w3j2) < eps(1.0))
+    #@assert all(L1 .== L2)
+
+    L = L2
+    w3j = w3j2
+    #@show w3j
+
+    w3j000 = @. wigner3j000(L, l, l′)
+    #@show w3j000
+    #@show size(w3j) size(L) size(w3j000)
+    #@show eachindex(w3j) eachindex(L) eachindex(w3j000)
+    gaunt = @. √((2*L+1) * (2*l+1) * (2*l′+1) / (4*π)) * w3j000 * w3j
+    #@debug "Gaunt" l,m l′,m′ L M gaunt[1] 1/√(4*π) √(4*π)*gaunt[1]
+
+    aM = abs(M)
+    w_ang = 0.0im
+    for j=1:length(L)
+        #@assert -L[j] <= M <= L[j]
+        #LM = almIndex(Alm(LMAX, LMAX), L[j], abs(M)) # + 1
+        LM = LMLM[L[j]+1,aM+1]
+        w_ang += gaunt[j] * gg1Wrlm[LM]
+        #@debug "Wr_lm" L[j],M Wr_lm[1,LM] Wr_lm[1,LM]/√(4*π)
+    end
+
+    if M < 0
+        w_ang = (-1)^M * conj(w_ang)
+    end
+    #@debug "wmix" i,i′ l,m l′,m′ w_ang gg1sum
+    return (-1)^m * w_ang
+end
+
+
 # This should be very performant
 function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_m=false)
     nlmsize = getnlmsize(amodes)
@@ -248,52 +292,17 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
         ## debug
         #gg1_quadgk,E = quadgk(r->r^2 * gnl(n,l,r) * gnl(n′,l′,r), amodes.rmin, amodes.rmax)
         #@debug "gg1" sum(gg1)*Δr gg1_quadgk,E
-        gg1sum = sum(gg1)
+        #gg1sum = sum(gg1)
+
+        gg1Wrlm = gg1'Wr_lm
 
         for m=0:l, m′=0:l′
+            i = ibase + m
+            i′ = i′base + m′
             if neg_m
                 m = -m
             end
-            i = ibase + abs(m)
-            i′ = i′base + m′
-            M = m - m′
-
-            #L1 = max(abs(l-l′),abs(M)):(l+l′)
-            #w3j1 = wigner3j.(Float64, l, l′, L1, -m, m′)
-
-            w3j_f = wigner3j_f(Float64, l, l′, -m, m′)
-            w3j2 = w3j_f.symbols
-            L2 = eachindex(w3j_f)
-
-            #@show l,l′ m,m′ M L1 L2
-            #@show w3j1 w3j2
-            #@assert all(@. abs(w3j1 - w3j2) < eps(1.0))
-            #@assert all(L1 .== L2)
-
-            L = L2
-            w3j = w3j2
-            #@show w3j
-
-            w3j000 = @. wigner3j000(L, l, l′)
-            #@show w3j000
-            #@show size(w3j) size(L) size(w3j000)
-            #@show eachindex(w3j) eachindex(L) eachindex(w3j000)
-            gaunt = @. √((2*L+1) * (2*l+1) * (2*l′+1) / (4*π)) * w3j000 * w3j
-            #@debug "Gaunt" l,m l′,m′ L M gaunt[1] 1/√(4*π) √(4*π)*gaunt[1]
-
-            w_ang = 0.0im
-            for j=1:length(L)
-                #@assert -L[j] <= M <= L[j]
-                #LM = almIndex(Alm(LMAX, LMAX), L[j], abs(M)) # + 1
-                LM = LMLM[L[j]+1,abs(M)+1]
-                w_ang += gaunt[j] * (gg1' * Wr_lm[:,LM])
-                #@debug "Wr_lm" L[j],M Wr_lm[1,LM] Wr_lm[1,LM]/√(4*π)
-            end
-            if M < 0
-                w_ang = (-1)^M * conj(w_ang)
-            end
-            #@debug "wmix" i,i′ l,m l′,m′ w_ang gg1sum
-            wmix[i,i′] = (-1)^m * w_ang * Δr
+            wmix[i,i′] = Δr * calc_wmix_ii_dr(l, m, l′, m′, gg1Wrlm, LMLM)
             #@show wmix[i,i′]
             @assert isfinite(wmix[i,i′])
         end
