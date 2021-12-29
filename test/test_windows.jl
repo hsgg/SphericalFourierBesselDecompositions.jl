@@ -6,6 +6,7 @@ SFB = SphericalFourierBesselDecompositions
 
 using Test
 using LinearAlgebra
+using Healpix
 
 @testset "Mixing matrices" begin
     @testset "No window" begin
@@ -135,6 +136,41 @@ using LinearAlgebra
         @test w̃M1 ≈ w̃M2  rtol=1e-10
         @test inv(Nmix1) * w̃M1 ≈ inv(Nmix2) * w̃M2  rtol=1e-10
         @test Mv1 * inv(Nmix1) ≈ Mv2 * inv(Nmix2)  rtol=1e-10
+    end
+
+
+    # Test win_rhat_ln() with basisfunctions
+    @testset "win(rhat,l,n) with basis" begin
+        rmin = 500.0
+        rmax = 1000.0
+        nmax = 5
+        lmax = 6
+        nr = 250
+        nside = 64
+        amodes = SFB.AnlmModes(nmax, lmax, rmin, rmax, nside=nside)
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
+
+        # test win_rhat_ln() with basis functions
+        win = fill(1.0, nr, nside2npix(nside))
+        p = 1
+        for n=1:nmax, l=0:lmax  # assert nmax*(lmax+1) ≤ npix
+            r, Δr = SFB.window_r(wmodes)
+            win[:,p] .= amodes.basisfunctions.gnl[n,l+1].(r)
+            p += 1
+        end
+        win_rhat_ln = SFB.win_rhat_ln(win, wmodes, amodes)
+        for n=1:nmax, l=0:lmax  # assert nmax*(lmax+1) ≤ npix
+            p = 1
+            for n′=1:nmax, l′=0:lmax
+                if l == l′ && n == n′
+                    @test win_rhat_ln[p,l+1,n] ≈ 1  atol=1e-4
+                elseif l == l′ && n != n′
+                    @test win_rhat_ln[p,l+1,n] ≈ 0  atol=1e-4
+                #else # l != l′
+                end
+                p += 1
+            end
+        end
     end
 
 
