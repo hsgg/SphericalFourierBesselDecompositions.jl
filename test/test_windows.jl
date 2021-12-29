@@ -64,13 +64,13 @@ using LinearAlgebra
         amodes = SFB.AnlmModes(2, 5, rmin, rmax)
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
 
-        win1 = SFB.make_window(wmodes, :separable)
+        win1 = SFB.make_window(wmodes, :ang_75, :radial, :rotate, :separable)
         @. win1.mask = rand()
         sidx = (1:length(win1.mask))[win1.mask .> 0]
         sidx = 1:(length(sidx) ÷ 2)
         @. win1.mask[sidx] = 0.5 * win1.mask[sidx]
 
-        win2 = [win1[i,j] for i=1:size(win1,1), j=1:size(win1,2)]
+        win2 = win1[:,:]
         @show sum(win1.mask) ./ length(win1.mask)
         @show extrema(win1.mask)
         @show typeof(win1) typeof(win2)
@@ -78,11 +78,20 @@ using LinearAlgebra
 
         # wmix
         wmix1 = SFB.calc_wmix(win1, wmodes, amodes)
-        wmix1_negm = SFB.calc_wmix(win1, wmodes, amodes, neg_m=true)
         wmix2 = SFB.calc_wmix(win2, wmodes, amodes)
+        wmix1_negm = SFB.calc_wmix(win1, wmodes, amodes, neg_m=true)
         wmix2_negm = SFB.calc_wmix(win2, wmodes, amodes, neg_m=true)
         @show typeof(wmix1) typeof(wmix2)
-        @test wmix1 == wmix2
+        @test wmix1 ≈ wmix2  rtol=1e-10
+        @test wmix1_negm ≈ wmix2_negm  rtol=1e-10
+
+        # win_rhat_ln
+        win_rhat_ln1 = SFB.win_rhat_ln(win1, wmodes, amodes)[:,:,:]
+        win_rhat_ln2 = SFB.win_rhat_ln(win2, wmodes, amodes)
+        @test win_rhat_ln1 ≈ win_rhat_ln2  rtol=1e-10
+        for k=1:size(win_rhat_ln1,3), j=1:size(win_rhat_ln1,2), i=1:size(win_rhat_ln1,1)
+            @test win_rhat_ln1[i,j,k] ≈ win_rhat_ln2[i,j,k] rtol=1e-10
+        end
 
         # M
         cmodes = SFB.ClnnModes(amodes, Δnmax=1)
@@ -91,8 +100,8 @@ using LinearAlgebra
         M2 = SFB.power_win_mix(win2, wmodes, cmodes)
         @show extrema(M .- M1)
         @show extrema(M .- M2)
-        @test M ≈ M1
-        @test M ≈ M2
+        @test M ≈ M1  rtol=1e-10
+        @test M ≈ M2  rtol=1e-10
 
         # CWlnn
         pk(k) = 1e4 * (k/1e-2)^(-3.1)
@@ -107,7 +116,7 @@ using LinearAlgebra
         nbar = 3e-4
         Nshotobs1 = SFB.win_lnn(win1, wmodes, cmodes) ./ nbar
         Nshotobs2 = SFB.win_lnn(win2, wmodes, cmodes) ./ nbar
-        @test Nshotobs1 ≈ Nshotobs2
+        @test Nshotobs1 ≈ Nshotobs2  rtol=1e-10
 
         # Bandpower binning
         fsky = sum(win1[1,:]) / size(win1,2)
@@ -117,15 +126,15 @@ using LinearAlgebra
         Nmix1 = SFB.power_win_mix(win1, w̃, v, wmodes, bcmodes)
         Nmix2 = SFB.power_win_mix(win2, w̃, v, wmodes, bcmodes)
         @show extrema(Nmix1 .- Nmix2)
-        @test Nmix1 ≈ Nmix2
+        @test Nmix1 ≈ Nmix2  rtol=1e-10
         w̃M1 = SFB.power_win_mix(win1, w̃, I, wmodes, bcmodes)
         Mv1 = SFB.power_win_mix(win1, I, v, wmodes, bcmodes)
         w̃M2 = SFB.power_win_mix(win2, w̃, I, wmodes, bcmodes)
         Mv2 = SFB.power_win_mix(win2, I, v, wmodes, bcmodes)
         @show extrema(w̃M1 .- w̃M2)
-        @test w̃M1 ≈ w̃M2
-        @test inv(Nmix1) * w̃M1 ≈ inv(Nmix2) * w̃M2
-        @test Mv1 * inv(Nmix1) ≈ Mv2 * inv(Nmix2)
+        @test w̃M1 ≈ w̃M2  rtol=1e-10
+        @test inv(Nmix1) * w̃M1 ≈ inv(Nmix2) * w̃M2  rtol=1e-10
+        @test Mv1 * inv(Nmix1) ≈ Mv2 * inv(Nmix2)  rtol=1e-10
     end
 
 
@@ -155,7 +164,7 @@ using LinearAlgebra
         cmodes = SFB.ClnnModes(amodes, Δnmax=1)
         mmix1 = SFB.power_win_mix(wmix, wmix_negm, cmodes)
         M = SFB.power_win_mix(win, wmodes, cmodes)
-        @test M ≈ mmix1
+        @test M ≈ mmix1  rtol=1e-10
 
         # CWlnn
         pk(k) = 1e4 * (k/1e-2)^(-3.1)
@@ -163,7 +172,7 @@ using LinearAlgebra
         CnlmNLM = SFB.Clnn2CnlmNLM(Clnn, cmodes)
         CWlnn1 = SFB.sum_m_lmeqLM(wmix * CnlmNLM * wmix', cmodes)
         CWlnn2 = M * Clnn
-        @test CWlnn1 ≈ CWlnn2
+        @test CWlnn1 ≈ CWlnn2  rtol=1e-10
 
         # Nshot
         nbar = 3e-4
@@ -187,9 +196,9 @@ using LinearAlgebra
         @test Nmix ≈ N
         w̃M = SFB.power_win_mix(win, w̃, I, wmodes, bcmodes)
         Mv = SFB.power_win_mix(win, I, v, wmodes, bcmodes)
-        @test w̃M ≈ w̃ * M
-        @test inv(Nmix) * w̃M ≈ w
-        @test Mv * inv(Nmix) ≈ ṽ
+        @test w̃M ≈ w̃ * M  rtol=1e-10
+        @test inv(Nmix) * w̃M ≈ w  rtol=1e-10
+        @test Mv * inv(Nmix) ≈ ṽ  rtol=1e-10
     end
 end
 
