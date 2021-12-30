@@ -216,7 +216,7 @@ function win_rhat_ln(win::SeparableArray, wmodes::ConfigurationSpaceModes, amode
 end
 
 
-function calc_wmix_ii_dr(l, m, l′, m′, gg1Wrlm, LMLM)
+function calc_wmix_ii(l, m, l′, m′, gg1Wrlm, LMLM)
     M = m - m′
 
     #L1 = max(abs(l-l′),abs(M)):(l+l′)
@@ -288,7 +288,7 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
         i′base = getidx(amodes, n′, l′, 0)
         ibase==1 && @show ibase,i′base, n,n′, l,l′, nlmsize
 
-        gg1 = @. r^2 * gnl(n,l,r) * gnl(n′,l′,r)
+        gg1 = @. Δr * r^2 * gnl(n,l,r) * gnl(n′,l′,r)
         ## debug
         #gg1_quadgk,E = quadgk(r->r^2 * gnl(n,l,r) * gnl(n′,l′,r), amodes.rmin, amodes.rmax)
         #@debug "gg1" sum(gg1)*Δr gg1_quadgk,E
@@ -302,7 +302,7 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
             if neg_m
                 m = -m
             end
-            wmix[i,i′] = Δr * calc_wmix_ii_dr(l, m, l′, m′, gg1Wrlm, LMLM)
+            wmix[i,i′] = calc_wmix_ii(l, m, l′, m′, gg1Wrlm, LMLM)
             #@show wmix[i,i′]
             @assert isfinite(wmix[i,i′])
         end
