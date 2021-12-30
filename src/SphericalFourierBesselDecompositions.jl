@@ -369,6 +369,30 @@ function calc_fsky(win, wmodes)
 end
 
 
+@doc raw"""
+    xyz2rtp(xyz)
+
+Convert the Cartesian positions in `xyz` to spherical coordinates `rθϕ`. The
+first dimension is of length 3, the second is the number of galaxies. Assumes a
+flat geometry.
+"""
+function xyz2rtp(xyz)
+    Ngalaxies = size(xyz,2)
+    rθϕ = Array{eltype(xyz)}(undef, 3, Ngalaxies)
+    for i=1:Ngalaxies
+        x = xyz[1,i]
+        y = xyz[2,i]
+        z = xyz[3,i]
+        r = √(x^2 + y^2 + z^2)
+        θ = acos(z/r)
+        ϕ = atan(y/r, x/r)
+        rθϕ[1,i] = r
+        rθϕ[2,i] = θ
+        rθϕ[3,i] = ϕ
+    end
+    return rθϕ
+end
+
 
 end
 
