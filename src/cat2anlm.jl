@@ -30,7 +30,7 @@
 
 module Cat2Anlm
 
-export cat2amln
+export cat2amln, winweights2galweights
 
 
 using SharedArrays
@@ -199,6 +199,34 @@ function set_masked_pixels!(map, masked_pixels)
     for p in masked_pixels
         map[p] = UNSEEN
     end
+end
+
+
+####################### weight(r) -> weight(gal) ###############################
+@doc raw"""
+    winweights2galweights(weights, wmodes, rθϕ)
+
+Returns an array with the weight for each galaxy. `weights` is a 2D-array where
+the first index goes over `r`, the second over healpix pixel `p`.
+"""
+function winweights2galweights(weights, wmodes, rθϕ)
+    rmin = wmodes.rmin
+    rmax = wmodes.rmax
+    rmid = wmodes.r
+    Δr = wmodes.Δr
+    nside = wmodes.nside
+    rbounds = range(rmin, rmax, length=wmodes.nr+1)
+    reso = Resolution(nside)
+    Ngal = size(rθϕ,2)
+    w = fill(1.0, Ngal)
+    for i=1:Ngal
+        r, θ, ϕ = rθϕ[:,i]
+        pix = ang2pixRing(reso, θ, ϕ)
+        bin = (r == rmax) ? length(rmid) : searchsortedlast(rbounds, r)
+        #@show i,bin,pix,r,size(weights)
+        w[i] = weights[bin,pix]
+    end
+    return w
 end
 
 
