@@ -132,16 +132,16 @@ end
 
 function apply_window(rθϕ, win, rmin, rmax, win_r, win_Δr; rng=Random.GLOBAL_RNG)
     nside = npix2nside(size(win,2))
-    r_out = Float32[]
-    θ_out = Float32[]
-    ϕ_out = Float32[]
+    r_out = eltype(rθϕ)[]
+    θ_out = eltype(rθϕ)[]
+    ϕ_out = eltype(rθϕ)[]
     r = rθϕ[1,:]
     θ = rθϕ[2,:]
     ϕ = rθϕ[3,:]
     reso = Resolution(nside)
     idx_ang = ang2pixRing.(Ref(reso), θ, ϕ) # .+ 1
     Wmax = maximum(win)
-    @show extrema(r)
+    #@show extrema(r)
     for i=1:length(r)
         !(rmin <= r[i] <= rmax) && continue
         idx_r = ceil(Int, (r[i] - rmin) / win_Δr)
@@ -190,12 +190,12 @@ end
 function win_rhat_ln(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes)
     gnl = amodes.basisfunctions
     r, Δr = window_r(wmodes)
-    W_rhat_ln = fill(NaN, size(win,2), amodes.lmax+1, amodes.nmax)
+    W_rhat_ln = fill(eltype(win)(NaN), size(win,2), amodes.lmax+1, amodes.nmax)
     check_nsamp_1gnl(amodes, wmodes)
     for n=1:amodes.nmax, l=0:amodes.lmax_n[n]
         l==0 && @show n,l
         int_nowin = @. r^2 * gnl(n, l, r)
-        W_rhat_ln[:,l+1,n] .= win' * int_nowin
+        W_rhat_ln[:,l+1,n] .= win'int_nowin
     end
     @. W_rhat_ln *= Δr
     #@assert all(isfinite.(W_rhat_ln))  # not all needs to be finite if we limit by kmax
@@ -206,7 +206,7 @@ end
 function win_rhat_ln(win::SeparableArray, wmodes::ConfigurationSpaceModes, amodes::AnlmModes)
     gnl = amodes.basisfunctions
     r, Δr = window_r(wmodes)
-    W_ln = fill(NaN, amodes.lmax+1, amodes.nmax)
+    W_ln = fill(eltype(win)(NaN), amodes.lmax+1, amodes.nmax)
     check_nsamp_1gnl(amodes, wmodes)
     for n=1:amodes.nmax, l=0:amodes.lmax_n[n]
         l==0 && @show n,l,amodes.nmax
@@ -283,7 +283,7 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
     check_nsamp(amodes, wmodes)
 
     gnl = amodes.basisfunctions
-    @time for n′=1:amodes.nmax, n=1:amodes.nmax, l′=0:amodes.lmax_n[n′], l=0:amodes.lmax_n[n]
+    @showprogress for n′=1:amodes.nmax, n=1:amodes.nmax, l′=0:amodes.lmax_n[n′], l=0:amodes.lmax_n[n]
         ibase = getidx(amodes, n, l, 0)
         i′base = getidx(amodes, n′, l′, 0)
         ibase==1 && @show ibase,i′base, n,n′, l,l′, nlmsize

@@ -45,6 +45,7 @@ include("covariance.jl")  # mostly theory, may be split at some point
 include("cat2anlm.jl")
 
 using Statistics
+using FastTransforms
 #using Roots
 using Healpix
 using .HealPy
@@ -391,6 +392,40 @@ function xyz2rtp(xyz)
         rθϕ[3,i] = ϕ
     end
     return rθϕ
+end
+
+
+function sphericalharmonicsy(l, m, θ, ϕ)
+    rY1 = sphevaluate(θ, ϕ, l, abs(m))
+    rY2 = sphevaluate(θ, ϕ, l, -abs(m))
+    if m < 0
+        return (rY1 - im*rY2) / √2
+    elseif m == 0
+        return rY1 + 0*im
+    else
+        return (-1)^m * (rY1 + im*rY2) / √2
+    end
+end
+
+
+function realsphericalharmonicsy(l, m, θ, ϕ)
+    #Ylm = sphericalharmonicsy(l, m, θ, ϕ)
+    #if m < 0
+    #    return √2 * (-1)^m * imag(Ylm)
+    #elseif m == 0
+    #    return real(Ylm)
+    #else
+    #    return √2 * (-1)^m * real(Ylm)
+    #end
+    return sphevaluate.(θ, ϕ, l, m)
+end
+
+
+function get_full_basisfuncreal_nlm(amodes, wmodes, n, l, m)
+    gnl = amodes.basisfunctions.gnl[n,l+1].(wmodes.r)
+    θ, ϕ = pix2angRing(amodes.nside, 1:nside2npix(amodes.nside))
+    ylm = realsphericalharmonicsy.(l, m, θ, ϕ)
+    return @SeparableArray gnl ylm
 end
 
 

@@ -6,6 +6,7 @@ version = "0.2.3"
 [deps]
 ArbNumerics = "7e558dbc-694d-5a72-987c-6f4ebed21442"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+FastTransforms = "057dd010-8810-581a-b7be-e3fc3b93f78c"
 Healpix = "9f4e344d-96bc-545a-84a3-ae6b9e1b672b"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"

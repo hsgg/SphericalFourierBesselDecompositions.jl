@@ -40,6 +40,8 @@ using ..HealpixHelpers
 using ..SeparableArrays
 using ..Modes
 
+#using Statistics
+
 
 function sortout(rθϕ, nside)
     # Sort by r. This helps reduce recomputations in the spline for gnl(r).
@@ -66,12 +68,12 @@ end
 
 ########################### transform jl ##########################################
 
-function transform_gnl(npix, pix, r, sphbesg_nl)
+function transform_gnl(npix, pix, r, sphbesg_nl, weight)
     Ngal = length(pix)
     map = fill(0.0, npix)
     for i=1:Ngal
         #@show pix[i],r[i]
-        map[pix[i]] += sphbesg_nl(r[i])
+        map[pix[i]] += weight[i] * sphbesg_nl(r[i])
     end
     return map
 end
@@ -247,6 +249,7 @@ julia> cat2amln(rθϕ, ...)
 ```
 """
 function cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weight)
+    T = promote_type(eltype(rθϕ), eltype(win_rhat_ln))
     r, θ, ϕ = sortout(rθϕ, amodes.nside)
     @show nbar length(r)
     sphbesg = amodes.basisfunctions
@@ -265,7 +268,7 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weight)
         #@time @sync @distributed for l=0:amodes.lmax_n[n]
         @time for l=0:amodes.lmax_n[n]
             #@show n,l
-            #map0 = transform_gnl(npix, pix, r, sphbesg.gnl[n,l+1])
+            #map0 = transform_gnl(npix, pix, r, sphbesg.gnl[n,l+1], weight)
             map1 = transform_gnl_spmap(npix, pmu, pmupix, r, sphbesg.gnl[n,l+1], weight)
             #@time map2 = transform_jnl_binned_quadratic(npix, pix, knl[n,l+1], l, r, rmax)
             #map3 = transform_jnl_binned_quadratic_cached(npix, pix, knl[n,l+1], l, r, rmax, jl_q, jl[l+1])
@@ -289,10 +292,13 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weight)
             #@show mean(map ./ map3),std(map ./ map3)
 
             map .*= 1 / (nbar * ΔΩpix)
+            map = T.(map)
 
             c = win_rhat_ln[:,l+1,n]
             #@show size(map) size(c)
-            #@show map c mean(map) median(map)
+            #@show n,l mean(map) mean(c)
+            #@show mean(map[c .!= 0]) mean(c[c .!= 0])
+            #@show mean(map[c .== 0]) mean(c[c .== 0])
             @. map = map - c
             #@show n,l,mean(map),median(map)
             #@show map
@@ -308,7 +314,7 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weight)
             #idx = hp.Alm.getidx.(l, l, 0:l) .+ 1  # python is 0-indexed
 
             # Healpix.jl:
-            maphp = HealpixMap{Float64,Healpix.RingOrder}(map)
+            maphp = HealpixMap{T,Healpix.RingOrder}(map)
             alm = mymap2alm(maphp, lmax=l)
             idx = almIndex(alm, l, 0:l)
 

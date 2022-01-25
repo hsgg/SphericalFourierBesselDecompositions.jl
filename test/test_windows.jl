@@ -6,6 +6,7 @@ SFB = SphericalFourierBesselDecompositions
 
 using Test
 using LinearAlgebra
+using Statistics
 using Healpix
 
 @testset "Mixing matrices" begin
@@ -171,6 +172,102 @@ using Healpix
                 p += 1
             end
         end
+    end
+
+
+    # Test win_rhat_ln() with FKP weights
+    @testset "weights a la FKP" begin
+        rmin = 500.0
+        rmax = 1000.0
+        kmax =  0.02
+        nr = 250
+        nside = 64
+        amodes = SFB.AnlmModes(kmax, rmin, rmax, nside=nside)
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
+
+        win = SFB.make_window(wmodes, :ang_sixteenth, :radial_cossin_l00_m00)
+
+        nbar_pk = 3e-4 * 1e4
+        weights1 = fill(0.25, size(win))
+        weights2 = @. 1 / (1 + win * nbar_pk)
+
+        # win_rhat_ln
+        win_rhat_ln0 = SFB.win_rhat_ln(win, wmodes, amodes)
+        win_rhat_ln1 = SFB.win_rhat_ln(win .* weights1, wmodes, amodes)
+        win_rhat_ln2 = SFB.win_rhat_ln(win .* weights2, wmodes, amodes)
+
+        #w0_nlmNLM = SFB.calc_wmix(4*weights1, wmodes, amodes)
+        #w1_nlmNLM = SFB.calc_wmix(weights1, wmodes, amodes)
+        w2_nlmNLM = SFB.calc_wmix(weights2, wmodes, amodes)
+
+        #@test maximum(abs.(w0_nlmNLM - I)) ≤ 1e-4
+        #@test maximum(abs.(w1_nlmNLM - I/4)) ≤ 1e-5
+        #@show size(w0_nlmNLM)
+        @show SFB.getklm.(amodes, [1,SFB.getnlmsize(amodes)])
+
+        rθϕ = fill(0.0f0, 3, 0)
+        nbar = 3e-4
+        anlm0 = SFB.cat2amln(rθϕ, amodes, nbar, win_rhat_ln0, [])
+        anlm1 = SFB.cat2amln(rθϕ, amodes, nbar, win_rhat_ln1, [])
+        anlm2 = SFB.cat2amln(rθϕ, amodes, nbar, win_rhat_ln2, [])
+
+        #@test maximum(abs, w1_nlmNLM * anlm0 - anlm1) ≤ 1e-4 * maximum(abs, anlm1)
+        @test maximum(abs, w2_nlmNLM * anlm0 - anlm2) ≤ 1e-4 * maximum(abs, anlm2)
+        @show (w2_nlmNLM * anlm0 - anlm2)[1:1]
+        @show length(anlm0)
+
+
+        #n = 2
+        #l = 3
+        #c0 = win_rhat_ln0[:,l+1,n]
+        #c1 = win_rhat_ln1[:,l+1,n]
+        #c2 = win_rhat_ln2[:,l+1,n]
+        #@show n,l
+        #@show mean(c0) mean(c0[c0 .!= 0]) mean(c0[c0 .== 0])
+        #@show mean(c1) mean(c1[c1 .!= 0]) mean(c1[c1 .== 0])
+        #@show mean(c2) mean(c2[c2 .!= 0]) mean(c2[c2 .== 0])
+        #@test mean(c0[c0 .!= 0]) ≈ -3666.014102794932
+        #@test mean(c1[c1 .!= 0]) ≈ -3666.014102794932 * 0.25
+        #@test mean(c2[c2 .!= 0]) ≈ -481.9511514849361  # unexpected
+        #@test mean(c0[c0 .== 0]) == 0
+        #@test mean(c1[c1 .== 0]) == 0
+        #@test mean(c2[c2 .== 0]) == 0
+        #@test mean(c2[c2 .!= 0]) ≈ -1220    rtol=1e-2  # expected
+
+        #@show win[[1,10,nr],[1,5000]]
+        #@show weights1[[1,10,nr],[1,5000]]
+        #@show weights2[[1,10,nr],[1,5000]]
+
+        ## wmix
+        #wmix1 = SFB.calc_wmix(win1, wmodes, amodes)
+        #wmix1_negm = SFB.calc_wmix(win1, wmodes, amodes, neg_m=true)
+        #@show typeof(wmix1)
+
+        ## M
+        #cmodes = SFB.ClnnModes(amodes, Δnmax=1)
+        #M = SFB.power_win_mix(wmix1, wmix1_negm, cmodes)
+        #M1 = SFB.power_win_mix(win1, wmodes, cmodes)
+        #@show extrema(M .- M1)
+        #@test M ≈ M1  rtol=1e-10
+
+        ## CWlnn
+        #pk(k) = 1e4 * (k/1e-2)^(-3.1)
+        #Clnn = SFB.gen_Clnn_theory(pk, cmodes)
+        #CnlmNLM = SFB.Clnn2CnlmNLM(Clnn, cmodes)
+        #CWlnn1 = SFB.sum_m_lmeqLM(wmix1 * CnlmNLM * wmix1', cmodes)
+
+        ## Nshot
+        #nbar = 3e-4
+        #Nshotobs1 = SFB.win_lnn(win1, wmodes, cmodes) ./ nbar
+
+        ## Bandpower binning
+        #fsky = sum(win1[1,:]) / size(win1,2)
+        #Δℓ = round(Int, 1 / fsky)
+        #w̃, v = SFB.bandpower_binning_weights(cmodes; Δℓ=Δℓ, Δn=1)
+        #bcmodes = SFB.ClnnBinnedModes(w̃, v, cmodes)
+        #Nmix1 = SFB.power_win_mix(win1, w̃, v, wmodes, bcmodes)
+        #w̃M1 = SFB.power_win_mix(win1, w̃, I, wmodes, bcmodes)
+        #Mv1 = SFB.power_win_mix(win1, I, v, wmodes, bcmodes)
     end
 
 
