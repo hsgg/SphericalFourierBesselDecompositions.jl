@@ -39,6 +39,8 @@ export calc_NobsA, calc_CobsA, calc_CNobsA
 export add_local_average_effect, calc_CNAnlmNLM
 
 using ..Modes
+using ..Windows
+using ..Cat2Anlm
 using QuadGK
 
 
@@ -202,9 +204,9 @@ function calc_NobsA(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes)
     dn00obs = calc_dn00obs(dn00, nbar .* NW_th, cmodes)
 
     trNWD = dn00'dn00obs / (Veff * nbar)
-    DWlnn = calc_DWlnn(cmix_wW, cmodes, dn00 / √Veff)
+    DwWlnn = calc_DWlnn(cmix_wW, cmodes, dn00 / √Veff)
 
-    NwWA = NwW_th - (2/nbar - trNWD) * DWlnn
+    NwWA = NwW_th - (2/nbar - trNWD) * DwWlnn
     return NwWA
 end
 
@@ -258,8 +260,68 @@ function calc_W3l1n1n2(L, N, N′, dn00dn00V, cmodes, wk_cache)
 end
 
 
+function get_anlm_r(anlm, nl, m)
+    if m >= 0
+        return anlm[nl+m]
+    end
+    return (-1)^m * conj(anlm[nl+abs(m)])
+end
+
+#get_anlmNLM_r = Windows.get_wmix
+function get_anlmNLM_r(w, w′, nl, m, NL, M)
+    if m >= 0
+        #if M >= 0
+        #    return 1.0im #w[nl+m, NL+M]
+        #end
+        return 2.0im #w′[nl+m, NL-M]
+    end
+    #if M >= 0
+    #    return 3.0im #(-1)^(m+M) * conj(w′[nl-m, NL+M])
+    #end
+    return 4.0im #(-1)^(m-M) * conj(w[nl-m, NL-M])
+end
+
+
+
+function calc_terms23_transform(wW_nlm_NLM, wW_nlm_NLM_negm, wW_nlm, W_nlm, cmodes::ClnnModes, Veff)
+    T = Float64
+    Ws_nlm = conj(W_nlm)
+    amodes = cmodes.amodes
+    lnnsize = getlnnsize(cmodes)
+    TlnnLNN = fill(T(0), lnnsize, lnnsize)
+    println("Calculate T matrix...")
+    n = 0
+    @time for j=1:lnnsize, i=1:lnnsize
+        l_μ, n_μ, n_ν = getlnn(cmodes, i)
+        l_ρ, n_ρ, n_ω = getlnn(cmodes, j)
+        nl_νμ = getidx(amodes, n_ν, l_μ, 0)
+        nl_μμ = getidx(amodes, n_μ, l_μ, 0)
+        nl_ρρ = getidx(amodes, n_ρ, l_ρ, 0)
+        nl_ωρ = getidx(amodes, n_ω, l_ρ, 0)
+        for m_μ=-l_μ:l_μ
+            Tμ = Complex{T}(0)
+            Tν = Complex{T}(0)
+            for m_ρ=-l_ρ:l_ρ
+                n += 1
+                wW_μ_ρ = get_anlmNLM_r(wW_nlm_NLM, wW_nlm_NLM_negm, nl_μμ, m_μ, nl_ρρ, m_ρ)
+                #wW_ν_ρ = 0.0im #get_anlmNLM_r(wW_nlm_NLM, wW_nlm_NLM_negm, nl_νμ, m_μ, nl_ρρ, m_ρ)
+                Ws_ω = 1.0im #get_anlm_r(Ws_nlm, nl_ωρ, m_ρ)
+                Tμ += wW_μ_ρ * Ws_ω
+                #Tν += wW_ν_ρ * Ws_ω
+            end
+            wW_ν = 0.1im #get_anlm_r(wW_nlm, nl_νμ, m_μ)
+            wW_μ = 0.2im #get_anlm_r(wW_nlm, nl_μμ, m_μ)
+            TlnnLNN[i,j] = real(wW_ν * Tμ + wW_μ * Tν)
+        end
+        TlnnLNN[i,j] /= Veff * (2*l_μ + 1)
+    end
+    @show n
+    return TlnnLNN
+end
+
+
 @doc raw"""
-    calc_CobsA(Clnn, Nobs_th, cmix, nbar, Veff, cmodes, wk_cache=nothing;
+    calc_CobsA(C_th, cmix_W, cmix_wW, Veff, cmodes, wk_cache=nothing;
         method=:fast, Lmax=1)
 
 Calculate the observed power spectrum including the local average effect for a
@@ -267,7 +329,37 @@ constant nbar.
 
 The `method` is by default an approximate formula.
 """
-function calc_CobsA(Clnn, Nobs_th, cmix, nbar, Veff, cmodes, wk_cache=nothing;
+function calc_CobsA(C_th, cmix_W, cmix_wW, Veff, cmodes, wk_cache=nothing;
+        method=:fast, Lmax=1)
+    CwW_th = cmix_wW * C_th
+    dn00 = calc_dn00(cmodes)
+    DWlnn = calc_DWlnn(cmix_W, cmodes, dn00 / √Veff)
+    DwWlnn = calc_DWlnn(cmix_wW, cmodes, dn00 / √Veff)
+
+    lnnsize = getlnnsize(cmodes)
+    DWlnn2lp1 = fill(0.0, lnnsize)
+    for i=1:lnnsize
+        l, n, n′ = getlnn(cmodes, i)
+        DWlnn2lp1[i] = (2 * l + 1) * DWlnn[i]
+    end
+
+    trCWD = C_th'DWlnn2lp1
+
+    CwWA = CwW_th - trCWD * DwWlnn
+    return CwWA
+end
+
+
+@doc raw"""
+calc_CobsA_old(Clnn, Nobs_th, cmix, nbar, Veff, cmodes, wk_cache=nothing;
+        method=:fast, Lmax=1)
+
+Calculate the observed power spectrum including the local average effect for a
+constant nbar.
+
+The `method` is by default an approximate formula.
+"""
+function calc_CobsA_old(Clnn, Nobs_th, cmix, nbar, Veff, cmodes, wk_cache=nothing;
         method=:fast, Lmax=1)
     dn00 = calc_dn00(cmodes)
     dn00obs = calc_dn00obs(dn00, nbar .* Nobs_th, cmodes)
@@ -317,6 +409,7 @@ average effect for a constant nbar.
 `kwargs` are passed to [calc_CobsA](@ref).
 """
 function calc_CNobsA(Clnn, Nobs_th, cmix, nbar, Veff, cmodes, wk_cache=nothing; kwargs...)
+    error("outdated function")
     NobsA = calc_NobsA(Nobs_th, cmix, nbar, Veff, cmodes)
     CobsA = calc_CNobsA(Clnn, Nobs_th, cmix, nbar, Veff, cmodes, wk_cache=nothing; kwargs...)
     return CobsA .+ NobsA

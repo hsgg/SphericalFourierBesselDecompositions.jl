@@ -312,6 +312,14 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
 end
 
 
+function get_wmix(w, w′, nl, m, NL, M)
+    (m >= 0 && M >= 0) && return w[nl+m, NL+M]
+    (m >= 0 && M < 0)  && return w′[nl+m, NL-M]
+    (m < 0  && M >= 0) && return (-1)^(m+M) * conj(w′[nl-m, NL+M])
+    return (-1)^(m-M) * conj(w[nl-m, NL-M])
+end
+
+
 # This should be very performant
 function win_lnn(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes)
     lnnsize = getlnnsize(cmodes)

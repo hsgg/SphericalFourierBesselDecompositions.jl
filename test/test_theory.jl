@@ -4,7 +4,7 @@ using SphericalFourierBesselDecompositions
 SFB = SphericalFourierBesselDecompositions
 
 
-@testset "Theory functions" begin
+@testset "Conversions nlm_NLM <--> lnN" begin
     rmin = 500.0
     rmax = 1000.0
     amodes = SFB.AnlmModes(3, 5, rmin, rmax)
@@ -42,6 +42,35 @@ SFB = SphericalFourierBesselDecompositions
         @test Clnn1 ≈ Clnn2
         @test CnlmNLM1 ≈ CnlmNLM2
     end
+end
+
+
+@testset "Local average effect" begin
+    #rmin = 500.0
+    #rmax = 1000.0
+    #amodes = SFB.AnlmModes(3, 5, rmin, rmax)
+    #cmodes = SFB.ClnnModes(amodes, Δnmax=1)
+
+    function testagain()
+        w = rand(ComplexF64, 100, 100)
+        w′ = rand(ComplexF64, 100, 100)
+        nl = 12
+        NL = 21
+        m = 4
+        M = 3
+
+        @time SFB.Theory.get_anlm_r(w, nl, m)
+        @time SFB.Theory.get_anlm_r(w, nl, m)
+        @time SFB.Theory.get_anlm_r(w, nl, m)
+
+        @time SFB.Theory.get_anlmNLM_r(w, w′, nl, m, NL, M)
+        @time SFB.Theory.get_anlmNLM_r(w, w′, nl, m, NL, M)
+        @time SFB.Theory.get_anlmNLM_r(w, w′, nl, m, NL, M)
+        @time SFB.Theory.get_anlmNLM_r(1, 1, 1, m, 1, M)
+        @time SFB.Theory.get_anlmNLM_r(1, 1, 1, m, 1, M)
+        @time SFB.Theory.get_anlmNLM_r(1, 1, 1, m, 1, M)
+    end
+    testagain()
 end
 
 

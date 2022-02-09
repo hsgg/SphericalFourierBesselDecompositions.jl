@@ -199,11 +199,11 @@ function window_chain(ell, n1, n2, cache::WindowChainsCacheFullWmix{T}) where {T
     while advance(m)
         nl2 = getidx(cache.amodes, n2[end], ell[end], 0)
         nl1 = getidx(cache.amodes, n1[1], ell[1], 0)
-        w = get_wmix(cache.wmix, cache.wmix_negm, nl2, m[end], nl1, m[1])
+        w = Windows.get_wmix(cache.wmix, cache.wmix_negm, nl2, m[end], nl1, m[1])
         for i=2:length(ell)
             nl2 = getidx(cache.amodes, n2[i-1], ell[i-1], 0)
             nl1 = getidx(cache.amodes, n1[i], ell[i], 0)
-            w *= get_wmix(cache.wmix, cache.wmix_negm, nl2, m[i-1], nl1, m[i])
+            w *= Windows.get_wmix(cache.wmix, cache.wmix_negm, nl2, m[i-1], nl1, m[i])
         end
         Wk += real(w)
         #@show m,w
@@ -563,14 +563,6 @@ end
 window_wmix = window_wmix_wignerfamilies
 #window_wmix = window_wmix_wignersymbols
 
-
-
-function get_wmix(w, w′, nl, m, NL, M)
-    (m >= 0 && M >= 0) && return w[nl+m, NL+M]
-    (m >= 0 && M < 0)  && return w′[nl+m, NL-M]
-    (m < 0  && M >= 0) && return (-1)^(m+M) * conj(w′[nl-m, NL+M])
-    return (-1)^(m-M) * conj(w[nl-m, NL-M])
-end
 
 
 
