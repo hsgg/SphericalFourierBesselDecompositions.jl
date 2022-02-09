@@ -31,6 +31,7 @@
 module Cat2Anlm
 
 export cat2amln, winweights2galweights
+export field2anlm
 
 
 using SharedArrays
@@ -39,6 +40,8 @@ using ..HealpixHelpers
 #using ..HealPy
 using ..SeparableArrays
 using ..Modes
+
+using ..Windows
 
 #using Statistics
 
@@ -324,6 +327,17 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weight)
     end
     @assert all(isfinite.(anlm))
     return anlm
+end
+
+
+# field2anlm(): Convenience function to transform a given field (not catalog)
+# into SFB space. It can probably be optimized quite a bit.
+function field2anlm(f, wmodes, amodes)
+    rθϕ = fill(0.0, 3, 0)
+    nbar = 1.0
+    f_rhatln = win_rhat_ln(f, wmodes, amodes)
+    f_nlm = -cat2amln(rθϕ, amodes, nbar, f_rhatln, [])
+    return f_nlm
 end
 
 
