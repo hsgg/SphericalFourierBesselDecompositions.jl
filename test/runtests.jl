@@ -3,7 +3,7 @@
 
 using SphericalFourierBesselDecompositions
 ENV["JULIA_DEBUG"] = SphericalFourierBesselDecompositions
-SFB = SphericalFourierBesselDecompositions
+const SFB = SphericalFourierBesselDecompositions
 
 using Test
 

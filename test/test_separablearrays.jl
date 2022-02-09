@@ -4,7 +4,7 @@
 using Test
 
 using SphericalFourierBesselDecompositions
-SFB = SphericalFourierBesselDecompositions
+const SFB = SphericalFourierBesselDecompositions
 using .SFB.SeparableArrays
 
 ## This might be quicker instead of loading the full SFB module:

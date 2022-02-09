@@ -1,5 +1,5 @@
 using SphericalFourierBesselDecompositions
-SFB = SphericalFourierBesselDecompositions
+const SFB = SphericalFourierBesselDecompositions
 
 using Test
 

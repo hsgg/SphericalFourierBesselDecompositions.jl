@@ -13,10 +13,11 @@ package is supposed to do.
 First, load the package and create a shortcut
 ```julia
 using SphericalFourierBesselDecompositions
-SFB = SphericalFourierBesselDecompositions
+const SFB = SphericalFourierBesselDecompositions
 ```
 We will always assume that this shortcut has been created, as the package `SFB`
-does not export any symbols itself.
+does not export any symbols itself. Make the shortcut `const` can be important
+for performance.
 
 To perform a SFB decomposition, we create a modes object `amodes` that contains
 the modes and basis functions, and for the pseudo-SFB power spectrum we create

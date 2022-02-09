@@ -3,11 +3,13 @@
 The functions in here are exported into the main module. We will often assume
 that the user has defined the shortcut to the module:
 ```julia
-SFB = SphericalFourierBesselDecompositions
+const SFB = SphericalFourierBesselDecompositions
 ```
 Then, all functions can be called via `SFB.funcname()`. For example, the
 `SFB.GNL.SphericalBesselGnl()` constructor in the `SFB.GNL` module is called
-via `SFB.SphericalBesselGnl()`.
+via `SFB.SphericalBesselGnl()`. Making `SFB` a `const` can be important for
+performance if individual functions from the `SFB` module are called within a
+tight loop.
 
 ```@contents
 Pages = ["reference.md"]

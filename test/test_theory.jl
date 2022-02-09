@@ -1,7 +1,7 @@
 #!/usr/bin/env julia
 
 using SphericalFourierBesselDecompositions
-SFB = SphericalFourierBesselDecompositions
+const SFB = SphericalFourierBesselDecompositions
 
 
 @testset "Conversions nlm_NLM <--> lnN" begin
