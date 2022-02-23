@@ -40,8 +40,10 @@ export add_local_average_effect, calc_CNAnlmNLM
 
 using ..Modes
 using ..Windows
+using ..WindowChains
 using ..Cat2Anlm
 using QuadGK
+using LinearAlgebra
 
 
 function gen_Clnn_theory(pk, cmodes)
@@ -134,7 +136,7 @@ end
 ###################### Local average effect #########################################
 
 function add_local_average_effect_nowindow(CNobs, cmodes, Veff)
-    # currently assumes there is no window
+    # assumes there is no window
     nmax = cmodes.amodes.nmax_l[1]
     dn00 = √(4*π) .* [quadgk(r->r^2 * cmodes.amodes.basisfunctions(n,0,r),
                              cmodes.amodes.rmin, cmodes.amodes.rmax)[1]
@@ -211,55 +213,6 @@ function calc_NobsA(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes)
 end
 
 
-function calc_Dlnnobs(cmix, dn00, cmodes)
-    lnnsize = getlnnsize(cmodes)
-    nmax = cmodes.amodes.nmax
-    Dlnnobs = fill(0.0, lnnsize)
-    for i=1:lnnsize
-	l1, n1, n2 = getlnn(cmodes, i)
-	for n1′=1:nmax, n2′=1:nmax
-	    if isvalidlnn(cmodes, 0, n1′, n2′)
-		i′ = getidx(cmodes, 0, n1′, n2′)
-		Dlnnobs[i] += (2*l1 + 1) * cmix[i,i′] * dn00[n1′] * dn00[n2′]
-	    end
-	end
-    end
-    return Dlnnobs
-end
-
-
-function calc_W3l1n1n2(L, N, N′, dn00dn00V, cmodes, wk_cache)
-    lnnsize = getlnnsize(cmodes)
-    nmax = cmodes.amodes.nmax
-    ell = [L, -1, 0]
-    na = [N, 0, 0]
-    nb = [N′, 0, 0]
-    W3nn = fill(NaN, nmax, nmax)
-    W3l1n1n2 = fill(NaN, lnnsize)
-    for i1=1:lnnsize
-	l1, n1, n2 = getlnn(cmodes, i1)
-	ell[2] = l1
-	na[2] = n1
-	nb[2] = n2
-	for n=1:nmax
-	    na[3] = n
-	    for n′=1:nmax
-		nb[3] = n′
-		W3nn[n,n′] = window_chain(ell, na, nb, wk_cache)
-		if na[1] != nb[1]
-		    na[1], nb[1] = nb[1], na[1]
-		    W3nn[n,n′] += window_chain(ell, na, nb, wk_cache)
-		else
-		    W3nn[n,n′] *= 2
-		end
-	    end
-	end
-	W3l1n1n2[i1] = tr(dn00dn00V'W3nn)
-    end
-    return W3l1n1n2
-end
-
-
 function get_anlm_r(anlm, nl, m)
     if m >= 0
         return anlm[nl+m]
@@ -267,20 +220,7 @@ function get_anlm_r(anlm, nl, m)
     return (-1)^m * conj(anlm[nl+abs(m)])
 end
 
-#get_anlmNLM_r = Windows.get_wmix
-function get_anlmNLM_r(w, w′, nl, m, NL, M)
-    if m >= 0
-        #if M >= 0
-        #    return 1.0im #w[nl+m, NL+M]
-        #end
-        return 2.0im #w′[nl+m, NL-M]
-    end
-    #if M >= 0
-    #    return 3.0im #(-1)^(m+M) * conj(w′[nl-m, NL+M])
-    #end
-    return 4.0im #(-1)^(m-M) * conj(w[nl-m, NL-M])
-end
-
+const get_anlmNLM_r = Windows.get_wmix
 
 
 function calc_terms23_transform(wW_nlm_NLM, wW_nlm_NLM_negm, wW_nlm, W_nlm, cmodes::ClnnModes, Veff)
@@ -290,7 +230,6 @@ function calc_terms23_transform(wW_nlm_NLM, wW_nlm_NLM_negm, wW_nlm, W_nlm, cmod
     lnnsize = getlnnsize(cmodes)
     TlnnLNN = fill(T(0), lnnsize, lnnsize)
     println("Calculate T matrix...")
-    n = 0
     @time for j=1:lnnsize, i=1:lnnsize
         l_μ, n_μ, n_ν = getlnn(cmodes, i)
         l_ρ, n_ρ, n_ω = getlnn(cmodes, j)
@@ -302,20 +241,18 @@ function calc_terms23_transform(wW_nlm_NLM, wW_nlm_NLM_negm, wW_nlm, W_nlm, cmod
             Tμ = Complex{T}(0)
             Tν = Complex{T}(0)
             for m_ρ=-l_ρ:l_ρ
-                n += 1
                 wW_μ_ρ = get_anlmNLM_r(wW_nlm_NLM, wW_nlm_NLM_negm, nl_μμ, m_μ, nl_ρρ, m_ρ)
-                #wW_ν_ρ = 0.0im #get_anlmNLM_r(wW_nlm_NLM, wW_nlm_NLM_negm, nl_νμ, m_μ, nl_ρρ, m_ρ)
-                Ws_ω = 1.0im #get_anlm_r(Ws_nlm, nl_ωρ, m_ρ)
+                wW_ν_ρ = get_anlmNLM_r(wW_nlm_NLM, wW_nlm_NLM_negm, nl_νμ, m_μ, nl_ρρ, m_ρ)
+                Ws_ω = get_anlm_r(Ws_nlm, nl_ωρ, m_ρ)
                 Tμ += wW_μ_ρ * Ws_ω
-                #Tν += wW_ν_ρ * Ws_ω
+                Tν += wW_ν_ρ * Ws_ω
             end
-            wW_ν = 0.1im #get_anlm_r(wW_nlm, nl_νμ, m_μ)
-            wW_μ = 0.2im #get_anlm_r(wW_nlm, nl_μμ, m_μ)
-            TlnnLNN[i,j] = real(wW_ν * Tμ + wW_μ * Tν)
+            wW_ν = get_anlm_r(wW_nlm, nl_νμ, m_μ)
+            wW_μ = get_anlm_r(wW_nlm, nl_μμ, m_μ)
+            TlnnLNN[i,j] += real(wW_ν * Tμ + conj(wW_μ * Tν))
         end
         TlnnLNN[i,j] /= Veff * (2*l_μ + 1)
     end
-    @show n
     return TlnnLNN
 end
 
@@ -345,58 +282,10 @@ function calc_CobsA(C_th, cmix_W, cmix_wW, Veff, cmodes, wk_cache=nothing;
 
     trCWD = C_th'DWlnn2lp1
 
-    CwWA = CwW_th - trCWD * DwWlnn
-    return CwWA
-end
+    return trCWD * DwWlnn
 
-
-@doc raw"""
-calc_CobsA_old(Clnn, Nobs_th, cmix, nbar, Veff, cmodes, wk_cache=nothing;
-        method=:fast, Lmax=1)
-
-Calculate the observed power spectrum including the local average effect for a
-constant nbar.
-
-The `method` is by default an approximate formula.
-"""
-function calc_CobsA_old(Clnn, Nobs_th, cmix, nbar, Veff, cmodes, wk_cache=nothing;
-        method=:fast, Lmax=1)
-    dn00 = calc_dn00(cmodes)
-    dn00obs = calc_dn00obs(dn00, nbar .* Nobs_th, cmodes)
-    DWlnn = calc_DWlnn(cmix, cmodes, dn00 / √Veff)
-    D̃lnnobs = calc_Dlnnobs(cmix, dn00 / √Veff, cmodes)
-    lnnsize = getlnnsize(cmodes)
-
-    CW3 = fill(0.0, lnnsize)
-    if method != :fast
-	LNNidx = Int[]
-	if method == :exact_sparse
-	    # only calculate ℓ < Δℓ to save time.
-	    Lmax = min(cmodes.amodes.lmax, Lmax)
-	    for l=0:Lmax, n=1:2, n′=n:2
-		if isvalidlnn(cmodes, l, n, n′)
-		    push!(LNNidx, getidx(cmodes, l, n, n′))
-		end
-	    end
-	else
-	    LNNidx = collect(1:lnnsize)
-	end
-	dn00dn00V = dn00 * dn00' / Veff
-	for LNN=LNNidx
-	    L, N, N′ = getlnn(cmodes, LNN)
-	    # expensive:
-	    W3l1n1n2 = calc_W3l1n1n2(L, N, N′, dn00dn00V, cmodes, wk_cache)
-	    CW3[LNN] = Clnn'W3l1n1n2 / (2*L+1)
-	end
-    else
-	# approximation
-	CW3 .= 2 * D̃lnnobs'Clnn * DWlnn
-    end
-
-    ClnnobsA = (cmix * Clnn
-                + D̃lnnobs'Clnn * DWlnn  # only lnn=011 really matters
-		- CW3)
-    return ClnnobsA
+    #CwWA = CwW_th - trCWD * DwWlnn
+    #return CwWA
 end
 
 

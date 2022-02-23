@@ -332,6 +332,8 @@ end
 
 # field2anlm(): Convenience function to transform a given field (not catalog)
 # into SFB space. It can probably be optimized quite a bit.
+# Unfortunately, the inverse is not straightforward, because of the layout of
+# `f_nlm` as a vector and `f` as a matrix.
 function field2anlm(f, wmodes, amodes)
     rθϕ = fill(0.0, 3, 0)
     nbar = 1.0
