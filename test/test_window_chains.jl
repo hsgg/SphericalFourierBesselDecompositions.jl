@@ -43,8 +43,8 @@ using LinearAlgebra
 
             nl1 = SFB.getidx(cache2.amodes, n1, l1, 0)
             nl2 = SFB.getidx(cache2.amodes, n2, l2, 0)
-            w2 = SFB.WindowChains.get_wmix(cache2.wmix, cache2.wmix_negm,
-                                           nl1, m1, nl2, m2)
+            w2 = SFB.Windows.get_wmix(cache2.wmix, cache2.wmix_negm,
+                                      nl1, m1, nl2, m2)
             verbose && @show cache2.wmix[nl1+abs(m1),nl2+abs(m2)]
             verbose && @show cache2.wmix'[nl1+abs(m1),nl2+abs(m2)]
             verbose && @show conj(cache2.wmix[nl2+abs(m2),nl1+abs(m1)])

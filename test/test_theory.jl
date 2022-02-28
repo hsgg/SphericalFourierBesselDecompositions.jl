@@ -66,9 +66,6 @@ end
         @time SFB.Theory.get_anlmNLM_r(w, w′, nl, m, NL, M)
         @time SFB.Theory.get_anlmNLM_r(w, w′, nl, m, NL, M)
         @time SFB.Theory.get_anlmNLM_r(w, w′, nl, m, NL, M)
-        @time SFB.Theory.get_anlmNLM_r(1, 1, 1, m, 1, M)
-        @time SFB.Theory.get_anlmNLM_r(1, 1, 1, m, 1, M)
-        @time SFB.Theory.get_anlmNLM_r(1, 1, 1, m, 1, M)
     end
     testagain()
 end
