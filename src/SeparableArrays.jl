@@ -47,7 +47,7 @@ module SeparableArrays
 
 
 export SeparableArray, @SeparableArray
-export exponentiate
+export exponentiate, elementwise_mult
 
 
 struct SeparableArray{T,N,A1,A2} <: AbstractArray{T,N}
@@ -144,6 +144,14 @@ function exponentiate(s::SeparableArray, exponent::Number)
     return SeparableArray(a1, a2, name1=s.name1, name2=s.name2)
 end
 #Base.broadcasted(::typeof(^), s::SeparableArray, e::Number) = exponentiate(s, e)
+
+
+function elementwise_mult(a1::SeparableArray, a2::SeparableArray)
+    arr1 = a1.arr1 .* a2.arr1
+    arr2 = a1.arr2 .* a2.arr2
+    return SeparableArray(arr1, arr2; name1=a1.name1, name2=a1.name2)
+end
+elementwise_mult(a1, a2) = a1 .* a2  # fallback
 
 
 
