@@ -464,6 +464,26 @@ using LinearAlgebra
         wk = SFB.window_chain(ell, n1, n2, cache)
         @show wk
     end
+
+
+    @testset "calc_wmix_all()" begin
+        rmin = 500.0
+        rmax = 1000.0
+        amodes = SFB.AnlmModes(0.02, rmin, rmax)
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
+        @show amodes.lmax_n
+        win0 = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate, :separable)
+        win1 = win0[:,:]
+        @show typeof(win0) typeof(win1)
+        @assert typeof(win0) <: SFB.SeparableArray
+        @assert typeof(win1) <: Matrix
+
+        @time w0, w0m = SFB.calc_wmix_all(win0, wmodes, amodes)
+        @time w1, w1m = SFB.calc_wmix_all(win1, wmodes, amodes)
+
+        @test w0 ≈ w1
+        @test w0m ≈ w1m
+    end
 end
 
 

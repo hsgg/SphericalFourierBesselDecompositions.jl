@@ -59,6 +59,7 @@ module WindowChains
 
 export WindowChainsCache
 export window_chain
+export calc_wmix_all
 
 using ..Windows
 using WignerSymbols
@@ -70,6 +71,7 @@ using ..NDIterators
 using ..SeparableArrays
 using ..WignerChains
 using ..Modes
+using ProgressMeter
 
 
 ######### WindowChainsCache ##################################################
@@ -338,12 +340,14 @@ end
 
 
 function calc_Wlmlm(mask, lmax, nside)
-    wlm, LMcache = calc_Wlm(mask, lmax, nside)
+    println("Calculate Wlm...")
+    @time wlm, LMcache = calc_Wlm(mask, lmax, nside)
+    println("Calculate Wlmlm...")
     LMAX = 2 * lmax
     lmsize = numberOfAlms(LMAX)
     wlmlm = fill(NaN*im, lmsize, lmsize)
     wlmlm_negm = fill(NaN*im, lmsize, lmsize)
-    for l=0:lmax, m=0:l, L=0:lmax, M=0:L
+    @showprogress for l=0:lmax, m=0:l, L=0:lmax, M=0:L
         i = LMcache[l+1][abs(m)+1]
         j = LMcache[L+1][abs(M)+1]
         wlmlm[i,j] = window_wmix(l, m, L, M, wlm, LMcache)
@@ -374,13 +378,14 @@ end
 
 
 function calc_Ilnln(phi, wmodes, amodes)
+    println("Calculate Ilnln...")
     check_nsamp(amodes, wmodes)
 
-    # gnlr
+    println("Cache radial basis functions...")
     r, Δr = window_r(wmodes)
     gnl = amodes.basisfunctions
     gnlr = fill(NaN, length(r), size(gnl.knl)...)
-    for l=0:amodes.lmax, n=1:amodes.nmax_l[l+1]
+    @time for l=0:amodes.lmax, n=1:amodes.nmax_l[l+1]
         @. gnlr[:,n,l+1] = gnl(n,l,r)
     end
 
@@ -390,7 +395,7 @@ function calc_Ilnln(phi, wmodes, amodes)
     nmax = amodes.nmax
     nmax_l = amodes.nmax_l
     Ilnln = fill(NaN, lmax+1, nmax, lmax+1, nmax)
-    for l2=0:lmax, n2=1:nmax_l[l2+1], l1=0:lmax, n1=1:nmax_l[l1+1]
+    @showprogress for l2=0:lmax, n2=1:nmax_l[l2+1], l1=0:lmax, n1=1:nmax_l[l1+1]
         #@show l2, n2, l1, n1
         !isnan(Ilnln[l1+1,n1,l2+1,n2]) && continue
         I = Δr * sum(@. r^2 * gnlr[:,n1,l1+1] * gnlr[:,n2,l2+1] * phi)
@@ -565,6 +570,33 @@ window_wmix = window_wmix_wignerfamilies
 
 
 
+#################################################################
+# This section really belongs into windows.jl, but that would create a circular
+# dependency, so we put it here, for now.
+
+function calc_wmix_all(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes)
+    wmix = calc_wmix(win, wmodes, amodes)
+    wmix′ = calc_wmix(win, wmodes, amodes, neg_m=true)
+    return wmix, wmix′
+end
+
+# specialize to SeparableArray
+function calc_wmix_all(win::SeparableArray, wmodes::ConfigurationSpaceModes, amodes::AnlmModes)
+    cache = WindowChainsCacheSeparableWmix(win, wmodes, amodes)
+    nlmsize = getnlmsize(amodes)
+    wmix = fill(NaN*im, nlmsize, nlmsize)
+    wmix_negm = fill(NaN*im, nlmsize, nlmsize)
+    @showprogress for j=1:nlmsize, i=1:nlmsize
+        n, l, m = getnlm(amodes, i)
+        N, L, M = getnlm(amodes, j)
+        wlmlm = get_wlmlm(cache, l, m, L, M)
+        wlmlm_negm = get_wlmlm(cache, l, -m, L, M)
+        Ilnln = cache.Ilnln[l+1,n,L+1,N]
+        wmix[i,j] = wlmlm * Ilnln
+        wmix_negm[i,j] = wlmlm_negm * Ilnln
+    end
+    return wmix, wmix_negm
+end
 
 
 end

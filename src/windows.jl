@@ -261,6 +261,7 @@ end
 
 
 # This should be very performant
+# Also checkout calc_wmix_all() in window_chains.jl.
 function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_m=false)
     nlmsize = getnlmsize(amodes)
     wmix = fill(NaN*im, nlmsize, nlmsize)
