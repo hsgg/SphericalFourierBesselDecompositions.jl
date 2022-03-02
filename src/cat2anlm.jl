@@ -251,7 +251,7 @@ julia> using SphericalFourierBesselDecompositions
 julia> cat2amln(rθϕ, ...)
 ```
 """
-function cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weight)
+function cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weight=ones(eltype(rθϕ), size(rθϕ,2)))
     T = promote_type(eltype(rθϕ), eltype(win_rhat_ln))
     r, θ, ϕ = sortout(rθϕ, amodes.nside)
     @show nbar length(r)
