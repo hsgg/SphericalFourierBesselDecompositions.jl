@@ -584,6 +584,7 @@ end
 function calc_wmix_all(win::SeparableArray, wmodes::ConfigurationSpaceModes, amodes::AnlmModes)
     cache = WindowChainsCacheSeparableWmix(win, wmodes, amodes)
     nlmsize = getnlmsize(amodes)
+    println("Calculate wmix/_negm (2 × $nlmsize × $nlmsize)...")
     wmix = fill(NaN*im, nlmsize, nlmsize)
     wmix_negm = fill(NaN*im, nlmsize, nlmsize)
     @showprogress for j=1:nlmsize, i=1:nlmsize
