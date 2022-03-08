@@ -143,6 +143,7 @@ function exponentiate(s::SeparableArray, exponent::Number)
     a2 = s.arr2 .^ exponent
     return SeparableArray(a1, a2, name1=s.name1, name2=s.name2)
 end
+exponentiate(s, e) = s .^ e
 #Base.broadcasted(::typeof(^), s::SeparableArray, e::Number) = exponentiate(s, e)
 
 
