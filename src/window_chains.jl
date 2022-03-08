@@ -74,13 +74,29 @@ using ..Modes
 using ProgressMeter
 
 
+###################### LMcalcStruct (replacement for LMcache)
+struct LMcalcStruct
+    lmax::Int
+    tval::Int
+end
+LMcalcStruct(lmax) = LMcalcStruct(lmax, 2 * lmax + 1)
+
+Base.getindex(lm::LMcalcStruct, lp1::Int, mp1::Int) = begin
+    m = mp1 - 1
+    tval = lm.tval
+    #return lp1 + m * lmax - ((m - 1) * m) ÷ 2
+    return lp1 + ((m * (tval - m)) >> 1)
+end
+
+
+
 ######### WindowChainsCache ##################################################
 
 abstract type WindowChainsCache{T<:Real} end
 
-struct WindowChainsCacheWignerChain{T} <: WindowChainsCache{T}
+struct WindowChainsCacheWignerChain{T,LMC} <: WindowChainsCache{T}
     I_LM_ln_ln::Array{Complex{T},5}
-    LMcache::Array{Array{Int,1},1}
+    LMcache::LMC
 end
 
 struct WindowChainsCacheFullWmix{T} <: WindowChainsCache{T}
@@ -89,22 +105,22 @@ struct WindowChainsCacheFullWmix{T} <: WindowChainsCache{T}
     amodes::AnlmModes
 end
 
-struct WindowChainsCacheFullWmixOntheflyWmix{T} <: WindowChainsCache{T}
+struct WindowChainsCacheFullWmixOntheflyWmix{T,LMC} <: WindowChainsCache{T}
     I_LM_ln_ln::Array{Complex{T},5}
-    LMcache::Array{Array{Int,1},1}
+    LMcache::LMC
 end
 
-struct WindowChainsCacheSeparableWmix{T} <: WindowChainsCache{T}
+struct WindowChainsCacheSeparableWmix{T,LMC} <: WindowChainsCache{T}
     Wlmlm::Array{Complex{T},2}
     Wlmlm_negm::Array{Complex{T},2}
-    LMcache::Array{Array{Int,1},1}
+    LMcache::LMC
     Ilnln::Array{T,4}
     amodes::AnlmModes
 end
 
-struct WindowChainsCacheSeparableWmixOntheflyWlmlm{T} <: WindowChainsCache{T}
+struct WindowChainsCacheSeparableWmixOntheflyWlmlm{T,LMC} <: WindowChainsCache{T}
     Wlm::Array{Complex{T},1}
-    LMcache::Array{Array{Int,1},1}
+    LMcache::LMC
     Ilnln::Array{T,4}
     amodes::AnlmModes
 end
@@ -121,7 +137,7 @@ function WindowChainsCacheWignerChain(win, wmodes, amodes)
     LMAX = 2 * amodes.lmax
     Wr_lm = calc_Wr_lm(win, LMAX, amodes.nside)
     alm = Alm(LMAX, LMAX)
-    LMcache = [almIndex(alm, L, 0:L) for L=0:LMAX]
+    LMcache = LMcalcStruct(LMAX)
     lmsize = numberOfAlms(LMAX)
     #@show LMcache
     #@show typeof(LMcache)
@@ -334,22 +350,21 @@ function calc_Wlm(mask, lmax, nside)
     LMAX = 2 * lmax
     mask = udgrade(mask, nside)
     Wlm = mymap2alm(mask, lmax=LMAX)
-    LMcache = [almIndex(Wlm, L, 0:L) for L=0:LMAX]
+    LMcache = LMcalcStruct(LMAX)
     return Wlm.alm, LMcache
 end
 
 
 function calc_Wlmlm(mask, lmax, nside)
-    println("Calculate Wlm...")
-    @time wlm, LMcache = calc_Wlm(mask, lmax, nside)
-    println("Calculate Wlmlm...")
+    wlm, LMcache = calc_Wlm(mask, lmax, nside)
     LMAX = 2 * lmax
     lmsize = numberOfAlms(LMAX)
     wlmlm = fill(NaN*im, lmsize, lmsize)
     wlmlm_negm = fill(NaN*im, lmsize, lmsize)
-    @showprogress for l=0:lmax, m=0:l, L=0:lmax, M=0:L
-        i = LMcache[l+1][abs(m)+1]
-        j = LMcache[L+1][abs(M)+1]
+    #@showprogress 1 "Wlmlm: " for l=0:lmax, m=0:l, L=0:lmax, M=0:L
+    @showprogress 1 "Wlmlm: " for M=0:lmax, m=0:lmax, L=M:lmax, l=m:lmax
+        i = LMcache[l+1,abs(m)+1]
+        j = LMcache[L+1,abs(M)+1]
         wlmlm[i,j] = window_wmix(l, m, L, M, wlm, LMcache)
         wlmlm_negm[i,j] = window_wmix(l, m, L, -M, wlm, LMcache)
     end
@@ -358,8 +373,8 @@ end
 
 
 function get_wlmlm(cache::WindowChainsCacheSeparableWmix, l::Int, m::Int, L::Int, M::Int)
-    i = cache.LMcache[l+1][abs(m)+1]
-    j = cache.LMcache[L+1][abs(M)+1]
+    i = cache.LMcache[l+1,abs(m)+1]
+    j = cache.LMcache[L+1,abs(M)+1]
     if m >= 0
         if M >= 0
             return cache.Wlmlm[i,j]
@@ -378,14 +393,12 @@ end
 
 
 function calc_Ilnln(phi, wmodes, amodes)
-    println("Calculate Ilnln...")
     check_nsamp(amodes, wmodes)
 
-    println("Cache radial basis functions...")
     r, Δr = window_r(wmodes)
     gnl = amodes.basisfunctions
     gnlr = fill(NaN, length(r), size(gnl.knl)...)
-    @time for l=0:amodes.lmax, n=1:amodes.nmax_l[l+1]
+    for l=0:amodes.lmax, n=1:amodes.nmax_l[l+1]
         @. gnlr[:,n,l+1] = gnl(n,l,r)
     end
 
@@ -395,7 +408,7 @@ function calc_Ilnln(phi, wmodes, amodes)
     nmax = amodes.nmax
     nmax_l = amodes.nmax_l
     Ilnln = fill(NaN, lmax+1, nmax, lmax+1, nmax)
-    @showprogress for l2=0:lmax, n2=1:nmax_l[l2+1], l1=0:lmax, n1=1:nmax_l[l1+1]
+    @showprogress 1 "Ilnln: " for l2=0:lmax, n2=1:nmax_l[l2+1], l1=0:lmax, n1=1:nmax_l[l1+1]
         #@show l2, n2, l1, n1
         !isnan(Ilnln[l1+1,n1,l2+1,n2]) && continue
         I = Δr * sum(@. r^2 * gnlr[:,n1,l1+1] * gnlr[:,n2,l2+1] * phi)
@@ -453,13 +466,13 @@ function window_chain_wigner_chain(ell, I_LM_l_l, LMcache)
 	    #@show L,M,w3jk
             (w3jk == 0) && continue
 
-            LM = LMcache[L[1]+1][abs(M[1])+1]
+            LM = LMcache[L[1]+1,abs(M[1])+1]
             I = I_LM_l_l[LM, k, 1]
             (M[1] < 0) && (I = conj(I))
             #@show L[1],M[1],I
             Iprod = I
             for i=2:k
-                LM = LMcache[L[i]+1][abs(M[i])+1]
+                LM = LMcache[L[i]+1,abs(M[i])+1]
                 I = I_LM_l_l[LM, i-1, i]
                 (M[i] < 0) && (I = conj(I))
                 Iprod *= I
@@ -540,7 +553,7 @@ function window_wmix_wignerfamilies(l, m, L, M, Wlm, LMcache)
     M1 = m - M
     w = T(0)*im
     for L1 in eachindex(wigs)
-        L1M1 = LMcache[L1+1][abs(M1)+1]
+        L1M1 = LMcache[L1+1,abs(M1)+1]
         Iterm = Wlm[L1M1]
         if M1 < 0
             Iterm = (-1)^M1 * conj(Iterm)
@@ -554,7 +567,7 @@ function window_wmix_wignersymbols(l, m, L, M, Wlm, LMcache)
     M1 = m - M
     w = T(0)*im
     for L1 in max(abs(L-l),abs(M1)):(L+l)
-        L1M1 = LMcache[L1+1][abs(M1)+1]
+        L1M1 = LMcache[L1+1,abs(M1)+1]
         Iterm = Wlm[L1M1]
         if M1 < 0
             Iterm = (-1)^M1 * conj(Iterm)
@@ -583,11 +596,17 @@ end
 # specialize to SeparableArray
 function calc_wmix_all(win::SeparableArray, wmodes::ConfigurationSpaceModes, amodes::AnlmModes)
     cache = WindowChainsCacheSeparableWmix(win, wmodes, amodes)
+    wmix, wmix_negm = wkcache2wmix(cache)
+    return wmix, wmix_negm
+end
+
+
+function wkcache2wmix(cache::WindowChainsCacheSeparableWmix)
+    amodes = cache.amodes
     nlmsize = getnlmsize(amodes)
-    println("Calculate wmix/_negm (2 × $nlmsize × $nlmsize)...")
     wmix = fill(NaN*im, nlmsize, nlmsize)
     wmix_negm = fill(NaN*im, nlmsize, nlmsize)
-    @showprogress for j=1:nlmsize, i=1:nlmsize
+    @showprogress 1 "wmix:  " for j=1:nlmsize, i=1:nlmsize
         n, l, m = getnlm(amodes, i)
         N, L, M = getnlm(amodes, j)
         wlmlm = get_wlmlm(cache, l, m, L, M)
