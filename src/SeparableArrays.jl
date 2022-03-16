@@ -152,6 +152,12 @@ function elementwise_mult(a1::SeparableArray, a2::SeparableArray)
     arr2 = a1.arr2 .* a2.arr2
     return SeparableArray(arr1, arr2; name1=a1.name1, name2=a1.name2)
 end
+function elementwise_mult(a1::Number, a2::SeparableArray)
+    arr1 = a1 .* a2.arr1
+    arr2 = a2.arr2
+    return SeparableArray(arr1, arr2; name1=a2.name1, name2=a2.name2)
+end
+elementwise_mult(a1::SeparableArray, a2::Number) = elementwise_mult(a2, a1)
 elementwise_mult(a1, a2) = a1 .* a2  # fallback
 
 

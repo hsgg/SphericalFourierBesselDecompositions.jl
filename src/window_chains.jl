@@ -585,7 +585,8 @@ window_wmix = window_wmix_wignerfamilies
 
 #################################################################
 # This section really belongs into windows.jl, but that would create a circular
-# dependency, so we put it here, for now.
+# dependency. We put it here, so that we can use the specialization to
+# separable arrays that was developed here.
 
 function calc_wmix_all(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes)
     wmix = calc_wmix(win, wmodes, amodes)
