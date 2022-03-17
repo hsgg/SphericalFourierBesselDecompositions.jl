@@ -298,6 +298,19 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
         features = filter(i -> i != :rotate, features)
     end
 
+    if :flip in features
+        maskflipped = deepcopy(mask)
+        maskflipped .= 0
+        reso = Resolution(nside)
+        for i=1:length(mask)
+            θ, ϕ = pix2angRing(reso, i)
+            θ = π - θ
+            p = ang2pixRing(reso, θ, ϕ)
+            maskflipped[p] = mask[i]
+        end
+        features = filter(i -> i != :flip, features)
+    end
+
 
     if :radial in features
         r0 = rmax * 0.55
