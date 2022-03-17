@@ -24,18 +24,24 @@ using Healpix
         rr, Δr = SFB.window_r(wmodes)
         Ωₚ = 4π / nside2npix(nside)
 
-        for idx_m=1:100
-            idx_r = 45
+        for idx_m=1:41:100, idx_r=1:41:100
             win.phi[idx_r] = 1
             win.mask[idx_m] = 1
             @show idx_r,idx_m
 
-            wmix1 = SFB.calc_wmix(win, wmodes, amodes)
-            wmix3 = SFB.calc_wmix(win, wmodes, amodes, neg_m=true)
-
             nlmsize = SFB.getnlmsize(amodes)
+
+            w1 = SFB.calc_wmix(win, wmodes, amodes)
+            w3 = SFB.calc_wmix(win, wmodes, amodes, neg_m=true)
+            wmix1 = fill(NaN*im, nlmsize, nlmsize)
+            wmix3 = fill(NaN*im, nlmsize, nlmsize)
+            wmix5 = fill(NaN*im, nlmsize, nlmsize)
+            wmix7 = fill(NaN*im, nlmsize, nlmsize)
+
             wmix0 = fill(NaN*im, nlmsize, nlmsize)
             wmix2 = fill(NaN*im, nlmsize, nlmsize)
+            wmix4 = fill(NaN*im, nlmsize, nlmsize)
+            wmix6 = fill(NaN*im, nlmsize, nlmsize)
             for nlm=1:nlmsize, NLM=1:nlmsize
                 n, l, m = SFB.getnlm(amodes, nlm)
                 N, L, M = SFB.getnlm(amodes, NLM)
@@ -44,17 +50,42 @@ using Healpix
                 ylm = SFB.sphericalharmonicsy(l, m, θ, ϕ)
                 ylnm = SFB.sphericalharmonicsy(l, -m, θ, ϕ)
                 yLM = SFB.sphericalharmonicsy(L, M, θ, ϕ)
+                yLnM = SFB.sphericalharmonicsy(L, -M, θ, ϕ)
                 gnl = amodes.basisfunctions
                 wmix0[nlm,NLM] = Δr * r^2 * gnl(n, l, r) * gnl(N, L, r) * Ωₚ * conj(ylm) * yLM
                 wmix2[nlm,NLM] = Δr * r^2 * gnl(n, l, r) * gnl(N, L, r) * Ωₚ * conj(ylnm) * yLM
+                wmix4[nlm,NLM] = Δr * r^2 * gnl(n, l, r) * gnl(N, L, r) * Ωₚ * conj(ylm) * yLnM
+                wmix6[nlm,NLM] = Δr * r^2 * gnl(n, l, r) * gnl(N, L, r) * Ωₚ * conj(ylnm) * yLnM
+
+                nl = SFB.getidx(amodes, n, l, 0)
+                NL = SFB.getidx(amodes, N, L, 0)
+                wmix1[nlm,NLM] = SFB.Windows.get_wmix(w1, w3, nl, m, NL, M)
+                wmix3[nlm,NLM] = SFB.Windows.get_wmix(w1, w3, nl, -m, NL, M)
+                wmix5[nlm,NLM] = SFB.Windows.get_wmix(w1, w3, nl, m, NL, -M)
+                wmix7[nlm,NLM] = SFB.Windows.get_wmix(w1, w3, nl, -m, NL, -M)
+
+                #@show (n,l,m),(N,L,M)
+                #@show w1[nlm,NLM]
+                #@show w3[nlm,NLM]
+                #@show wmix1[nlm,NLM]
+                #@show wmix3[nlm,NLM]
+                #@show wmix5[nlm,NLM]
+                #@show wmix7[nlm,NLM]
 
                 #w0 = round(wmix0, sigdigits=4)
                 #w1 = round(wmix[nlm,NLM], sigdigits=4)
                 #@show (n,l,m),(N,L,M),w0,w1
                 #@test wmix[nlm,NLM] ≈ wmix0  rtol=1e-3 atol=1e-10
             end
+            @test w1 ≈ wmix0  rtol=1e-3
+            @test w3 ≈ wmix2  rtol=1e-3
+            @test wmix1 == w1
+            @test wmix3 == w3
             @test wmix1 ≈ wmix0  rtol=1e-3
             @test wmix3 ≈ wmix2  rtol=1e-3
+            @test wmix5 ≈ wmix4  rtol=1e-3
+            @test wmix7 ≈ wmix6  rtol=1e-3
+            #@assert false
 
             win.phi[idx_r] = 0
             win.mask[idx_m] = 0

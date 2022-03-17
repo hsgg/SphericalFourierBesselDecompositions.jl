@@ -313,21 +313,15 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
 end
 
 
-#function get_wmix(w, w′, nl, m, NL, M)
-#    (m >= 0 && M >= 0) && return w[nl+m, NL+M]
-#    (m >= 0 && M < 0)  && return w′[nl+m, NL-M]
-#    (m < 0  && M >= 0) && return (-1)^(m+M) * conj(w′[nl-m, NL+M])
-#    return (-1)^(m-M) * conj(w[nl-m, NL-M])
-#end
 function get_wmix(w, w′, nl, m, NL, M)
     if m >= 0
         if M >= 0
             return w[nl+m, NL+M]
         end
-        return w′[nl+m, NL-M]
+        return (-1)^(m+M) * conj(w′[nl+m, NL-M])
     end
     if M >= 0
-        return (-1)^(m+M) * conj(w′[nl-m, NL+M])
+        return w′[nl-m, NL+M]
     end
     return (-1)^(m-M) * conj(w[nl-m, NL-M])
 end
