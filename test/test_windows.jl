@@ -9,7 +9,59 @@ using LinearAlgebra
 using Statistics
 using Healpix
 
+
 @testset "Mixing matrices" begin
+    @testset "Single-pixel masks" begin
+        rmin = 900.0
+        rmax = 1000.0
+        nside = 64
+        amodes = SFB.AnlmModes(3, 5, rmin, rmax, nside=nside)
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 100, amodes.nside)
+        win = SFB.make_window(wmodes, :separable)
+        win.phi .= 0
+        win.mask .= 0
+
+        rr, Δr = SFB.window_r(wmodes)
+        Ωₚ = 4π / nside2npix(nside)
+
+        for idx_m=1:100
+            idx_r = 45
+            win.phi[idx_r] = 1
+            win.mask[idx_m] = 1
+            @show idx_r,idx_m
+
+            wmix1 = SFB.calc_wmix(win, wmodes, amodes)
+            wmix3 = SFB.calc_wmix(win, wmodes, amodes, neg_m=true)
+
+            nlmsize = SFB.getnlmsize(amodes)
+            wmix0 = fill(NaN*im, nlmsize, nlmsize)
+            wmix2 = fill(NaN*im, nlmsize, nlmsize)
+            for nlm=1:nlmsize, NLM=1:nlmsize
+                n, l, m = SFB.getnlm(amodes, nlm)
+                N, L, M = SFB.getnlm(amodes, NLM)
+                r = rr[idx_r]
+                θ, ϕ = pix2angRing(Resolution(nside), idx_m)
+                ylm = SFB.sphericalharmonicsy(l, m, θ, ϕ)
+                ylnm = SFB.sphericalharmonicsy(l, -m, θ, ϕ)
+                yLM = SFB.sphericalharmonicsy(L, M, θ, ϕ)
+                gnl = amodes.basisfunctions
+                wmix0[nlm,NLM] = Δr * r^2 * gnl(n, l, r) * gnl(N, L, r) * Ωₚ * conj(ylm) * yLM
+                wmix2[nlm,NLM] = Δr * r^2 * gnl(n, l, r) * gnl(N, L, r) * Ωₚ * conj(ylnm) * yLM
+
+                #w0 = round(wmix0, sigdigits=4)
+                #w1 = round(wmix[nlm,NLM], sigdigits=4)
+                #@show (n,l,m),(N,L,M),w0,w1
+                #@test wmix[nlm,NLM] ≈ wmix0  rtol=1e-3 atol=1e-10
+            end
+            @test wmix1 ≈ wmix0  rtol=1e-3
+            @test wmix3 ≈ wmix2  rtol=1e-3
+
+            win.phi[idx_r] = 0
+            win.mask[idx_m] = 0
+        end
+    end
+
+
     @testset "No window" begin
         # Note: inaccuracies in this test are dominated by inaccuracies in healpix.
         rmin = 500.0
@@ -24,7 +76,7 @@ using Healpix
         for i′=1:size(diff,2), i=1:size(diff,1)
             @test isapprox(diff[i,i′], 0, atol=1e-2)
         end
-        @test isapprox(wmix, I, atol=1e-2)
+        @test wmix ≈ I  atol=1e-2
 
         # wmix_negm
         wmix_negm = SFB.calc_wmix(win, wmodes, amodes, neg_m=true)
