@@ -217,7 +217,7 @@ function get_anlm_r(anlm, nl, m)
     if m >= 0
         return anlm[nl+m]
     end
-    return (-1)^m * conj(anlm[nl+abs(m)])
+    return (-1)^m * conj(anlm[nl-m])
 end
 
 const get_anlmNLM_r = Windows.get_wmix

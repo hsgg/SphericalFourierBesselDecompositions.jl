@@ -7,6 +7,7 @@ const SFB = SphericalFourierBesselDecompositions
 using Test
 using LinearAlgebra
 using Profile
+using Healpix
 
 #using PyPlot
 
@@ -130,6 +131,52 @@ using Profile
         #@show abs.(anlm_const[idx])
         #@show abs.(anlm_fkp[idx])
         @show anlm_fkp[idx]
+    end
+
+
+    @testset "field2anlm()" begin
+        rmin = 500.0
+        rmax = 1000.0
+        nmax = 2
+        lmax = 3
+        nside = 256
+        nr = 100
+        amodes = SFB.AnlmModes(nmax, lmax, rmin, rmax, nside=nside)
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
+        f = SFB.make_window(wmodes)
+        f .= 0
+
+        rr, Δr = SFB.window_r(wmodes)
+        gnl = amodes.basisfunctions
+        Ωₚ = 4π / nside2npix(nside)
+
+        Δj = 3 * nside^2 + 7
+        Δi = 41
+        for j=1:Δj:nside2npix(nside), i=1:Δi:nr
+            f[i,j] = 1
+
+            r = rr[i]
+            θ, ϕ = pix2angRing(Resolution(nside), j)
+            @show i,j,r,θ,ϕ
+
+            anlm1 = round.(SFB.field2anlm(f, wmodes, amodes), sigdigits=6)
+
+            nlmsize = SFB.getnlmsize(amodes)
+            anlm0 = fill(NaN*im, nlmsize)
+            for nlm=1:nlmsize
+                n, l, m = SFB.getnlm(amodes, nlm)
+                ylm = SFB.sphericalharmonicsy(l, m, θ, ϕ)
+                anlm0[nlm] = round.(Δr * r^2 * gnl(n,l,r) * conj(ylm) * Ωₚ, sigdigits=6)
+                danlm = anlm0[nlm] - anlm1[nlm]
+                #@show n,l,m,anlm0[nlm],anlm1[nlm]
+                #@assert anlm0[nlm] ≈ anlm1[nlm]  rtol=1e-5 atol=1e-15
+            end
+            #@show anlm0 anlm1
+            @test anlm0 ≈ anlm1  rtol=1e-5
+            @assert isapprox(anlm0, anlm1, rtol=1e-5)
+
+            f[i,j] = 0
+        end
     end
 end
 

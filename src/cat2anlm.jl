@@ -334,7 +334,7 @@ end
 # into SFB space. It can probably be optimized quite a bit.
 # Unfortunately, the inverse is not straightforward, because of the layout of
 # `f_nlm` as a vector and `f` as a matrix.
-function field2anlm(f, wmodes, amodes)
+function field2anlm(f, wmodes::ConfigurationSpaceModes, amodes)
     rθϕ = fill(0.0, 3, 0)
     nbar = 1.0
     f_rhatln = win_rhat_ln(f, wmodes, amodes)
