@@ -20,6 +20,7 @@ long_tests = true
 
 ## runtests:
 @testset "SphericalFourierBesselDecompositions" begin
+    include("test_toplevel.jl")
     include("test_separablearrays.jl")
     include("test_gnl.jl")
     include("test_cat2anlm.jl")
