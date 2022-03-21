@@ -235,7 +235,7 @@ function calc_wmix_ii(l, m, l′, m′, gg1Wrlm, LMLM)
     w3j = w3j2
     #@show w3j
 
-    w3j000 = @. wigner3j000(L, l, l′)
+    w3j000 = @. wigner3j000(l, l′, L)
     #@show w3j000
     #@show size(w3j) size(L) size(w3j000)
     #@show eachindex(w3j) eachindex(L) eachindex(w3j000)
@@ -255,7 +255,9 @@ function calc_wmix_ii(l, m, l′, m′, gg1Wrlm, LMLM)
     if M < 0
         w_ang = (-1)^M * conj(w_ang)
     end
-    #@debug "wmix" i,i′ l,m l′,m′ w_ang gg1sum
+    #if l==1 && m==-1 && l′==0
+    #    @debug "wmix" l,m l′,m′ w_ang gg1Wrlm
+    #end
     return (-1)^m * w_ang
 end
 
@@ -304,6 +306,9 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
                 m = -m
             end
             wmix[i,i′] = calc_wmix_ii(l, m, l′, m′, gg1Wrlm, LMLM)
+            #if n==n′==1 && l==1 && m==-1 && l′==0
+            #    @debug "wmix" i,i′ n,l,m n′,l′,m′ wmix[i,i′]
+            #end
             #@show wmix[i,i′]
             @assert isfinite(wmix[i,i′])
         end

@@ -168,7 +168,6 @@ end
 function WindowChainsCacheFullWmix(win, wmodes, amodes)
     wmix = calc_wmix(win, wmodes, amodes)
     wmix′ = calc_wmix(win, wmodes, amodes, neg_m=true)
-    wmix′ = collect(wmix′')  # put negative m into the second index
     return WindowChainsCacheFullWmix(wmix, wmix′, amodes)
 end
 
@@ -366,7 +365,7 @@ function calc_Wlmlm(mask, lmax, nside)
         i = LMcache[l+1,abs(m)+1]
         j = LMcache[L+1,abs(M)+1]
         wlmlm[i,j] = window_wmix(l, m, L, M, wlm, LMcache)
-        wlmlm_negm[i,j] = window_wmix(l, m, L, -M, wlm, LMcache)
+        wlmlm_negm[i,j] = window_wmix(l, -m, L, M, wlm, LMcache)
     end
     return wlmlm, wlmlm_negm, LMcache
 end
@@ -379,15 +378,14 @@ function get_wlmlm(cache::WindowChainsCacheSeparableWmix, l::Int, m::Int, L::Int
         if M >= 0
             return cache.Wlmlm[i,j]
         else
-            return cache.Wlmlm_negm[i,j]
+            return (-1)^(m+M) * conj(cache.Wlmlm_negm[i,j])
         end
     else # m < 0
         w = if M >= 0
-            cache.Wlmlm_negm[i,j]
+            return cache.Wlmlm_negm[i,j]
         else
-            cache.Wlmlm[i,j]
+            return (-1)^(m+M) * conj(cache.Wlmlm[i,j])
         end
-        return conj(isodd(m+M) ? -w : w)
     end
 end
 
@@ -544,7 +542,6 @@ end
 function window_wmix_wignerfamilies(l, m, L, M, Wlm, LMcache)
     T = Float64
     wigs000 = wigner3j_f(l, L, 0, 0)
-    #@show l,L,-m,M
     wigs = wigner3j_f(l, L, -m, M)
     #@show eachindex(wigs000) eachindex(wigs)
     #@show length(wigs000) length(wigs)
@@ -558,8 +555,10 @@ function window_wmix_wignerfamilies(l, m, L, M, Wlm, LMcache)
         if M1 < 0
             Iterm = (-1)^M1 * conj(Iterm)
         end
+        #@show M1,Iterm
         w += √T(2*L1 + 1) * wigs000[L1] * wigs[L1] * Iterm
     end
+    #@show l,L,-m,M,w
     return (-1)^m * √((2*l + 1)*(2*L + 1) / (4*T(π))) * w
 end
 function window_wmix_wignersymbols(l, m, L, M, Wlm, LMcache)

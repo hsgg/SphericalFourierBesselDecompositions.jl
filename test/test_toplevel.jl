@@ -47,6 +47,7 @@ end
         @test y1p1 ≈ y1p1_c
         @test y1p1_d ≈ y1p1_c
 
+        @show y1m1 y1p1 -conj(y1m1)
     end
 end
 

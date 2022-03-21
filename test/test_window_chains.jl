@@ -7,6 +7,9 @@ const SFB = SphericalFourierBesselDecompositions
 using Test
 using LinearAlgebra
 
+#ts = Test.FallbackTestSet
+#Test.FallbackTestSet(desc) = Test.FallbackTestSet()
+#@testset ts "kjashd" begin
 @testset "Window Chains" begin
     # Note: a lot of the differences here come down to the choice of nside and
     # details of how healpy is used.
@@ -45,6 +48,7 @@ using LinearAlgebra
             nl2 = SFB.getidx(cache2.amodes, n2, l2, 0)
             w2 = SFB.Windows.get_wmix(cache2.wmix, cache2.wmix_negm,
                                       nl1, m1, nl2, m2)
+            #@show nl1,m1 nl2,m2 cache2.wmix_negm[3,1]
             verbose && @show cache2.wmix[nl1+abs(m1),nl2+abs(m2)]
             verbose && @show cache2.wmix'[nl1+abs(m1),nl2+abs(m2)]
             verbose && @show conj(cache2.wmix[nl2+abs(m2),nl1+abs(m1)])
@@ -77,7 +81,7 @@ using LinearAlgebra
             nlm1[3] = -nlm1[3]
             nlm2[3] = -nlm2[3]
             w2c, w4c, w5c = get_win(nlm1, nlm2; verbose=verbose)
-            verbose && @show nlm1,nlm2,nlm1[3]+nlm2[3]
+            verbose && @show nlm1,nlm2,nlm1[3]-nlm2[3]
             verbose && @show w2c w4c w5c
             @test w2c ≈ w4c ≈ w5c
 
@@ -89,18 +93,20 @@ using LinearAlgebra
             @test w5c ≈ (-1)^(nlm1[3] + nlm2[3]) * conj(w5a)
         end
 
+        println("====")
+        test_mode([1, 1, 1], [1, 0, 0])
         test_mode([1, 1, -1], [1, 0, 0])
+        test_mode([1, 1, 0], [1, 0, 0])
         test_mode([1, 1, 1], [1, 1, 1])
-        test_mode([1, 1, -1], [1, 1, 1])
 
         nlmsize = SFB.getnlmsize(amodes)
         long_tests && for j=1:nlmsize, i=1:nlmsize
             n1, l1, m1 = SFB.getnlm(amodes, i)
             n2, l2, m2 = SFB.getnlm(amodes, j)
-            test_mode([n1, l1, m1], [n2, l2, m2]; verbose=false)
-            test_mode([n1, l1, -m1], [n2, l2, m2]; verbose=false)
-            test_mode([n1, l1, m1], [n2, l2, -m2]; verbose=false)
-            test_mode([n1, l1, -m1], [n2, l2, -m2]; verbose=false)
+            test_mode([n1, l1, m1], [n2, l2, m2]; verbose=true)
+            test_mode([n1, l1, -m1], [n2, l2, m2]; verbose=true)
+            test_mode([n1, l1, m1], [n2, l2, -m2]; verbose=true)
+            test_mode([n1, l1, -m1], [n2, l2, -m2]; verbose=true)
         end
     end
 
@@ -485,6 +491,7 @@ using LinearAlgebra
         @test w0m ≈ w1m
     end
 end
+#end
 
 
 # vim: set sw=4 et sts=4 :
