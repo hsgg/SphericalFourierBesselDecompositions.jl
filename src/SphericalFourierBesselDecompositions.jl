@@ -401,9 +401,14 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
         end
     end
 
+    # Todo: The code structure below here makes more sense. To use, it
+    # successively incorporate features from above. However, the above assumes
+    # the order it is in, so start from the bottom!
+
     for feat in features
-        println("Processing feature $feat...")
         sfeat = string(feat)
+        println("Processing feature $feat...")
+
         if occursin("rotate_", sfeat)
             i = findfirst(isequal('_'), sfeat)
             i += 1
@@ -421,28 +426,25 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
 
             rotate_euler!(win, α, β, γ)
         end
-    end
 
-    if :binary_mask in features
-        if typeof(win) <: SeparableArray
-            for i=1:length(win.mask)
-                win.mask[i] = (win.mask[i] > 0.5) ? 1 : 0
-            end
-        else
-            for i=1:nr
-                for j=1:size(win,2)
-                    win[i,j] = (win[i,j] > 0.5) ? avg : 0
+        if feat == :binary_mask
+            if typeof(win) <: SeparableArray
+                for i=1:length(win.mask)
+                    win.mask[i] = (win.mask[i] > 0.5) ? 1 : 0
+                end
+            else
+                for i=1:nr
+                    for j=1:size(win,2)
+                        win[i,j] = (win[i,j] > 0.5) ? avg : 0
+                    end
                 end
             end
         end
-        features = filter(i -> i != :binary_mask, features)
+
+        features = filter(i -> i != feat, features)
     end
 
     @assert maximum(win) == 1
-
-    if length(features) != 0
-        @warn "Did not recognize all features" features
-    end
 
     return win
 end
