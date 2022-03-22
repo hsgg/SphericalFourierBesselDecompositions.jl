@@ -225,7 +225,7 @@ const get_anlmNLM_r = Windows.get_wmix
 
 function calc_terms23_transform(wW_nlm_NLM, wW_nlm_NLM_negm, wW_nlm, W_nlm, cmodes::ClnnModes, Veff)
     T = Float64
-    Ws_nlm = conj(W_nlm)
+    wWs_nlm = conj(wW_nlm)
     amodes = cmodes.amodes
     lnnsize = getlnnsize(cmodes)
     TlnnLNN = fill(T(0), lnnsize, lnnsize)
@@ -237,20 +237,31 @@ function calc_terms23_transform(wW_nlm_NLM, wW_nlm_NLM_negm, wW_nlm, W_nlm, cmod
         nl_μμ = getidx(amodes, n_μ, l_μ, 0)
         nl_ρρ = getidx(amodes, n_ρ, l_ρ, 0)
         nl_ωρ = getidx(amodes, n_ω, l_ρ, 0)
+        #doshow = (i ∈ [3] && j ∈ [1])
         for m_μ=-l_μ:l_μ
             Tμ = Complex{T}(0)
             Tν = Complex{T}(0)
             for m_ρ=-l_ρ:l_ρ
                 wW_μ_ρ = get_anlmNLM_r(wW_nlm_NLM, wW_nlm_NLM_negm, nl_μμ, m_μ, nl_ρρ, m_ρ)
                 wW_ν_ρ = get_anlmNLM_r(wW_nlm_NLM, wW_nlm_NLM_negm, nl_νμ, m_μ, nl_ρρ, m_ρ)
-                Ws_ω = get_anlm_r(Ws_nlm, nl_ωρ, m_ρ)
-                Tμ += wW_μ_ρ * Ws_ω
-                Tν += wW_ν_ρ * Ws_ω
+                W_ω = get_anlm_r(W_nlm, nl_ωρ, m_ρ)
+                Tμ += wW_μ_ρ * W_ω
+                Tν += wW_ν_ρ * W_ω
+                #if doshow
+                #    @show m_μ,m_ρ,wW_μ_ρ,W_ω,wW_μ_ρ*W_ω
+                #end
             end
-            wW_ν = get_anlm_r(wW_nlm, nl_νμ, m_μ)
-            wW_μ = get_anlm_r(wW_nlm, nl_μμ, m_μ)
-            TlnnLNN[i,j] += real(wW_ν * Tμ + conj(wW_μ * Tν))
+            wWs_ν = get_anlm_r(wWs_nlm, nl_νμ, m_μ)
+            wWs_μ = get_anlm_r(wWs_nlm, nl_μμ, m_μ)
+            #if doshow
+            #    @show m_μ,wWs_ν,Tμ,wWs_μ*Tν
+            #    @show m_μ,real(wWs_ν * Tμ + conj(wWs_μ * Tν)),wWs_ν * Tμ,conj(wWs_μ * Tν)
+            #end
+            TlnnLNN[i,j] += real(wWs_ν * Tμ + conj(wWs_μ * Tν))
         end
+        #if doshow
+        #    @show (l_μ,n_μ,n_ν),(l_ρ,n_ρ,n_ω),TlnnLNN[i,j]
+        #end
         TlnnLNN[i,j] /= Veff * (2*l_μ + 1)
     end
     return TlnnLNN
