@@ -44,6 +44,7 @@ using ..WindowChains
 using ..Cat2Anlm
 using QuadGK
 using LinearAlgebra
+using SparseArrays
 
 
 function gen_Clnn_theory(pk, cmodes)
@@ -223,20 +224,25 @@ end
 const get_anlmNLM_r = Windows.get_wmix
 
 
-function calc_terms23_transform(wW_nlm_NLM, wW_nlm_NLM_negm, wW_nlm, W_nlm, cmodes::ClnnModes, Veff)
+function calc_terms23_transform(wW_nlm_NLM, wW_nlm_NLM_negm, wW_nlm, W_nlm, amodes_red::AnlmModes, cmodes::ClnnModes, Veff)
     T = Float64
     wWs_nlm = conj(wW_nlm)
     amodes = cmodes.amodes
     lnnsize = getlnnsize(cmodes)
-    TlnnLNN = fill(T(0), lnnsize, lnnsize)
+    #TlnnLNN = fill(T(0), lnnsize, lnnsize)
+    TlnnLNN = spzeros(T, lnnsize, lnnsize)
     println("Calculate T matrix...")
     @time for j=1:lnnsize, i=1:lnnsize
         l_μ, n_μ, n_ν = getlnn(cmodes, i)
         l_ρ, n_ρ, n_ω = getlnn(cmodes, j)
-        nl_νμ = getidx(amodes, n_ν, l_μ, 0)
-        nl_μμ = getidx(amodes, n_μ, l_μ, 0)
-        nl_ρρ = getidx(amodes, n_ρ, l_ρ, 0)
-        nl_ωρ = getidx(amodes, n_ω, l_ρ, 0)
+        if l_μ > amodes_red.lmax_n[n_μ] || l_μ > amodes_red.lmax_n[n_ν] ||
+            l_ρ > amodes_red.lmax_n[n_ρ] || l_ρ > amodes_red.lmax_n[n_ω]
+            continue
+        end
+        nl_νμ = getidx(amodes_red, n_ν, l_μ, 0)
+        nl_μμ = getidx(amodes_red, n_μ, l_μ, 0)
+        nl_ρρ = getidx(amodes_red, n_ρ, l_ρ, 0)
+        nl_ωρ = getidx(amodes_red, n_ω, l_ρ, 0)
         #doshow = (i ∈ [3] && j ∈ [1])
         for m_μ=-l_μ:l_μ
             Tμ = Complex{T}(0)
@@ -269,16 +275,14 @@ end
 
 
 @doc raw"""
-    calc_CobsA(C_th, cmix_W, cmix_wW, Veff, cmodes, wk_cache=nothing;
-        method=:fast, Lmax=1)
+    calc_CobsA_term4(C_th, cmix_W, cmix_wW, Veff, cmodes)
 
 Calculate the observed power spectrum including the local average effect for a
 constant nbar.
 
 The `method` is by default an approximate formula.
 """
-function calc_CobsA(C_th, cmix_W, cmix_wW, Veff, cmodes, wk_cache=nothing;
-        method=:fast, Lmax=1)
+function calc_CobsA_term4(C_th, cmix_W, cmix_wW, Veff, cmodes)
     CwW_th = cmix_wW * C_th
     dn00 = calc_dn00(cmodes)
     DWlnn = calc_DWlnn(cmix_W, cmodes, dn00 / √Veff)
