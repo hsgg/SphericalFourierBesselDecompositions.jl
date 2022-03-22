@@ -1,7 +1,19 @@
+authors = ["Henry S. Grasshorn Gebhardt <henry.s.gebhardt@jpl.nasa.gov>"]
 name = "SphericalFourierBesselDecompositions"
 uuid = "7c5eff59-6392-4db1-b2e3-7d0560cca202"
-authors = ["Henry S. Grasshorn Gebhardt <henry.s.gebhardt@jpl.nasa.gov>"]
 version = "0.2.3"
+
+[compat]
+ArbNumerics = "^1.2"
+Healpix = "3"
+ProgressMeter = "1"
+PyCall = "^1.92"
+QuadGK = "^2.4"
+Roots = "1"
+SpecialFunctions = "^0.10.1, ^1, 2"
+WignerFamilies = "^1.0.1"
+WignerSymbols = "^1.1, 2"
+julia = "1"
 
 [deps]
 ArbNumerics = "7e558dbc-694d-5a72-987c-6f4ebed21442"
@@ -18,17 +30,9 @@ SharedArrays = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+WignerD = "87c4ff3e-34df-11e9-37a7-516cea4e0402"
 WignerFamilies = "a8f88a7a-0a89-491c-8ecb-051e99aa9f5e"
 WignerSymbols = "9f57e263-0b3d-5e2e-b1be-24f2bb48858b"
 
-[compat]
-ArbNumerics = "^1.2"
-Healpix = "3"
-ProgressMeter = "1"
-PyCall = "^1.92"
-QuadGK = "^2.4"
-Roots = "1"
-SpecialFunctions = "^0.10.1, ^1, 2"
-WignerFamilies = "^1.0.1"
-WignerSymbols = "^1.1, 2"
-julia = "1"
+[extras]
+CPUSummary = "2a0fbf3d-bb9c-48f3-b0a9-814d99fd7ab9"

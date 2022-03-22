@@ -46,6 +46,7 @@ include("covariance.jl")  # mostly theory, may be split at some point
 
 using Statistics
 using FastTransforms
+using WignerD
 #using Roots
 using Healpix
 using .HealPy
@@ -252,6 +253,46 @@ function gen_win_insep_cossin(mask, rmin, rmax, r, l, m)
     return win
 end
 
+function rotate_euler!(alm::Alm, α, β, γ)
+    for l=0:alm.lmax
+        @show l
+        Dlmm = wignerD(l, α, β, γ)
+        m = 0:l
+        ii = almIndex.(Ref(alm), l, m)
+        ii_negm = 1:l
+        ii_posm = l+1:2*l+1  # also includes m = 0
+        alm_posm = alm[ii]
+        alm_negm = (@. (-1)^m * conj(alm_posm))[end:-1:2]
+        C = Dlmm[ii_posm,ii_negm]
+        D = Dlmm[ii_posm,ii_posm]
+        alm.alm[ii] .= C * alm_negm + D * alm_posm
+    end
+    return alm
+end
+
+function rotate_euler(mask::HealpixMap, α, β, γ)  # only one not modifying its input
+    nside = npix2nside(length(mask))
+    alm = map2alm(mask)
+    rotate_euler!(alm, α, β, γ)
+    mask_rot = alm2map(alm, nside)
+    return mask_rot
+end
+
+function rotate_euler!(win::SeparableArray, α, β, γ)
+    hpmask = HealpixMap{eltype(win),Healpix.RingOrder}(win.mask)
+    win.mask .= rotate_euler(hpmask, α, β, γ)
+    win.mask ./= maximum(win.mask)
+    return win
+end
+
+function rotate_euler!(win, α, β, γ)
+    for i=1:nr
+        hpmask = HealpixMap{eltype(win),Healpix.RingOrder}(win[i,:])
+        win[i,:] .= rotate_euler(hpmask, α, β, γ)
+    end
+    return win
+end
+
 function make_window(wmodes::ConfigurationSpaceModes, features...)
     rmin = wmodes.rmin
     rmax = wmodes.rmax
@@ -358,6 +399,43 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
             win = gen_win_insep_cossin(mask, rmin, rmax, r, l, m)
             features = filter(i -> i != sym, features)
         end
+    end
+
+    for feat in features
+        println("Processing feature $feat...")
+        sfeat = string(feat)
+        if occursin("rotate_", sfeat)
+            i = findfirst(isequal('_'), sfeat)
+            i += 1
+            a = parse(Int, sfeat[i:i+2])
+            i += 4
+            b = parse(Int, sfeat[i:i+2])
+            i += 4
+            c = parse(Int, sfeat[i:i+2])
+            @show a,b,c
+
+            α = a * π/180
+            β = b * π/180
+            γ = c * π/180
+            @show α,β,γ
+
+            rotate_euler!(win, α, β, γ)
+        end
+    end
+
+    if :binary_mask in features
+        if typeof(win) <: SeparableArray
+            for i=1:length(win.mask)
+                win.mask[i] = (win.mask[i] > 0.5) ? 1 : 0
+            end
+        else
+            for i=1:nr
+                for j=1:size(win,2)
+                    win[i,j] = (win[i,j] > 0.5) ? avg : 0
+                end
+            end
+        end
+        features = filter(i -> i != :binary_mask, features)
     end
 
     @assert maximum(win) == 1
