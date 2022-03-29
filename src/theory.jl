@@ -227,7 +227,6 @@ const get_anlmNLM_r = Windows.get_wmix
 function calc_terms23_transform(wW_nlm_NLM, wW_nlm_NLM_negm, wW_nlm, W_nlm, amodes_red::AnlmModes, cmodes::ClnnModes, Veff)
     T = Float64
     wWs_nlm = conj(wW_nlm)
-    amodes = cmodes.amodes
     lnnsize = getlnnsize(cmodes)
     #TlnnLNN = fill(T(0), lnnsize, lnnsize)
     TlnnLNN = spzeros(T, lnnsize, lnnsize)
@@ -235,8 +234,8 @@ function calc_terms23_transform(wW_nlm_NLM, wW_nlm_NLM_negm, wW_nlm, W_nlm, amod
     @time for j=1:lnnsize, i=1:lnnsize
         l_μ, n_μ, n_ν = getlnn(cmodes, i)
         l_ρ, n_ρ, n_ω = getlnn(cmodes, j)
-        if l_μ > amodes_red.lmax_n[n_μ] || l_μ > amodes_red.lmax_n[n_ν] ||
-            l_ρ > amodes_red.lmax_n[n_ρ] || l_ρ > amodes_red.lmax_n[n_ω]
+        if !isvalidnlm(amodes_red, n_μ, l_μ, 0) || !isvalidnlm(amodes_red, n_ν, l_μ, 0) ||
+            !isvalidnlm(amodes_red, n_ρ, l_ρ, 0) || !isvalidnlm(amodes_red, n_ω, l_ρ, 0)
             continue
         end
         nl_νμ = getidx(amodes_red, n_ν, l_μ, 0)

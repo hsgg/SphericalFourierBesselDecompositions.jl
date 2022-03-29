@@ -51,7 +51,7 @@ using SparseArrays
 
 export AnlmModes, ClnnModes, ClnnBinnedModes
 export estimate_nside, estimate_nr
-export getnlmsize, getlmsize, getnlm, getidx, getklm
+export getnlmsize, getlmsize, getnlm, getidx, getklm, isvalidnlm
 export getlnnsize, getlnn, isvalidlnn
 export getlkk, getidxapprox
 export bandpower_binning_weights, bandpower_eigen_weights
@@ -167,6 +167,17 @@ function getnlmsize(modes::AnlmModes, nmax=modes.nmax)
         s += getlmsize(modes.lmax_n[n])
     end
     return s
+end
+
+
+function isvalidnlm(amodes::AnlmModes, n, l, m)
+    if n > amodes.nmax
+        return false
+    end
+    if l > amodes.lmax_n[n]
+        return false
+    end
+    return abs(m) <= l
 end
 
 
