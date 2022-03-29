@@ -46,7 +46,7 @@ using ..Windows
 #using Statistics
 
 
-function sortout(rθϕ, nside)
+function sortout(rθϕ, nside, weight)
     # Sort by r. This helps reduce recomputations in the spline for gnl(r).
     p = sortperm(rθϕ[1,:])
     rθϕ = rθϕ[:,p]
@@ -65,7 +65,8 @@ function sortout(rθϕ, nside)
     r = collect(rθϕ[1,:])
     θ = collect(rθϕ[2,:])
     ϕ = collect(rθϕ[3,:])
-    return r, θ, ϕ
+    weight = collect(weight[p])
+    return r, θ, ϕ, weight
 end
 
 
@@ -253,7 +254,7 @@ julia> cat2amln(rθϕ, ...)
 """
 function cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weight=ones(eltype(rθϕ), size(rθϕ,2)))
     T = promote_type(eltype(rθϕ), eltype(win_rhat_ln))
-    r, θ, ϕ = sortout(rθϕ, amodes.nside)
+    r, θ, ϕ, weight = sortout(rθϕ, amodes.nside, weight)
     @show nbar length(r)
     sphbesg = amodes.basisfunctions
     knl = amodes.knl
