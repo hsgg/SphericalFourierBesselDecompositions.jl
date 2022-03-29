@@ -286,7 +286,7 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
     check_nsamp(amodes, wmodes)
 
     gnl = amodes.basisfunctions
-    @showprogress for n′=1:amodes.nmax, n=1:amodes.nmax, l′=0:amodes.lmax_n[n′], l=0:amodes.lmax_n[n]
+    @showprogress 1 "wmix full: " for n′=1:amodes.nmax, n=1:amodes.nmax, l′=0:amodes.lmax_n[n′], l=0:amodes.lmax_n[n]
         ibase = getidx(amodes, n, l, 0)
         i′base = getidx(amodes, n′, l′, 0)
         ibase==1 && @show ibase,i′base, n,n′, l,l′, nlmsize
@@ -634,7 +634,7 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
     #@assert mix == mix1
 
     #@show "symmetric pmap"
-    @showprogress pmap(i′ -> begin
+    @showprogress 1 "cmix full: " pmap(i′ -> begin
                    L, = getlnn(cmodes, i′)
                    #@show i′,L,lnnsize
                    for i=i′:lnnsize
@@ -683,7 +683,7 @@ function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes;
     m_idxs = SeparableArray(ones(Int, LNNsize1), LNNsize2:-1:1)
     batchsize = (LNNsize1 * LNNsize2) ÷ (nworkers()^2) + 1
     @show LNNsize1, LNNsize2, batchsize
-    mix = @showprogress pmap((n,m) -> begin
+    mix = @showprogress 1 "cmix: " pmap((n,m) -> begin
             w̃mat_n = w̃mat[n,:]
             vmat_m = vmat[:,m]
             w̃nzrange = nzind(w̃mat_n)
