@@ -61,6 +61,42 @@ using LinearAlgebra
             @test idx == idx2
             idx2 += 1
         end
+
+        # test getidx, getlkk
+        amodes = SFB.AnlmModes(0.05, 0.0, 1000.0, nside=8)
+        cmodes = SFB.ClnnModes(amodes, Δnmax=0)
+        nmax = cmodes.amodes.nmax
+        @show nmax cmodes.amodes.nmax_l cmodes.Δnmax_l
+        k1_old = 0.0
+        l = 4
+        for n1=1:nmax
+            n2 = n1
+
+            v = SFB.isvalidlnn(cmodes, l, n1, n2)
+            if n1 >= 15 && l >= 4
+                @test !v
+                continue
+            end
+
+            i = SFB.getidx(cmodes, l, n1, n2)
+
+            l′, n1′, n2′ = SFB.getlnn(cmodes, i)
+
+            i′ = SFB.getidx(cmodes, l′, n1′, n2′)
+
+            L, k1, k2 = SFB.getlkk(cmodes, i)
+
+            @show (l,n1,n2),i,v,(l′,n1′,n2′),i′,(L,k1,k2)
+
+            @test l == l′
+            @test n1 == n1′
+            @test n2 == n2′
+
+            @test L == l
+            @test k1 == k2
+            @test k1 > k1_old
+            k1_old = k1
+        end
     end
 
     @testset "ClnnBinnedModes" begin

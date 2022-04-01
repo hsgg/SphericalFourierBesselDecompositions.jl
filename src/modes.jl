@@ -324,7 +324,7 @@ function isvalidlnn(cmodes::ClnnModes, l, n1, n2)
     n̄ = min(n1, n2)
     return (0 <= l <= cmodes.amodes.lmax &&
             0 <= Δn <= cmodes.Δnmax_l[l+1] &&
-            1 <= n̄ <= cmodes.amodes.nmax - Δn)
+            1 <= n̄ <= cmodes.amodes.nmax_l[l+1] - Δn)
 end
 
 
