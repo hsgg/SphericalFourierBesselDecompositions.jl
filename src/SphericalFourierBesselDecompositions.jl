@@ -49,6 +49,7 @@ using FastTransforms
 using WignerD
 #using Roots
 using Healpix
+using Scanf
 using .HealPy
 using .HealpixHelpers
 using .Splines
@@ -306,6 +307,7 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
 
     phi = fill(1.0, nr)
     mask = fill(1.0, wmodes.npix)
+    win = fill(1.0, nr, length(mask))
     features = filter(i -> i != :fullsky, features)
 
     if :ang_75 in features
@@ -388,19 +390,6 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
         win ./= maxwin
     end
 
-    # :radial_cossin_l05_m0, :radial_cossin_l1_m1, ...
-    lmax = mmax = 5  # independent l and m, should probably call them something else
-    for l=0:0.5:lmax, m=0:0.5:mmax
-        lshort = filter(c -> c != '.', string(l))
-        mshort = filter(c -> c != '.', string(m))
-        sym = Symbol("radial_cossin_l$(lshort)_m$(mshort)")
-        #@show sym
-        if sym in features
-            win = gen_win_insep_cossin(mask, rmin, rmax, r, l, m)
-            features = filter(i -> i != sym, features)
-        end
-    end
-
     # Todo: The code structure below here makes more sense. To use, it
     # successively incorporate features from above. However, the above assumes
     # the order it is in, so start from the bottom!
@@ -409,21 +398,22 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
         sfeat = string(feat)
         println("Processing feature $feat...")
 
+        if occursin("radial_cossin_l", sfeat)
+            numform, l, m = @scanf(sfeat, "radial_cossin_l%f_m%f", Float64, Float64)
+            @assert numform == 2
+            l /= 10
+            m /= 10
+            @show numform,l,m
+            win = gen_win_insep_cossin(mask, rmin, rmax, r, l, m)
+        end
+
         if occursin("rotate_", sfeat)
-            i = findfirst(isequal('_'), sfeat)
-            i += 1
-            a = parse(Int, sfeat[i:i+2])
-            i += 4
-            b = parse(Int, sfeat[i:i+2])
-            i += 4
-            c = parse(Int, sfeat[i:i+2])
-            @show a,b,c
-
-            α = a * π/180
-            β = b * π/180
-            γ = c * π/180
+            numform, α, β, γ = @scanf(sfeat, "rotate_%f_%f_%f", Float64, Float64, Float64)
+            @assert numform == 3
+            α *= π/180
+            β *= π/180
+            γ *= π/180
             @show α,β,γ
-
             rotate_euler!(win, α, β, γ)
         end
 
