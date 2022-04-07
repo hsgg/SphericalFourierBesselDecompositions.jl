@@ -442,6 +442,18 @@ end
 optimize_Wr_lm_layout(Wr_lm::SeparableArray) = Wr_lm  # noop for SeparableArray
 
 
+function fill_almost_symmetric_cmix_lower_half!(cmix, cmodes)
+    lnnsize = size(cmix,1)
+    for i′=1:lnnsize
+        L, = getlnn(cmodes, i′)
+        for i=i′:lnnsize
+            l, = getlnn(cmodes, i)
+            cmix[i′,i] = (2*l+1) / (2*L+1) * cmix[i,i′]
+        end
+    end
+end
+
+
 
 function cmix_kernel(gg1, gg2, wr)
     real(dot(gg1, wr) * conj(dot(gg2, wr)))
@@ -577,8 +589,8 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
                        div2Lp1=false, interchange_NN′=false)
     amodes = cmodes.amodes
     lnnsize = getlnnsize(cmodes)
-    #mix = fill(NaN, lnnsize, lnnsize)
-    mix = SharedArray{Float64}(lnnsize, lnnsize)
+    mix = fill(NaN, lnnsize, lnnsize)
+    #mix = SharedArray{Float64}(lnnsize, lnnsize)
     @show length(mix), size(mix)
     @show lnnsize^2, lnnsize
 
@@ -621,34 +633,41 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
     #end
     #mix1 = deepcopy(mix)
 
-    #@show "symmetric"
-    #@time @sync @distributed for i′=1:lnnsize
-    #    L, = getlnn(cmodes, i′)
-    #    @time for i=i′:lnnsize
-    #        l, = getlnn(cmodes, i)
-    #        mix[i,i′] = calc_cmixii(i, i′, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache)
-    #        mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
-    #        #@show i,i′, mix[i,i′]
-    #    end
-    #end
+    p = Progress(lnnsize, 1, "cmix full: ")
+    Threads.@threads for i′=1:lnnsize
+        L, = getlnn(cmodes, i′)
+        for i=i′:lnnsize
+            l, = getlnn(cmodes, i)
+            mix[i,i′] = calc_cmixii(i, i′, cmodes, r, Δr, gnlr,
+                                    Wr_lm, L1M1cache, div2Lp1,
+                                    interchange_NN′)
+            #mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
+            #@show i,i′, mix[i,i′]
+        end
+        next!(p)
+    end
+    fill_almost_symmetric_cmix_lower_half!(mix, cmodes)
     #@assert mix == mix1
 
-    #@show "symmetric pmap"
-    @showprogress 1 "cmix full: " pmap(i′ -> begin
-                   L, = getlnn(cmodes, i′)
-                   #@show i′,L,lnnsize
-                   for i=i′:lnnsize
-                       l, = getlnn(cmodes, i)
-                       mix[i,i′] = calc_cmixii(i, i′, cmodes, r, Δr, gnlr,
-                                               Wr_lm, L1M1cache, div2Lp1,
-                                               interchange_NN′)
-                       mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
-                       #@show i,i′, mix[i,i′]
-                   end
-                   return i′  # return something that doesn't take much memory
-               end,
-               1:lnnsize)
+    ##@show "symmetric pmap"
+    #batchsize = lnnsize ÷ nworkers()^2 + 1
+    #@showprogress 1 "cmix full: " pmap(i′ -> begin
+    #               L, = getlnn(cmodes, i′)
+    #               #@show i′,L,lnnsize
+    #               for i=i′:lnnsize
+    #                   l, = getlnn(cmodes, i)
+    #                   mix[i,i′] = calc_cmixii(i, i′, cmodes, r, Δr, gnlr,
+    #                                           Wr_lm, L1M1cache, div2Lp1,
+    #                                           interchange_NN′)
+    #                   mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
+    #                   #@show i,i′, mix[i,i′]
+    #               end
+    #               return i′  # return something that doesn't take much memory
+    #           end,
+    #           1:lnnsize,
+    #           batch_size=batchsize)
     #@assert mix == mix1
+
     @assert all(isfinite.(mix))
     return mix
 end
