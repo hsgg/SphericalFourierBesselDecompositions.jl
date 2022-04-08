@@ -58,6 +58,8 @@ using SharedArrays
 using ProgressMeter
 #using Base.Threads  # Threads.@threads macro, export JULIA_NUM_THREADS=8
 
+const progressmeter_update_interval = haskey(ENV, "PROGRESSMETER_UPDATE_INTERVAL") ? parse(Int, ENV["PROGRESSMETER_UPDATE_INTERVAL"]) : 1
+
 #using QuadGK  # for testing
 
 #using Profile
@@ -286,7 +288,7 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
     check_nsamp(amodes, wmodes)
 
     gnl = amodes.basisfunctions
-    @showprogress 1 "wmix full: " for n′=1:amodes.nmax, n=1:amodes.nmax, l′=0:amodes.lmax_n[n′], l=0:amodes.lmax_n[n]
+    @showprogress progressmeter_update_interval "wmix full: " for n′=1:amodes.nmax, n=1:amodes.nmax, l′=0:amodes.lmax_n[n′], l=0:amodes.lmax_n[n]
         ibase = getidx(amodes, n, l, 0)
         i′base = getidx(amodes, n′, l′, 0)
         ibase==1 && @show ibase,i′base, n,n′, l,l′, nlmsize
@@ -633,7 +635,7 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
     #end
     #mix1 = deepcopy(mix)
 
-    p = Progress(lnnsize, 1, "cmix full: ")
+    p = Progress(lnnsize, progressmeter_update_interval, "cmix full: ")
     Threads.@threads for i′=1:lnnsize
         L, = getlnn(cmodes, i′)
         for i=i′:lnnsize
@@ -651,7 +653,7 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
 
     ##@show "symmetric pmap"
     #batchsize = lnnsize ÷ nworkers()^2 + 1
-    #@showprogress 1 "cmix full: " pmap(i′ -> begin
+    #@showprogress progressmeter_update_interval "cmix full: " pmap(i′ -> begin
     #               L, = getlnn(cmodes, i′)
     #               #@show i′,L,lnnsize
     #               for i=i′:lnnsize
@@ -702,7 +704,7 @@ function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes;
     m_idxs = SeparableArray(ones(Int, LNNsize1), LNNsize2:-1:1)
     batchsize = (LNNsize1 * LNNsize2) ÷ (nworkers()^2) + 1
     @show LNNsize1, LNNsize2, batchsize
-    mix = @showprogress 1 "cmix: " pmap((n,m) -> begin
+    mix = @showprogress progressmeter_update_interval "cmix: " pmap((n,m) -> begin
             w̃mat_n = w̃mat[n,:]
             vmat_m = vmat[:,m]
             w̃nzrange = nzind(w̃mat_n)
