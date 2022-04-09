@@ -430,18 +430,34 @@ function calc_Wr_lm(win::SeparableArray, LMAX, Wnside)
 end
 
 
-function optimize_Wr_lm_layout(Wr_lm)
-    return Wr_lm  # Don't change the semantics! If speed is a problem, we will have to revisit this.
-    #LMmax = size(Wr_lm,2)
-    #w = Array{eltype(Wr_lm),1}[]
-    #for lm=1:LMmax
-    #    wr = Wr_lm[:,lm]
-    #    push!(w, wr)
-    #end
-    #return w
+function optimize_Wr_lm_layout(Wr_lm, LMAX)
+    alm = Alm(LMAX, LMAX)
+    L1M1cache_in = [almIndex(alm, L, 0:L) for L=0:LMAX]
+    #return Wr_lm, L1M1cache_in
+
+    L1M1cache_out = Array{Array{Int}}(undef, LMAX+1)
+    Wr_lm_out = Array{eltype(Wr_lm)}(undef, size(Wr_lm))
+
+    lm_out = 1
+    for l=0:LMAX
+        M1cache_out = Array{Int}(undef, l+1)
+        for m=0:l
+            lm_in = L1M1cache_in[l+1][m+1]
+            Wr_lm_out[:,lm_out] .= Wr_lm[:,lm_in]
+            M1cache_out[m+1] = lm_out
+            lm_out += 1
+        end
+        L1M1cache_out[l+1] = M1cache_out
+    end
+
+    return Wr_lm_out, L1M1cache_out
 end
 
-optimize_Wr_lm_layout(Wr_lm::SeparableArray) = Wr_lm  # noop for SeparableArray
+function optimize_Wr_lm_layout(Wr_lm::SeparableArray, LMAX)
+    alm = Alm(LMAX, LMAX)
+    L1M1cache = [almIndex(alm, L, 0:L) for L=0:LMAX]
+    return Wr_lm, L1M1cache  # noop for SeparableArray
+end
 
 
 function fill_almost_symmetric_cmix_lower_half!(cmix, cmodes)
@@ -469,12 +485,10 @@ function test_cmix_kernel()
     l = 5
     L = 10
     LMAX = l + L
-    alm = Alm(LMAX, LMAX)
-    L1M1cache = [almIndex(alm, L, 0:L) for L=0:LMAX]
     Wnside = estimate_nside(LMAX)
     win = rand(100, nside2npix(Wnside))
     @show typeof(win)
-    Wr_lm = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, Wnside))
+    Wr_lm, L1M1cache = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, Wnside), LMAX)
     @show typeof(Wr_lm)
 
     # compile
@@ -515,9 +529,7 @@ function calc_cmixii(i, i′, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache,
     l, n, n′ = getlnn(cmodes, i)
     L, N, N′ = getlnn(cmodes, i′)
     if interchange_NN′
-        tmp = N′
-        N′ = N
-        N = tmp
+        N, N′ = N′, N
     end
 
     showthis = ((l==L==0 && n==N′==1 && n′==N==2) || (l==L==0 && n==N′==2 && n′==N==1))
@@ -599,7 +611,7 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
     r, Δr = window_r(wmodes)
 
     LMAX = 2 * amodes.lmax
-    Wr_lm = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, amodes.nside))
+    Wr_lm, L1M1cache = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, amodes.nside), LMAX)
 
     # the gnl precomputation only saves about 10% time
     gnl = amodes.basisfunctions
@@ -608,9 +620,6 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
         @. gnlr[:,n,l+1] = gnl(n,l,r)
     end
     check_nsamp(amodes, wmodes)
-
-    alm = Alm(LMAX, LMAX)
-    L1M1cache = [almIndex(alm, L, 0:L) for L=0:LMAX]
 
 
     ## crashes at end:
@@ -637,9 +646,9 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
 
     p = Progress(lnnsize, progressmeter_update_interval, "cmix full: ")
     Threads.@threads for i′=1:lnnsize
-        L, = getlnn(cmodes, i′)
+        #L, = getlnn(cmodes, i′)
         for i=i′:lnnsize
-            l, = getlnn(cmodes, i)
+            #l, = getlnn(cmodes, i)
             mix[i,i′] = calc_cmixii(i, i′, cmodes, r, Δr, gnlr,
                                     Wr_lm, L1M1cache, div2Lp1,
                                     interchange_NN′)
@@ -861,7 +870,7 @@ function power_win_mix(win, w̃mat, vmat, wmodes::ConfigurationSpaceModes, bcmod
 
     println("Calculate Wr_lm:")
     LMAX = 2 * amodes.lmax
-    @time Wr_lm = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, amodes.nside))
+    @time Wr_lm, L1M1cache = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, amodes.nside), LMAX)
 
     println("Calculate gnlr:")
     gnl = amodes.basisfunctions
@@ -870,9 +879,6 @@ function power_win_mix(win, w̃mat, vmat, wmodes::ConfigurationSpaceModes, bcmod
         @. gnlr[:,n,l+1] = gnl(n,l,r)
     end
     check_nsamp(amodes, wmodes)
-
-    alm = Alm(LMAX, LMAX)
-    L1M1cache = [almIndex(alm, L, 0:L) for L=0:LMAX]
 
     mix = _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes; div2Lp1=div2Lp1, interchange_NN′=interchange_NN′)
 
