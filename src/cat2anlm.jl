@@ -229,7 +229,9 @@ function winweights2galweights(weights, wmodes, rθϕ)
         r, θ, ϕ = rθϕ[:,i]
         pix = ang2pixRing(reso, θ, ϕ)
         bin = (r == rmax) ? length(rmid) : searchsortedlast(rbounds, r)
-        #@show i,bin,pix,r,size(weights)
+        if !(1 <= bin <= length(rmid))
+            @error "r out of bounds" i r,θ,ϕ bin,pix rmin,rmax length(rmid),extrema(rmid) length(rbounds),extrema(rbounds) size(weights) size(w)
+        end
         w[i] = weights[bin,pix]
     end
     return w
