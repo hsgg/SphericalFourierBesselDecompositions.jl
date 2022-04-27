@@ -134,35 +134,28 @@ end
 
 function apply_window(rθϕ::AbstractArray{T}, win, rmin, rmax, win_r, win_Δr; rng=Random.GLOBAL_RNG) where {T<:Real}
     Ngals = size(rθϕ, 2)
-    nside = npix2nside(size(win,2))
-    r_out = T[]
-    θ_out = T[]
-    ϕ_out = T[]
-    r = @view rθϕ[1,:]
-    θ = @view rθϕ[2,:]
-    ϕ = @view rθϕ[3,:]
+    nside= npix2nside(size(win,2))
     reso = Resolution(nside)
-    #println(" Getting angular pixels:")
-    idx_ang = Array{Int}(undef, Ngals)
+    ooWmax = 1 / maximum(win)
+    insample = Array{Bool}(undef, Ngals)
+    #insample = BitArray(undef, Ngals)
     Threads.@threads for i=1:Ngals
-        @inbounds idx_ang[i] = ang2pixRing(reso, θ[i], ϕ[i])
-    end
-    Wmax = maximum(win)
-    #@show extrema(r)
-    #println(" Filtering points:")
-    for i=1:length(r)
-        !(rmin <= r[i] <= rmax) && continue
-        idx_r = ceil(Int, (r[i] - rmin) / win_Δr)
-        (idx_r == 0) && (idx_r += 1)
-        (idx_r == size(win,1)+1) && (idx_r -= 1)
-        if rand(rng) <= win[idx_r,idx_ang[i]] / Wmax
-            # include in survey
-            push!(r_out, r[i])
-            push!(θ_out, θ[i])
-            push!(ϕ_out, ϕ[i])
+        r = rθϕ[1,i]
+        if !(rmin <= r <= rmax)
+            insample[i] = false
+            continue
         end
+        θ = rθϕ[2,i]
+        ϕ = rθϕ[3,i]
+        idx_r = ceil(Int, (r - rmin) / win_Δr)
+        idx_ang = ang2pixRing(reso, θ, ϕ)
+        if rand(rng) <= win[idx_r,idx_ang] * ooWmax
+            insample[i] = true
+            continue
+        end
+        insample[i] = false
     end
-    return [r_out θ_out ϕ_out]'
+    return collect(rθϕ[:,insample])
 end
 
 apply_window(rθϕ, win, wmodes::ConfigurationSpaceModes; rng=Random.GLOBAL_RNG) = begin
