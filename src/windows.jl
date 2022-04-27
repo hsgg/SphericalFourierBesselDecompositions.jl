@@ -132,18 +132,24 @@ function apodize_window(win, wmodes::ConfigurationSpaceModes, smooth=50.0)
 end
 
 
-function apply_window(rθϕ, win, rmin, rmax, win_r, win_Δr; rng=Random.GLOBAL_RNG)
+function apply_window(rθϕ::AbstractArray{T}, win, rmin, rmax, win_r, win_Δr; rng=Random.GLOBAL_RNG) where {T<:Real}
+    Ngals = size(rθϕ, 2)
     nside = npix2nside(size(win,2))
-    r_out = eltype(rθϕ)[]
-    θ_out = eltype(rθϕ)[]
-    ϕ_out = eltype(rθϕ)[]
-    r = rθϕ[1,:]
-    θ = rθϕ[2,:]
-    ϕ = rθϕ[3,:]
+    r_out = T[]
+    θ_out = T[]
+    ϕ_out = T[]
+    r = @view rθϕ[1,:]
+    θ = @view rθϕ[2,:]
+    ϕ = @view rθϕ[3,:]
     reso = Resolution(nside)
-    idx_ang = ang2pixRing.(Ref(reso), θ, ϕ) # .+ 1
+    #println(" Getting angular pixels:")
+    idx_ang = Array{Int}(undef, Ngals)
+    Threads.@threads for i=1:Ngals
+        @inbounds idx_ang[i] = ang2pixRing(reso, θ[i], ϕ[i])
+    end
     Wmax = maximum(win)
     #@show extrema(r)
+    #println(" Filtering points:")
     for i=1:length(r)
         !(rmin <= r[i] <= rmax) && continue
         idx_r = ceil(Int, (r[i] - rmin) / win_Δr)
