@@ -131,7 +131,15 @@ function apodize_window(win, wmodes::ConfigurationSpaceModes, smooth=50.0)
     return winapod
 end
 
+@doc raw"""
+    apply_window(rθϕ, win, wmodes::ConfigurationSpaceModes; rng=Random.GLOBAL_RNG)
+    apply_window(rθϕ::AbstractArray{T}, win, rmin, rmax, win_r, win_Δr; rng=Random.GLOBAL_RNG) where {T<:Real}
 
+The function `apply_window()` takes a sample of points in `rθϕ` and filters out
+points with probability specified by `1-win/maximum(win)`. Thus, all points are
+retained where `win == maximum(win)`, and points are filtered out with
+proportional probability so that none are kept where `win <= 0`.
+"""
 function apply_window(rθϕ::AbstractArray{T}, win, rmin, rmax, win_r, win_Δr; rng=Random.GLOBAL_RNG) where {T<:Real}
     Ngals = size(rθϕ, 2)
     nside= npix2nside(size(win,2))
