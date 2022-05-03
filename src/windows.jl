@@ -587,8 +587,9 @@ end
 function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, interchange_NN′)
     println("cmix full:")
     mix = fill(NaN, lnnsize, lnnsize)
-    #p = Progress(lnnsize, progressmeter_update_interval, "cmix full: ")
+    p = Progress(lnnsize, progressmeter_update_interval, "cmix full: ")
     @time Threads.@threads for i′=1:lnnsize
+    #@time @tturbo for i′=1:lnnsize
     #@time for i′=1:lnnsize
         #L, = getlnn(cmodes, i′)
         for i=i′:lnnsize
@@ -599,7 +600,7 @@ function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, int
             #mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
             #@show i,i′, mix[i,i′]
         end
-        #next!(p)
+        next!(p)
     end
     @time fill_almost_symmetric_cmix_lower_half!(mix, cmodes)
     return mix
