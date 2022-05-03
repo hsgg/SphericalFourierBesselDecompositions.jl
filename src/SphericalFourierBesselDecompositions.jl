@@ -36,6 +36,7 @@ include("Splines.jl")
 include("gnl.jl")  # SphericalBesselGnls
 include("modes.jl")  # AnlmModes, ClnnModes, ClnnBinnedModes
 include("SeparableArrays.jl")
+include("LMcalcStructs.jl")
 include("windows.jl")  # window function related
 include("NDIterators.jl")
 include("cat2anlm.jl")

@@ -71,22 +71,9 @@ using ..NDIterators
 using ..SeparableArrays
 using ..WignerChains
 using ..Modes
+using ..LMcalcStructs
 using ProgressMeter
 
-
-###################### LMcalcStruct (replacement for LMcache)
-struct LMcalcStruct
-    lmax::Int
-    tval::Int
-end
-LMcalcStruct(lmax) = LMcalcStruct(lmax, 2 * lmax + 1)
-
-Base.getindex(lm::LMcalcStruct, lp1::Int, mp1::Int) = begin
-    m = mp1 - 1
-    tval = lm.tval
-    #return lp1 + m * lmax - ((m - 1) * m) ÷ 2
-    return lp1 + ((m * (tval - m)) >> 1)
-end
 
 
 

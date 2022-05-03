@@ -45,6 +45,7 @@ using ..Modes
 #using ..HealPy
 using ..SeparableArrays
 using ..HealpixHelpers
+using ..LMcalcStructs
 using Healpix
 using LinearAlgebra
 using SpecialFunctions
@@ -437,32 +438,27 @@ function calc_Wr_lm(win::SeparableArray, LMAX, Wnside)
 end
 
 
+
 function optimize_Wr_lm_layout(Wr_lm, LMAX)
-    alm = Alm(LMAX, LMAX)
-    L1M1cache_in = [almIndex(alm, L, 0:L) for L=0:LMAX]
+    L1M1cache_in = LMcalcStruct(LMAX)
     #return Wr_lm, L1M1cache_in
 
-    L1M1cache_out = Array{Array{Int}}(undef, LMAX+1)
+    L1M1cache_out = LMcalcStructMfast()
     Wr_lm_out = Array{eltype(Wr_lm)}(undef, size(Wr_lm))
 
-    lm_out = 1
     for l=0:LMAX
-        M1cache_out = Array{Int}(undef, l+1)
         for m=0:l
-            lm_in = L1M1cache_in[l+1][m+1]
+            lm_in = L1M1cache_in[l+1,m+1]
+            lm_out = L1M1cache_out[l+1,m+1]
             Wr_lm_out[:,lm_out] .= Wr_lm[:,lm_in]
-            M1cache_out[m+1] = lm_out
-            lm_out += 1
         end
-        L1M1cache_out[l+1] = M1cache_out
     end
 
     return Wr_lm_out, L1M1cache_out
 end
 
 function optimize_Wr_lm_layout(Wr_lm::SeparableArray, LMAX)
-    alm = Alm(LMAX, LMAX)
-    L1M1cache = [almIndex(alm, L, 0:L) for L=0:LMAX]
+    L1M1cache = LMcalcStruct(LMAX)
     return Wr_lm, L1M1cache  # noop for SeparableArray
 end
 
@@ -481,19 +477,21 @@ end
 
 
 function cmix_kernel(gg1, gg2, wr)
+    #@show size(gg1) size(gg2) size(wr)
     real(dot(gg1, wr) * conj(dot(gg2, wr)))
 end
 
 
 function test_cmix_kernel()
-    gg1 = rand(100)
-    gg2 = rand(100)
-    wr = rand(Complex{Float64}, 100)
-    l = 5
-    L = 10
+    nr = 100
+    gg1 = rand(nr)
+    gg2 = rand(nr)
+    wr = rand(Complex{Float64}, nr)
+    l = 20
+    L = 20
     LMAX = l + L
     Wnside = estimate_nside(LMAX)
-    win = rand(100, nside2npix(Wnside))
+    win = rand(nr, nside2npix(Wnside))
     @show typeof(win)
     Wr_lm, L1M1cache = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, Wnside), LMAX)
     @show typeof(Wr_lm)
@@ -504,7 +502,7 @@ function test_cmix_kernel()
 
     s = 0.0
     @time cmix_kernel(gg1, gg2, wr)
-    @time cmix_kernel(gg1, gg2, Wr_lm[1])
+    @time cmix_kernel(gg1, gg2, Wr_lm[:,1])
 
     @show typeof(l) typeof(L) typeof(L1M1cache) typeof(gg1) typeof(gg2) typeof(Wr_lm)
 
@@ -517,12 +515,13 @@ end
 function calc_cmix_ang(l, L, L1M1cache, gg1, gg2, Wr_lm)
     #@debug "calc_cmix_ang" l L size(gg1) size(gg2) size(Wr_lm) size(L1M1cache) size(Wr_lm[1])
     m_ang = 0.0
-    for L1=abs(l-L):2:(l+L)
-        L1M1 = L1M1cache[L1+1][1]
+    @views for L1=abs(l-L):2:(l+L)
+        L1M1 = L1M1cache[L1+1,1]
+        #@show L1,L1M1
         s = cmix_kernel(gg1, gg2, Wr_lm[:,L1M1])
         for M1=1:L1
             #@debug "" L1 M1
-            L1M1 = L1M1cache[L1+1][M1+1]
+            L1M1 = L1M1cache[L1+1,M1+1]
             s += 2 * cmix_kernel(gg1, gg2, Wr_lm[:,L1M1])
         end
         m_ang += s * wigner3j000(l, L, L1)^2
@@ -538,13 +537,14 @@ function calc_cmixii(i, i′, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache,
     if interchange_NN′
         N, N′ = N′, N
     end
+    #@show i,i′,l,L,n,N
 
-    showthis = ((l==L==0 && n==N′==1 && n′==N==2) || (l==L==0 && n==N′==2 && n′==N==1))
-    showthis && @show "huzzah",i,i′, n,n′, N,N′, l,L
+    #showthis = ((l==L==0 && n==N′==1 && n′==N==2) || (l==L==0 && n==N′==2 && n′==N==1))
+    #showthis && @show "huzzah",i,i′, n,n′, N,N′, l,L
     #@show i,i′, (l,n,n′), (L,N,N′)
 
-    gg1 = @. r^2 * gnlr[:,n,l+1] * gnlr[:,N,L+1]
-    gg2 = @. r^2 * gnlr[:,n′,l+1] * gnlr[:,N′,L+1]
+    gg1 = @views @. r^2 * gnlr[:,n,l+1] * gnlr[:,N,L+1]
+    gg2 = @views @. r^2 * gnlr[:,n′,l+1] * gnlr[:,N′,L+1]
 
     mix = calc_cmix_ang(l, L, L1M1cache, gg1, gg2, Wr_lm)
 
@@ -580,6 +580,28 @@ function calc_cmixii(i, i′, cmodes, r, Δr, gnlgNLϕ, ang_mix::AbstractMatrix,
         mix *= (2*L+1)
     end
 
+    return mix
+end
+
+
+function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, interchange_NN′)
+    println("cmix full:")
+    mix = fill(NaN, lnnsize, lnnsize)
+    #p = Progress(lnnsize, progressmeter_update_interval, "cmix full: ")
+    @time Threads.@threads for i′=1:lnnsize
+    #@time for i′=1:lnnsize
+        #L, = getlnn(cmodes, i′)
+        for i=i′:lnnsize
+            #l, = getlnn(cmodes, i)
+            mix[i,i′] = calc_cmixii(i, i′, cmodes, r, Δr, gnlr,
+                                    Wr_lm, L1M1cache, div2Lp1,
+                                    interchange_NN′)
+            #mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
+            #@show i,i′, mix[i,i′]
+        end
+        #next!(p)
+    end
+    @time fill_almost_symmetric_cmix_lower_half!(mix, cmodes)
     return mix
 end
 
@@ -651,20 +673,7 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
     #end
     #mix1 = deepcopy(mix)
 
-    p = Progress(lnnsize, progressmeter_update_interval, "cmix full: ")
-    Threads.@threads for i′=1:lnnsize
-        #L, = getlnn(cmodes, i′)
-        for i=i′:lnnsize
-            #l, = getlnn(cmodes, i)
-            mix[i,i′] = calc_cmixii(i, i′, cmodes, r, Δr, gnlr,
-                                    Wr_lm, L1M1cache, div2Lp1,
-                                    interchange_NN′)
-            #mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
-            #@show i,i′, mix[i,i′]
-        end
-        next!(p)
-    end
-    fill_almost_symmetric_cmix_lower_half!(mix, cmodes)
+    mix = calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, interchange_NN′)
     #@assert mix == mix1
 
     ##@show "symmetric pmap"
