@@ -539,7 +539,7 @@ function get_tls_ggi(key, len)::Vector{Float64}
 end
 
 
-function calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes::ClnnModes, Wr_lm, L1M1cache)
+function calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes::ClnnModes, Wr_lm, L1M1cache, div2Lp1)
     l, n, n′ = getlnn(cmodes, i)
     #L, N, N′ = getlnn(cmodes, i′)
 
@@ -558,6 +558,9 @@ function calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes::ClnnModes, Wr_lm, L1M1
     mix = calc_cmix_ang(l, L, L1M1cache, gg1, gg2, Wr_lm)
 
     mix = 1 / (4*π) * mix * Δr^2
+    if !div2Lp1
+        mix *= (2*L+1)
+    end
 
     return mix
 end
@@ -570,11 +573,7 @@ function calc_cmixii(i, i′, cmodes::ClnnModes, r, Δr, gnlr, Wr_lm, L1M1cache,
         N, N′ = N′, N
     end
 
-    mix = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes, Wr_lm, L1M1cache)
-
-    if !div2Lp1
-        mix *= (2*L+1)
-    end
+    mix = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes, Wr_lm, L1M1cache, div2Lp1)
 
     return mix
 end
@@ -621,19 +620,12 @@ function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, int
         end
 
         for i=i′:lnnsize
-        #Threads.@threads for i=i′:lnnsize
+        #Threads.@threads for i=i′:lnnsize  # leads to extra work-array allocations
             @turbo mix[i,i′] = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes,
-                                           Wr_lm, L1M1cache)
+                                           Wr_lm, L1M1cache, div2Lp1)
             #mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
             #@show i,i′, mix[i,i′]
-            if !div2Lp1
-                mix[i,i′] *= (2*L+1)
-            end
         end
-
-        #if !div2Lp1
-        #    mix[i′:end,i′] .*= (2*L+1)
-        #end
 
         next!(p)
     end
