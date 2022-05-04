@@ -53,6 +53,7 @@ using WignerSymbols
 using WignerFamilies
 using SparseArrays
 using Random
+using LoopVectorization
 
 using Distributed
 using SharedArrays
@@ -530,28 +531,34 @@ function calc_cmix_ang(l, L, L1M1cache, gg1, gg2, Wr_lm)
 end
 
 
-function calc_cmixii(i, i′, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache,
-                     div2Lp1, interchange_NN′)
-    l, n, n′ = getlnn(cmodes, i)
-    L, N, N′ = getlnn(cmodes, i′)
-    if interchange_NN′
-        N, N′ = N′, N
+function get_tls_ggi(key, len)::Vector{Float64}
+    tls = task_local_storage()
+    if !haskey(tls, key)
+        tls[key] = Vector{Float64}(undef, len)
     end
-    #@show i,i′,l,L,n,N
+    return tls[key]
+end
+
+
+function calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes, Wr_lm, L1M1cache)
+    l, n, n′ = getlnn(cmodes, i)
+    #L, N, N′ = getlnn(cmodes, i′)
 
     #showthis = ((l==L==0 && n==N′==1 && n′==N==2) || (l==L==0 && n==N′==2 && n′==N==1))
     #showthis && @show "huzzah",i,i′, n,n′, N,N′, l,L
     #@show i,i′, (l,n,n′), (L,N,N′)
 
-    gg1 = @views @. r^2 * gnlr[:,n,l+1] * gnlr[:,N,L+1]
-    gg2 = @views @. r^2 * gnlr[:,n′,l+1] * gnlr[:,N′,L+1]
+    # get task-local work arrays
+    len = length(r)
+    gg1 = get_tls_ggi(:gg1, len)
+    gg2 = get_tls_ggi(:gg2, len)
+
+    @views @. gg1 = r^2 * gnlr[:,n,l+1] * gnlr[:,N,L+1]
+    @views @. gg2 = r^2 * gnlr[:,n′,l+1] * gnlr[:,N′,L+1]
 
     mix = calc_cmix_ang(l, L, L1M1cache, gg1, gg2, Wr_lm)
 
     mix = 1 / (4*π) * mix * Δr^2
-    if !div2Lp1
-        mix *= (2*L+1)
-    end
 
     return mix
 end
@@ -563,9 +570,7 @@ function calc_cmixii(i, i′, cmodes, r, Δr, gnlgNLϕ, ang_mix::AbstractMatrix,
     l, n, n′ = getlnn(cmodes, i)
     L, N, N′ = getlnn(cmodes, i′)
     if interchange_NN′
-        tmp = N′
-        N′ = N
-        N = tmp
+        N, N′ = N′, N
     end
     #@show i,i′, n,n′, N,N′, l,l′
 
@@ -587,22 +592,33 @@ end
 function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, interchange_NN′)
     println("cmix full:")
     mix = fill(NaN, lnnsize, lnnsize)
+
     p = Progress(lnnsize, progressmeter_update_interval, "cmix full: ")
+
     @time Threads.@threads for i′=1:lnnsize
     #@time @tturbo for i′=1:lnnsize
     #@time for i′=1:lnnsize
-        #L, = getlnn(cmodes, i′)
+        L, N, N′ = @turbo getlnn(cmodes, i′)
+        if interchange_NN′
+            N, N′ = N′, N
+        end
+
         for i=i′:lnnsize
-            #l, = getlnn(cmodes, i)
-            mix[i,i′] = calc_cmixii(i, i′, cmodes, r, Δr, gnlr,
-                                    Wr_lm, L1M1cache, div2Lp1,
-                                    interchange_NN′)
+            @turbo mix[i,i′] = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes,
+                                           Wr_lm, L1M1cache)
             #mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
             #@show i,i′, mix[i,i′]
         end
+
+        if !div2Lp1
+            @turbo @. mix[i′:end,i′] *= (2*L+1)
+        end
+
         next!(p)
     end
+
     @time fill_almost_symmetric_cmix_lower_half!(mix, cmodes)
+
     return mix
 end
 
