@@ -69,6 +69,7 @@ using .Cat2Anlm
 #using FastGaussQuadrature
 using Distributed
 #using Base.Threads
+using PyCall
 
 ## for testing only
 #using MeasureAngularPowerSpectra
@@ -337,8 +338,16 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
     end
 
     if :rotate in features
-        rot = hp.Rotator(coord=["E", "G"])
-        mask = rot.rotate_map_pixel(mask)
+        if hp != PyNULL()
+            rot = hp.Rotator(coord=["E", "G"])
+            mask = rot.rotate_map_pixel(mask)
+        else
+            a = -0.0004052885
+            b = 1.05048844473
+            c = 1.68221794936
+            mask = HealpixMap{Float64,Healpix.RingOrder}(mask)
+            mask = rotate_euler(mask, a, b, c)
+        end
         features = filter(i -> i != :rotate, features)
     end
 
