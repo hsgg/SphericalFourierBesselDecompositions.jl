@@ -281,18 +281,11 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
     @debug "wmix" length(wmix), size(wmix)
 
     r, Δr = window_r(wmodes)
-    nr = length(r)
 
     LMAX = 2 * amodes.lmax
-    Wr_lm = calc_Wr_lm(win, LMAX, amodes.nside)
+    #Wr_lm, LMLM = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, amodes.nside), LMAX)
+    Wr_lm, LMLM = calc_Wr_lm(win, LMAX, amodes.nside), LMcalcStruct(LMAX)
     @debug "Wr_lm" LMAX amodes.nside size(Wr_lm) Wr_lm[:,1]
-
-    alm = Alm(LMAX, LMAX)
-    LMLM = fill(0, LMAX+1, LMAX+1)
-    for L=0:LMAX, M=0:L
-        LMLM[L+1,M+1] = almIndex(alm, L, M) # + 1
-    end
-    @debug "LMLM" size(LMLM)
 
     check_nsamp(amodes, wmodes)
 
@@ -300,7 +293,7 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
     @showprogress progressmeter_update_interval "wmix full: " for n′=1:amodes.nmax, n=1:amodes.nmax, l′=0:amodes.lmax_n[n′], l=0:amodes.lmax_n[n]
         ibase = getidx(amodes, n, l, 0)
         i′base = getidx(amodes, n′, l′, 0)
-        ibase==1 && @show ibase,i′base, n,n′, l,l′, nlmsize
+        #ibase==1 && @show ibase,i′base, n,n′, l,l′, nlmsize
 
         gg1 = @. Δr * r^2 * gnl(n,l,r) * gnl(n′,l′,r)
         ## debug
@@ -324,7 +317,7 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
             @assert isfinite(wmix[i,i′])
         end
     end
-    @assert all(isfinite.(wmix))
+    @assert all(isfinite, wmix)
     return wmix
 end
 
