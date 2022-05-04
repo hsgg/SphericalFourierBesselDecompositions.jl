@@ -26,6 +26,7 @@ WignerSymbols = "9f57e263-0b3d-5e2e-b1be-24f2bb48858b"
 
 [compat]
 ArbNumerics = "^1.2"
+FastTransforms = "0.13"
 Healpix = "3"
 ProgressMeter = "1"
 PyCall = "^1.92"
