@@ -322,26 +322,31 @@ end
 
 # This should be very performant
 function win_lnn(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes)
+    println("===")
     lnnsize = getlnnsize(cmodes)
     Wlnn = fill(NaN, lnnsize)
     @show length(Wlnn), size(Wlnn)
 
     r, Δr = window_r(wmodes)
 
+    println("Calculate Wr_00:")
     # Note: the maximum ℓ we need is 0. However, healpy changes precision, and
     # for comparison we use the same lmax as elsewhere.
-    Wr_00 = Array{Float64,1}(calc_Wr_lm(win, 2*cmodes.amodes.lmax, cmodes.amodes.nside)[:,1])
-    @show size(Wr_00) typeof(Wr_00)
-    @assert all(isfinite.(Wr_00))
+    @time Wr_00 = Array{Float64,1}(calc_Wr_lm(win, 2*cmodes.amodes.lmax, cmodes.amodes.nside)[:,1])
+    @assert all(isfinite, Wr_00)
 
     check_nsamp(cmodes.amodes, wmodes)
 
-    gnl = cmodes.amodes.basisfunctions
+    println("Calculate gnlr:")
+    @time gnlr = precompute_gnlr(cmodes.amodes, wmodes)
+
+    println("Calculate Wlnn:")
+    gg = similar(r)
     @time for i=1:lnnsize
         l, n, n′ = getlnn(cmodes, i)
         #@show i, l,n,n′, lnnsize
 
-        gg = @. r^2 * gnl(n,l,r) * gnl(n′,l,r) * Wr_00
+        @views @. gg = r^2 * gnlr[:,n,l+1] * gnlr[:,n′,l+1] * Wr_00
 
         Wlnn[i] = Δr * sum(gg) / √(4π)
         if !isfinite(Wlnn[i])
@@ -349,7 +354,7 @@ function win_lnn(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes)
             break
         end
     end
-    @assert all(isfinite.(Wlnn))
+    @assert all(isfinite, Wlnn)
     return Wlnn
 end
 
@@ -452,7 +457,7 @@ function precompute_gnlr(amodes, wmodes)
     gnl = amodes.basisfunctions
     gnlr = fill(NaN, length(r), size(gnl.knl)...)
     for l=0:amodes.lmax, n=1:amodes.nmax_l[l+1]
-        @. gnlr[:,n,l+1] = gnl(n,l,r)
+        @views @. gnlr[:,n,l+1] = gnl(n,l,r)
     end
     check_nsamp(amodes, wmodes)
     return gnlr

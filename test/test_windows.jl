@@ -142,6 +142,22 @@ using Healpix
     end
 
 
+    @testset "win_lnn()" begin
+        rmin = 0.0
+        rmax = 4000.0
+        kmax = 0.1
+        @time amodes = SFB.AnlmModes(kmax, rmin, rmax, cache=false)
+        @time cmodes = SFB.ClnnModes(amodes, Δnmax=100)
+        @time wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
+
+        @time win = SFB.make_window(wmodes, :separable)
+
+        wlnn = SFB.win_lnn(win, wmodes, cmodes)
+        wlnn = SFB.win_lnn(win, wmodes, cmodes)
+        wlnn = SFB.win_lnn(win, wmodes, cmodes)
+    end
+
+
     # Inhomogeneous masks
     @testset "Inhomogeneous Window sep & insep" begin
         rmin = 500.0
