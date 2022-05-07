@@ -227,39 +227,18 @@ function win_rhat_ln(win::SeparableArray, wmodes::ConfigurationSpaceModes, amode
 end
 
 
-function calc_wmix_ii(l, m, l′, m′, gg1Wrlm, LMLM)
+function calc_wmix_ii(l, m, l′, m′, gg1, Wr_lm, LMLM; buffer1=zeros(0), buffer2=zeros(0))
     M = m - m′
+    #@show l,m,l′,m′
 
-    #L1 = max(abs(l-l′),abs(M)):(l+l′)
-    #w3j1 = wigner3j.(Float64, l, l′, L1, -m, m′)
-
-    w3j_f = wigner3j_f(Float64, l, l′, -m, m′)
-    w3j2 = w3j_f.symbols
-    L2 = eachindex(w3j_f)
-
-    #@show l,l′ m,m′ M L1 L2
-    #@show w3j1 w3j2
-    #@assert all(@. abs(w3j1 - w3j2) < eps(1.0))
-    #@assert all(L1 .== L2)
-
-    L = L2
-    w3j = w3j2
-    #@show w3j
-
-    w3j000 = @. wigner3j000(l, l′, L)
-    #@show w3j000
-    #@show size(w3j) size(L) size(w3j000)
-    #@show eachindex(w3j) eachindex(L) eachindex(w3j000)
-    gaunt = @. √((2*L+1) * (2*l+1) * (2*l′+1) / (4*π)) * w3j000 * w3j
-    #@debug "Gaunt" l,m l′,m′ L M gaunt[1] 1/√(4*π) √(4*π)*gaunt[1]
+    gaunt, L = calc_gaunts_L(l, l′, -m, m′; buffer1, buffer2)  # 4 allocations
 
     aM = abs(M)
+
     w_ang = 0.0im
-    for j=1:length(L)
-        #@assert -L[j] <= M <= L[j]
-        #LM = almIndex(Alm(LMAX, LMAX), L[j], abs(M)) # + 1
+    @views for j=1:length(L)
         LM = LMLM[L[j]+1,aM+1]
-        w_ang += gaunt[j] * gg1Wrlm[LM]
+        w_ang += gaunt[j] * (gg1'Wr_lm[:,LM])  # this takes time to compute
         #@debug "Wr_lm" L[j],M Wr_lm[1,LM] Wr_lm[1,LM]/√(4*π)
     end
 
@@ -278,30 +257,35 @@ end
 function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_m=false)
     nlmsize = getnlmsize(amodes)
     wmix = fill(NaN*im, nlmsize, nlmsize)
-    @debug "wmix" length(wmix), size(wmix)
+    @show length(wmix), size(wmix)
 
     r, Δr = window_r(wmodes)
+    r²Δr = @. r^2 * Δr
 
+    println("Calculate Wr_lm:")
     LMAX = 2 * amodes.lmax
     #Wr_lm, LMLM = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, amodes.nside), LMAX)
     Wr_lm, LMLM = calc_Wr_lm(win, LMAX, amodes.nside), LMcalcStruct(LMAX)
     @debug "Wr_lm" LMAX amodes.nside size(Wr_lm) Wr_lm[:,1]
 
-    check_nsamp(amodes, wmodes)
+    println("Calculate gnlr:")
+    @time gnlr = precompute_gnlr(amodes, wmodes)
 
-    gnl = amodes.basisfunctions
-    @showprogress progressmeter_update_interval "wmix full: " for n′=1:amodes.nmax, n=1:amodes.nmax, l′=0:amodes.lmax_n[n′], l=0:amodes.lmax_n[n]
+    buffer1 = zeros(0)
+    buffer2 = zeros(0)
+
+    println("Starting wmix calculation:")
+    #@showprogress progressmeter_update_interval "wmix full: " for n′=1:amodes.nmax, n=1:amodes.nmax, l′=0:amodes.lmax_n[n′], l=0:amodes.lmax_n[n]
+    @time for n′=1:amodes.nmax, n=1:amodes.nmax, l′=0:amodes.lmax_n[n′], l=0:amodes.lmax_n[n]
         ibase = getidx(amodes, n, l, 0)
         i′base = getidx(amodes, n′, l′, 0)
         #ibase==1 && @show ibase,i′base, n,n′, l,l′, nlmsize
 
-        gg1 = @. Δr * r^2 * gnl(n,l,r) * gnl(n′,l′,r)
+        gg1 = @views @. r²Δr * gnlr[:,n,l+1] * gnlr[:,n′,l′+1]
         ## debug
         #gg1_quadgk,E = quadgk(r->r^2 * gnl(n,l,r) * gnl(n′,l′,r), amodes.rmin, amodes.rmax)
         #@debug "gg1" sum(gg1)*Δr gg1_quadgk,E
         #gg1sum = sum(gg1)
-
-        gg1Wrlm = gg1'Wr_lm
 
         for m=0:l, m′=0:l′
             i = ibase + m
@@ -309,7 +293,7 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
             if neg_m
                 m = -m
             end
-            wmix[i,i′] = calc_wmix_ii(l, m, l′, m′, gg1Wrlm, LMLM)
+            wmix[i,i′] = calc_wmix_ii(l, m, l′, m′, gg1, Wr_lm, LMLM; buffer1, buffer2)
             #if n==n′==1 && l==1 && m==-1 && l′==0
             #    @debug "wmix" i,i′ n,l,m n′,l′,m′ wmix[i,i′]
             #end
@@ -370,16 +354,70 @@ function win_lnn(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes)
 end
 
 
-function wigner3j000(l, l′, L)
+function wigner3j000(l, l′, L)::Float64
     (abs(l-l′) <= L <= l+l′) || return 0.0
     J = l + l′ + L
     iseven(J) || return 0.0
     wig3j = (-1)^(J÷2) * exp(0.5*loggamma(1+J-2l) + 0.5*loggamma(1+J-2l′)
                              + 0.5*loggamma(1+J-2L) - 0.5*loggamma(1+J+1)
-                             + loggamma(1+J/2)
-                             - loggamma(1+J/2-l) - loggamma(1+J/2-l′)
-                             - loggamma(1+J/2-L))
+                             + loggamma(1+J÷2)
+                             - loggamma(1+J÷2-l) - loggamma(1+J÷2-l′)
+                             - loggamma(1+J÷2-L))
     return wig3j
+end
+
+
+function calc_w3j_f(l, l′, m, m′, buffer::AbstractArray{T}) where {T<:Real}
+    w = WignerF(T, l, l′, m, m′)
+
+    buflen = w.nₘₐₓ - w.nₘᵢₙ + 1
+    if length(buffer) < buflen
+        resize!(buffer, buflen)
+    end
+    bufferview = @view buffer[1:buflen]
+
+    w3j_f = WignerSymbolVector(bufferview, w.nₘᵢₙ:w.nₘₐₓ)
+
+    wigner3j_f!(w, w3j_f)  # allocation happening here
+
+    return w3j_f
+end
+
+
+function calc_gaunts_L(l, l′, m, m′; buffer1=zeros(0), buffer2=zeros(0))
+    #L = max(abs(l-l′),abs(M)):(l+l′)
+    #w3j = wigner3j.(Float64, l, l′, L1, m, m′)
+
+    #w3j_f = wigner3j_f(Float64, l, l′, m, m′)
+    #w3j = w3j_f.symbols
+    #L = eachindex(w3j_f)
+
+    w3j_f = calc_w3j_f(l, l′, m, m′, buffer1)
+    gaunt = w3j_f.symbols
+    L = eachindex(w3j_f)
+
+    #@show w3j
+
+    #w3j000 = @. wigner3j(Float64, l, l′, L, 0, 0)  # WignerSymbols is slow
+    # Note: Don't use WignerFamilies, because it will strip zeros
+    #w3j000 = @. wigner3j000(l, l′, L)
+    w3j000 = calc_w3j_f(l, l′, 0, 0, buffer2)
+    #@views @. gaunt *= w3j000[L]
+    #@. w3j *= wigner3j000(l, l′, L)
+    #w3j000_f = wigner3j_f(Float64, l, l′, 0, 0)
+
+    #@show w3j000
+    #@show size(w3j) size(L0) size(w3j000) L L0
+
+    #@show eachindex(w3j) eachindex(L) eachindex(w3j000)
+    #gaunt = @. √((2*L+1) * (2*l+1) * (2*l′+1) / (4*π)) * w3j000 * w3j
+    @views @. gaunt *= √((2*L+1) * (2*l+1) * (2*l′+1) / (4*π)) * w3j000[L]
+    #gaunt = @. √((2*L+1) * (2*l+1) * (2*l′+1) / (4*π)) * wigner3j000(l,l′,L) * w3j
+    #fac = √((2*l+1) * (2*l′+1) / (4*π))
+    #gaunt = @. fac * √(2*L+1) * _wigner3j000(l, l′, L) * w3j
+    #@debug "Gaunt" l,m l′,m′ L M gaunt[1] 1/√(4*π) √(4*π)*gaunt[1]
+
+    return gaunt, L
 end
 
 
@@ -430,6 +468,17 @@ function calc_Wr_lm(win::SeparableArray, LMAX, Wnside)
     return SeparableArray(win.phi, wlm, name1=:phi, name2=:wlm)
 end
 
+
+function precompute_gnlr(amodes, wmodes)
+    r, Δr = window_r(wmodes)
+    gnl = amodes.basisfunctions
+    gnlr = fill(NaN, length(r), size(gnl.knl)...)
+    for l=0:amodes.lmax, n=1:amodes.nmax_l[l+1]
+        @. gnlr[:,n,l+1] = gnl(n,l,r)
+    end
+    check_nsamp(amodes, wmodes)
+    return gnlr
+end
 
 
 function optimize_Wr_lm_layout(Wr_lm, LMAX)
@@ -665,14 +714,8 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
     LMAX = 2 * amodes.lmax
     Wr_lm, L1M1cache = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, amodes.nside), LMAX)
 
-    # the gnl precomputation only saves about 10% time
-    gnl = amodes.basisfunctions
-    gnlr = fill(NaN, length(r), size(gnl.knl)...)
-    @time for l=0:amodes.lmax, n=1:amodes.nmax_l[l+1]
-        @. gnlr[:,n,l+1] = gnl(n,l,r)
-    end
-    check_nsamp(amodes, wmodes)
-
+    println("Calculate gnlr:")
+    @time gnlr = precompute_gnlr(amodes, wmodes)
 
     ## crashes at end:
     #@time @threads for i′=1:lnnsize
@@ -912,12 +955,7 @@ function power_win_mix(win, w̃mat, vmat, wmodes::ConfigurationSpaceModes, bcmod
     @time Wr_lm, L1M1cache = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, amodes.nside), LMAX)
 
     println("Calculate gnlr:")
-    gnl = amodes.basisfunctions
-    gnlr = fill(NaN, length(r), size(gnl.knl)...)
-    @time for l=0:amodes.lmax, n=1:amodes.nmax_l[l+1]
-        @. gnlr[:,n,l+1] = gnl(n,l,r)
-    end
-    check_nsamp(amodes, wmodes)
+    @time gnlr = precompute_gnlr(amodes, wmodes)
 
     mix = _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes; div2Lp1=div2Lp1, interchange_NN′=interchange_NN′)
 
