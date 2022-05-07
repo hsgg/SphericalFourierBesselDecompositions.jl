@@ -341,18 +341,19 @@ function win_lnn(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes)
     @time gnlr = precompute_gnlr(cmodes.amodes, wmodes)
 
     println("Calculate Wlnn:")
-    gg = similar(r)
-    @time for i=1:lnnsize
+    @time Threads.@threads for i=1:lnnsize
         l, n, n′ = getlnn(cmodes, i)
         #@show i, l,n,n′, lnnsize
 
-        @views @. gg = r^2 * gnlr[:,n,l+1] * gnlr[:,n′,l+1] * Wr_00
+        gg = get_tls_ggi(:gg, length(r))
+        @views @turbo @. gg = r^2 * gnlr[:,n,l+1] * gnlr[:,n′,l+1] * Wr_00
 
         Wlnn[i] = Δr * sum(gg) / √(4π)
-        if !isfinite(Wlnn[i])
-            @error "not finite" i l,n,n′ extrema(gg) Δr sum(gg) Wlnn[i]
-            break
-        end
+
+        #if !isfinite(Wlnn[i])
+        #    @error "not finite" i l,n,n′ extrema(gg) Δr sum(gg) Wlnn[i]
+        #    break
+        #end
     end
     @assert all(isfinite, Wlnn)
     return Wlnn
