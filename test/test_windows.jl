@@ -10,8 +10,13 @@ using Statistics
 using Healpix
 
 
+
 @testset "Mixing matrices" begin
-    @testset "Single-pixel masks" begin
+
+    run_tests = true
+
+
+    run_tests && @testset "Single-pixel masks" begin
         rmin = 900.0
         rmax = 1000.0
         nside = 64
@@ -93,7 +98,7 @@ using Healpix
     end
 
 
-    @testset "No window" begin
+    run_tests && @testset "No window" begin
         # Note: inaccuracies in this test are dominated by inaccuracies in healpix.
         rmin = 500.0
         rmax = 1000.0
@@ -142,24 +147,23 @@ using Healpix
     end
 
 
-    @testset "win_lnn()" begin
+    run_tests && @testset "win_lnn()" begin
         rmin = 0.0
         rmax = 4000.0
-        kmax = 0.1
+        kmax = 0.01
         @time amodes = SFB.AnlmModes(kmax, rmin, rmax, cache=false)
         @time cmodes = SFB.ClnnModes(amodes, Δnmax=100)
-        @time wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
+        @time wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 2032, amodes.nside)
 
         @time win = SFB.make_window(wmodes, :separable)
 
-        wlnn = SFB.win_lnn(win, wmodes, cmodes)
         wlnn = SFB.win_lnn(win, wmodes, cmodes)
         wlnn = SFB.win_lnn(win, wmodes, cmodes)
     end
 
 
     # Inhomogeneous masks
-    @testset "Inhomogeneous Window sep & insep" begin
+    run_tests && @testset "Inhomogeneous Window sep & insep" begin
         rmin = 500.0
         rmax = 1000.0
         amodes = SFB.AnlmModes(2, 5, rmin, rmax)
@@ -240,7 +244,7 @@ using Healpix
 
 
     # Test win_rhat_ln() with basisfunctions
-    @testset "win(rhat,l,n) with basis" begin
+    run_tests && @testset "win(rhat,l,n) with basis" begin
         rmin = 500.0
         rmax = 1000.0
         nmax = 5
@@ -285,7 +289,7 @@ using Healpix
                         (:separable, :ang_half, :radial),
                         (:separable, :ang_quarter, :radial),
                       ]
-    @testset "Window $(win_features...)" for win_features in win_descriptions
+    run_tests && @testset "Window $(win_features...)" for win_features in win_descriptions
         rmin = 500.0
         rmax = 1000.0
         amodes = SFB.AnlmModes(2, 5, rmin, rmax)
