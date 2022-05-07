@@ -367,10 +367,10 @@ function wigner3j000(l, l′, L)::Float64
 end
 
 
-function calc_w3j_f(l, l′, m, m′, buffer::AbstractArray{T}) where {T<:Real}
+function calc_w3j_f(l, l′, m, m′, buffer::AbstractVector{T}) where {T<:Real}
     w = WignerF(T, l, l′, m, m′)
 
-    buflen = w.nₘₐₓ - w.nₘᵢₙ + 1
+    buflen = length(w.nₘᵢₙ:w.nₘₐₓ)
     if length(buffer) < buflen
         resize!(buffer, buflen)
     end
@@ -384,38 +384,16 @@ function calc_w3j_f(l, l′, m, m′, buffer::AbstractArray{T}) where {T<:Real}
 end
 
 
+# calc_gaunts_L(): Will modify both buffers, and use one of them for the returned array.
 function calc_gaunts_L(l, l′, m, m′; buffer1=zeros(0), buffer2=zeros(0))
-    #L = max(abs(l-l′),abs(M)):(l+l′)
-    #w3j = wigner3j.(Float64, l, l′, L1, m, m′)
-
-    #w3j_f = wigner3j_f(Float64, l, l′, m, m′)
-    #w3j = w3j_f.symbols
-    #L = eachindex(w3j_f)
-
-    w3j_f = calc_w3j_f(l, l′, m, m′, buffer1)
-    gaunt = w3j_f.symbols
-    L = eachindex(w3j_f)
-
-    #@show w3j
-
-    #w3j000 = @. wigner3j(Float64, l, l′, L, 0, 0)  # WignerSymbols is slow
-    # Note: Don't use WignerFamilies, because it will strip zeros
-    #w3j000 = @. wigner3j000(l, l′, L)
+    w3j = calc_w3j_f(l, l′, m, m′, buffer1)
     w3j000 = calc_w3j_f(l, l′, 0, 0, buffer2)
-    #@views @. gaunt *= w3j000[L]
-    #@. w3j *= wigner3j000(l, l′, L)
-    #w3j000_f = wigner3j_f(Float64, l, l′, 0, 0)
+    #w3j000 = @. wigner3j000(l, l′, L)
 
-    #@show w3j000
-    #@show size(w3j) size(L0) size(w3j000) L L0
-
-    #@show eachindex(w3j) eachindex(L) eachindex(w3j000)
-    #gaunt = @. √((2*L+1) * (2*l+1) * (2*l′+1) / (4*π)) * w3j000 * w3j
+    L = eachindex(w3j)
+    gaunt = w3j.symbols
     @views @. gaunt *= √((2*L+1) * (2*l+1) * (2*l′+1) / (4*π)) * w3j000[L]
-    #gaunt = @. √((2*L+1) * (2*l+1) * (2*l′+1) / (4*π)) * wigner3j000(l,l′,L) * w3j
-    #fac = √((2*l+1) * (2*l′+1) / (4*π))
-    #gaunt = @. fac * √(2*L+1) * _wigner3j000(l, l′, L) * w3j
-    #@debug "Gaunt" l,m l′,m′ L M gaunt[1] 1/√(4*π) √(4*π)*gaunt[1]
+    #gaunt = @. √((2*L+1) * (2*l+1) * (2*l′+1) / (4*π)) * w3j000 * w3j
 
     return gaunt, L
 end
