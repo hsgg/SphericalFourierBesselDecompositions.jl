@@ -70,10 +70,10 @@ const progressmeter_update_interval = haskey(ENV, "PROGRESSMETER_UPDATE_INTERVAL
 #SparseArrays.rowvals(mat) = 1:size(mat,1)  # we also want to use it for full vectors
 
 
-struct ConfigurationSpaceModes{Tarr}
-    rmin::Real
-    rmax::Real
-    Δr::Real
+struct ConfigurationSpaceModes{Tarr,T<:Real}
+    rmin::T
+    rmax::T
+    Δr::T
     r::Tarr
     nr::Integer
     npix::Integer
@@ -82,7 +82,7 @@ end
 
 # for the @__dot syntax:
 Base.length(w::ConfigurationSpaceModes) = 1
-Base.iterate(w::ConfigurationSpaceModes) = s, nothing
+Base.iterate(w::ConfigurationSpaceModes) = w, nothing
 Base.iterate(w::ConfigurationSpaceModes, x) = nothing
 
 
