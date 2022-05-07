@@ -456,8 +456,10 @@ function precompute_gnlr(amodes, wmodes)
     r, Δr = window_r(wmodes)
     gnl = amodes.basisfunctions
     gnlr = fill(NaN, length(r), size(gnl.knl)...)
-    for l=0:amodes.lmax, n=1:amodes.nmax_l[l+1]
-        @views @. gnlr[:,n,l+1] = gnl(n,l,r)
+    Threads.@threads for l=0:amodes.lmax
+        for n=1:amodes.nmax_l[l+1]
+            @views @. gnlr[:,n,l+1] = gnl(n,l,r)
+        end
     end
     check_nsamp(amodes, wmodes)
     return gnlr
