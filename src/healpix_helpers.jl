@@ -44,11 +44,12 @@ end
 ######## convenience functions
 
 function mymap2alm_healpixjl(map::HealpixMap; lmax=3*map.resolution.nside-1)
-    if map.resolution.nside >= 32
-        map2 = deepcopy(map)
-        applyFullWeights!(map2)  # only nside>=32 is supported
-        return map2alm(map2, lmax=lmax, niter=0)
-    end
+    #if map.resolution.nside >= 32
+    #    # Note: This makes the field2anlm() test fail:
+    #    map2 = deepcopy(map)
+    #    applyFullWeights!(map2)  # only nside>=32 is supported
+    #    return map2alm(map2, lmax=lmax, niter=0)
+    #end
     return map2alm(map, lmax=lmax)
 end
 

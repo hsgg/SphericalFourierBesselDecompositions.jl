@@ -12,7 +12,10 @@ using Healpix
 #using PyPlot
 
 @testset "Cat2Anlm" begin
-    @testset "basis function transform" begin
+
+    run_tests = true
+
+    run_tests && @testset "basis function transform" begin
         rmin = 0.0
         rmax = 1000.0
         kmax = 0.02
@@ -50,7 +53,7 @@ using Healpix
     end
 
 
-    @testset "Cat2Anlm with weights" begin
+    run_tests && @testset "Cat2Anlm with weights" begin
         rmin = 0.0
         rmax = 1000.0
         kmax = 0.01
@@ -134,7 +137,7 @@ using Healpix
     end
 
 
-    @testset "field2anlm()" begin
+    run_tests && @testset "field2anlm()" begin
         rmin = 500.0
         rmax = 1000.0
         nmax = 2
