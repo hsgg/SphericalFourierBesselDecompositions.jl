@@ -148,17 +148,24 @@ using Healpix
 
 
     run_tests && @testset "win_lnn()" begin
-        rmin = 0.0
-        rmax = 4000.0
-        kmax = 0.01
+    #@testset "win_lnn()" begin
+        rmin = 500.0
+        rmax = 1000.0
+        kmax = 0.019  # ≈ 50,000 nlm-modes
+        #kmax = 0.025  # ≈ 12.5 seconds in serial
+        #kmax = 0.030  # ≈ 30 seconds in parallel, 42 sec serial
         @time amodes = SFB.AnlmModes(kmax, rmin, rmax, cache=false)
-        @time cmodes = SFB.ClnnModes(amodes, Δnmax=100)
         @time wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 2032, amodes.nside)
+        @time win = SFB.make_window(wmodes, :radial, :ang_sixteenth, :rotate)
 
-        @time win = SFB.make_window(wmodes, :separable)
-
+        @time cmodes = SFB.ClnnModes(amodes, Δnmax=100)
         wlnn = SFB.win_lnn(win, wmodes, cmodes)
         wlnn = SFB.win_lnn(win, wmodes, cmodes)
+
+        wmix = SFB.calc_wmix(win, wmodes, amodes)
+        wmix = SFB.calc_wmix(win, wmodes, amodes)
+        @show wmix[123,121]
+        @test wmix[123,121] ≈ 0.0031756395970370306 + 0.02813773208852665im
     end
 
 

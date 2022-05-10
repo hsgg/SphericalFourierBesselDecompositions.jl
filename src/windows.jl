@@ -58,6 +58,7 @@ using LoopVectorization
 using Distributed
 using SharedArrays
 using ProgressMeter
+using Base.Threads
 #using Base.Threads  # Threads.@threads macro, export JULIA_NUM_THREADS=8
 
 const progressmeter_update_interval = haskey(ENV, "PROGRESSMETER_UPDATE_INTERVAL") ? parse(Int, ENV["PROGRESSMETER_UPDATE_INTERVAL"]) : 1
@@ -255,53 +256,69 @@ end
 # This should be very performant
 # Also checkout calc_wmix_all() in window_chains.jl.
 function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_m=false)
+    T = ComplexF64
+
+    nlmodes = ClnnModes(amodes, Δnmax=0)  # to make it easy to iterate over l,n
+    nlsize = getlnnsize(nlmodes)
+
     nlmsize = getnlmsize(amodes)
+    lmax = amodes.lmax
     wmix = fill(NaN*im, nlmsize, nlmsize)
-    @show length(wmix), size(wmix)
+    @show length(wmix), size(wmix), nlsize
 
     r, Δr = window_r(wmodes)
     r²Δr = @. r^2 * Δr
+    nr = Int64(wmodes.nr)
 
     println("Calculate Wr_lm:")
     LMAX = 2 * amodes.lmax
     #Wr_lm, LMLM = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, amodes.nside), LMAX)
     Wr_lm, LMLM = calc_Wr_lm(win, LMAX, amodes.nside), LMcalcStruct(LMAX)
-    @debug "Wr_lm" LMAX amodes.nside size(Wr_lm) Wr_lm[:,1]
+    #@debug "Wr_lm" LMAX amodes.nside size(Wr_lm) Wr_lm[:,1]
 
     println("Calculate gnlr:")
     @time gnlr = precompute_gnlr(amodes, wmodes)
 
-    buffer1 = zeros(0)
-    buffer2 = zeros(0)
 
     println("Starting wmix calculation:")
-    #@showprogress progressmeter_update_interval "wmix full: " for n′=1:amodes.nmax, n=1:amodes.nmax, l′=0:amodes.lmax_n[n′], l=0:amodes.lmax_n[n]
-    @time for n′=1:amodes.nmax, n=1:amodes.nmax, l′=0:amodes.lmax_n[n′], l=0:amodes.lmax_n[n]
+    #@showprogress progressmeter_update_interval "wmix full: "
+    #@time for nl=1:nlsize, n′l′=1:nlsize
+    nlnlsize = nlsize * nlsize
+    #clear_each_tls.([:gg1, :buffer1, :buffer2, :wtmp])
+    @time @threads for nlnl=1:nlnlsize
+        nl = (nlnl - 1) % nlsize + 1
+        n′l′ = (nlnl - 1) ÷ nlsize + 1
+        #println("==> $nl, $n′l′")
+
+        l, n, _ = getlnn(nlmodes, nl)
+        l′, n′, _ = getlnn(nlmodes, n′l′)
+
         ibase = getidx(amodes, n, l, 0)
         i′base = getidx(amodes, n′, l′, 0)
-        #ibase==1 && @show ibase,i′base, n,n′, l,l′, nlmsize
 
-        gg1 = @views @. r²Δr * gnlr[:,n,l+1] * gnlr[:,n′,l′+1]
-        ## debug
-        #gg1_quadgk,E = quadgk(r->r^2 * gnl(n,l,r) * gnl(n′,l′,r), amodes.rmin, amodes.rmax)
-        #@debug "gg1" sum(gg1)*Δr gg1_quadgk,E
-        #gg1sum = sum(gg1)
+        gg1 = get_tls_vec(:gg1, nr)
+        @views @. gg1 = r²Δr * gnlr[:,n,l+1] * gnlr[:,n′,l′+1]
 
+        wtmp = get_tls_vec(T, :wtmp, (lmax+1)^2)
+        ll = 1:((l+1)*(l′+1))
+        w = @views reshape(wtmp[ll], l+1, l′+1)
+
+        buffer1 = get_tls_vec(:buffer1, 0)
+        buffer2 = get_tls_vec(:buffer2, 0)
         for m=0:l, m′=0:l′
-            i = ibase + m
-            i′ = i′base + m′
+            am = m
             if neg_m
                 m = -m
             end
-            wmix[i,i′] = calc_wmix_ii(l, m, l′, m′, gg1, Wr_lm, LMLM; buffer1, buffer2)
-            #if n==n′==1 && l==1 && m==-1 && l′==0
-            #    @debug "wmix" i,i′ n,l,m n′,l′,m′ wmix[i,i′]
-            #end
-            #@show wmix[i,i′]
-            @assert isfinite(wmix[i,i′])
+            w[am+1,m′+1] = calc_wmix_ii(l, m, l′, m′, gg1, Wr_lm, LMLM; buffer1, buffer2)
         end
+
+        mm = ibase .+ (0:l)
+        mm′ = i′base .+ (0:l′)
+        @views @. wmix[mm,mm′] = w
     end
-    @assert all(isfinite, wmix)
+    #clear_each_tls.([:gg1, :buffer1, :buffer2, :wtmp])
+    #@assert all(isfinite, wmix)
     return wmix
 end
 
@@ -345,7 +362,7 @@ function win_lnn(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes)
         l, n, n′ = getlnn(cmodes, i)
         #@show i, l,n,n′, lnnsize
 
-        gg = get_tls_ggi(:gg, length(r))
+        gg = get_tls_vec(:gg, length(r))
         @views @turbo @. gg = r^2 * gnlr[:,n,l+1] * gnlr[:,n′,l+1] * Wr_00
 
         Wlnn[i] = Δr * sum(gg) / √(4π)
@@ -384,7 +401,7 @@ function calc_w3j_f(l, l′, m, m′, buffer::AbstractVector{T}) where {T<:Real}
 
     w3j_f = WignerSymbolVector(bufferview, w.nₘᵢₙ:w.nₘₐₓ)
 
-    wigner3j_f!(w, w3j_f)  # allocation happening here
+    wigner3j_f!(w, w3j_f)  # allocation happening here. why?
 
     return w3j_f
 end
@@ -392,13 +409,14 @@ end
 
 # calc_gaunts_L(): Will modify both buffers, and use one of them for the returned array.
 function calc_gaunts_L(l, l′, m, m′; buffer1=zeros(0), buffer2=zeros(0))
+    T = Float64
     w3j = calc_w3j_f(l, l′, m, m′, buffer1)
     w3j000 = calc_w3j_f(l, l′, 0, 0, buffer2)
     #w3j000 = @. wigner3j000(l, l′, L)
 
     L = eachindex(w3j)
     gaunt = w3j.symbols
-    @views @. gaunt *= √((2*L+1) * (2*l+1) * (2*l′+1) / (4*π)) * w3j000[L]
+    @views @. gaunt *= √((2*L+1) * (2*l+1) * (2*l′+1) / (4*T(π))) * w3j000[L]
     #gaunt = @. √((2*L+1) * (2*l+1) * (2*l′+1) / (4*π)) * w3j000 * w3j
 
     return gaunt, L
@@ -558,13 +576,34 @@ function calc_cmix_ang(l, L, L1M1cache, gg1, gg2, Wr_lm)
 end
 
 
-function get_tls_ggi(key, len)::Vector{Float64}
+function clear_tls(key)
+    tls = task_local_storage()
+    if haskey(tls, key)
+        delete!(tls, key)
+    end
+end
+
+
+function clear_each_tls(key)
+    for _=1:nthreads()
+        clear_tls(key)
+    end
+end
+
+
+function get_tls_vec(T, key, len)
     tls = task_local_storage()
     if !haskey(tls, key)
-        tls[key] = Vector{Float64}(undef, len)
+        tls[key] = Vector{T}(undef, len)
     end
-    return tls[key]
+    return resize!(tls[key]::Vector{T}, len)
+    #v = tls[key]::Vector{Float64}
+    #if length(v) < len
+    #    resize!(v, len)
+    #end
+    #return v
 end
+get_tls_vec(key, len) = get_tls_vec(Float64, key, len)
 
 
 function calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes::ClnnModes, Wr_lm, L1M1cache, div2Lp1)
@@ -577,8 +616,8 @@ function calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes::ClnnModes, Wr_lm, L1M1
 
     # get task-local work arrays
     len = length(r)
-    gg1 = get_tls_ggi(:gg1, len)
-    gg2 = get_tls_ggi(:gg2, len)
+    gg1 = get_tls_vec(:gg1, len)
+    gg2 = get_tls_vec(:gg2, len)
 
     @views @. gg1 = r^2 * gnlr[:,n,l+1] * gnlr[:,N,L+1]
     @views @. gg2 = r^2 * gnlr[:,n′,l+1] * gnlr[:,N′,L+1]
