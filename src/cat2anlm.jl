@@ -298,14 +298,14 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weight=ones(eltype(rθϕ), s
             #@show mean(map ./ map3),std(map ./ map3)
 
             map .*= 1 / (nbar * ΔΩpix)
-            map = T.(map)
+            mapT = convert(Vector{T}, map)
 
-            c = win_rhat_ln[:,l+1,n]
+            c = @view win_rhat_ln[:,l+1,n]
             #@show size(map) size(c)
             #@show n,l mean(map) mean(c)
             #@show mean(map[c .!= 0]) mean(c[c .!= 0])
             #@show mean(map[c .== 0]) mean(c[c .== 0])
-            @. map = map - c
+            @. mapT = mapT - c
             #@show n,l,mean(map),median(map)
             #@show map
 
@@ -320,12 +320,12 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weight=ones(eltype(rθϕ), s
             #idx = hp.Alm.getidx.(l, l, 0:l) .+ 1  # python is 0-indexed
 
             # Healpix.jl:
-            maphp = HealpixMap{T,Healpix.RingOrder}(map)
+            maphp = HealpixMap{T,Healpix.RingOrder}(mapT)
             alm = mymap2alm(maphp, lmax=l)
             idx = almIndex(alm, l, 0:l)
 
             baseidx = getidx(amodes, n, l, 0)
-            @. anlm[baseidx:(baseidx+l)] = alm.alm[idx]
+            @views @. anlm[baseidx:(baseidx+l)] = alm.alm[idx]
         end
     end
     @assert all(isfinite.(anlm))
