@@ -32,7 +32,7 @@ using Healpix
         idxmax = SFB.getnlmsize(amodes)
         idxworst = 0
         wurstkaese = 0.0
-        for idx=1:idxmax
+        for idx in rand(1:idxmax, 10)  # no need to be exhaustive every time
             n, l, m = SFB.getnlm(amodes, idx)
             win = SFB.get_full_basisfuncreal_nlm(amodes, wmodes, n, l, m)[:,:]
             wrhatln = SFB.win_rhat_ln(win, wmodes, amodes)
