@@ -34,6 +34,7 @@ export gen_Clnn_theory
 export Clnn2CnlmNLM, sum_m_lmeqLM
 export add_local_average_effect_nowindow
 export calc_NobsA, calc_CobsA, calc_CNobsA
+export calc_NobsA_z
 
 # deprecated:
 export add_local_average_effect, calc_CNAnlmNLM
@@ -210,6 +211,69 @@ function calc_NobsA(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes)
     DwWlnn = calc_DWlnn(cmix_wW, cmodes, dn00 / √Veff)
 
     NwWA = NwW_th - (2/nbar - trNWD) * DwWlnn
+    return NwWA
+end
+
+
+@doc raw"""
+    calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes)
+
+Calculate the observed shot noise including the local average effect for
+measured nbar(z).
+"""
+function calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes, amodes_red, wWmix, wWmix_negm, fskyinvlnn)
+    #dn00 = calc_dn00(cmodes)
+    #dn00obs = calc_dn00obs(dn00, nbar .* NW_th, cmodes)
+    #trNWD = dn00'dn00obs / (Veff * nbar)
+    #DwWlnn = calc_DWlnn(cmix_wW, cmodes, dn00 / √Veff)
+
+    nmax0 = cmodes.amodes.nmax_l[1]
+
+    N4arr = fill(0.0, getlnnsize(cmodes))
+    for i=1:length(N4arr)
+        l, n1, n2 = getlnn(cmodes, i)
+
+        if !isvalidnlm(amodes_red, n1, l, 0) || !isvalidnlm(amodes_red, n2, l, 0)
+            continue
+        end
+
+        nmaxl = amodes_red.nmax_l[l+1]
+        nl_μμ = getidx(amodes_red, n1, l, 0)
+        nl_νμ = getidx(amodes_red, n2, l, 0)
+
+        N4 = 0.0
+        for nrho=1:nmaxl, nlambda=1:nmaxl
+            fNf = 0.0
+            if isvalidlnn(cmodes, 0, nrho, nlambda)
+                for nϵ=1:nmax0, nα=1:nmax0
+                    if isvalidlnn(cmodes, 0, nrho, nϵ) && isvalidlnn(cmodes, 0, nϵ, nα) && isvalidlnn(cmodes, 0, nα, nlambda)
+                        j1 = getidx(cmodes, 0, nrho, nϵ)
+                        j2 = getidx(cmodes, 0, nϵ, nα)
+                        j3 = getidx(cmodes, 0, nα, nlambda)
+                        fNf = fskyinvlnn[j1] * NW_th[j2] * fskyinvlnn[j3]
+                    end
+                end
+            end
+
+            if fNf == 0
+                continue
+            end
+
+            nl_ρ = getidx(amodes_red, nrho, 0, 0)
+            nl_λ = getidx(amodes_red, nlambda, 0, 0)
+            for m=-l:l
+                wW_rhomu = get_anlmNLM_r(wWmix, wWmix_negm, nl_μμ, m, nl_ρ, 0)
+                wW_lamnu = get_anlmNLM_r(wWmix, wWmix_negm, nl_νμ, m, nl_λ, 0)
+                N4 += real(wW_rhomu * fNf * wW_lamnu)
+            end
+        end
+        N4arr[i] = 1 / (2*l + 1) * N4
+    end
+
+    @show NwW_th[1:5]
+    @show N4arr[1:5]
+
+    NwWA = NwW_th - N4arr
     return NwWA
 end
 

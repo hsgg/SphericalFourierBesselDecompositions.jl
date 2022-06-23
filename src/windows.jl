@@ -467,6 +467,7 @@ end
 function calc_Wr_lm(win::SeparableArray, LMAX, Wnside)
     mask = udgrade(win.mask, Wnside)
     wlm = mymap2alm(mask, lmax=LMAX)
+    @assert ndims(win.phi) == ndims(wlm) == 1
     return SeparableArray(win.phi, wlm, name1=:phi, name2=:wlm)
 end
 
