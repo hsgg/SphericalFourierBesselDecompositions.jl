@@ -296,15 +296,15 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
         ibase = getidx(amodes, n, l, 0)
         i′base = getidx(amodes, n′, l′, 0)
 
-        gg1 = get_tls_vec(:gg1, nr)
+        gg1 = get_tls_vec(:gg1_superfab, nr)
         @views @. gg1 = r²Δr * gnlr[:,n,l+1] * gnlr[:,n′,l′+1]
 
-        wtmp = get_tls_vec(T, :wtmp, (lmax+1)^2)
+        wtmp = get_tls_vec(T, :wtmp_superfab, (lmax+1)^2)
         ll = 1:((l+1)*(l′+1))
         w = @views reshape(wtmp[ll], l+1, l′+1)
 
-        buffer1 = get_tls_vec(:buffer1, 0)
-        buffer2 = get_tls_vec(:buffer2, 0)
+        buffer1 = get_tls_vec(:buffer1_superfab, 0)
+        buffer2 = get_tls_vec(:buffer2_superfab, 0)
         for m=0:l, m′=0:l′
             am = m
             if neg_m
