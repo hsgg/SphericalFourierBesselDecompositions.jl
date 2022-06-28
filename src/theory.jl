@@ -229,6 +229,7 @@ function calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes, amodes_red, wW
 
     nmax0 = cmodes.amodes.nmax_l[1]
 
+    # N4
     N4arr = fill(0.0, getlnnsize(cmodes))
     for i=1:length(N4arr)
         l, n1, n2 = getlnn(cmodes, i)
@@ -255,6 +256,11 @@ function calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes, amodes_red, wW
                 end
             end
 
+            # add N2+N3 term:
+            j2 = getidx(cmodes, 0, nrho, nlambda)
+            j3 = getidx(cmodes, 0, nlambda, nrho)
+            fNf += fskyinvlnn[j2] + fskyinvlnn[j3]
+
             if fNf == 0
                 continue
             end
@@ -269,6 +275,7 @@ function calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes, amodes_red, wW
         end
         N4arr[i] = 1 / (2*l + 1) * N4
     end
+
 
     @show NwW_th[1:5]
     @show N4arr[1:5]
