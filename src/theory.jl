@@ -230,8 +230,8 @@ function calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes, amodes_red, wW
     nmax0 = cmodes.amodes.nmax_l[1]
 
     # N4
-    N4arr = fill(0.0, getlnnsize(cmodes))
-    for i=1:length(N4arr)
+    N234arr = fill(0.0, getlnnsize(cmodes))
+    for i=1:length(N234arr)
         l, n1, n2 = getlnn(cmodes, i)
 
         if !isvalidnlm(amodes_red, n1, l, 0) || !isvalidnlm(amodes_red, n2, l, 0)
@@ -242,24 +242,38 @@ function calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes, amodes_red, wW
         nl_μμ = getidx(amodes_red, n1, l, 0)
         nl_νμ = getidx(amodes_red, n2, l, 0)
 
-        N4 = 0.0
+        N234 = 0.0
         for nrho=1:nmaxl, nlambda=1:nmaxl
             fNf = 0.0
+
+            # add N4 term:
             if isvalidlnn(cmodes, 0, nrho, nlambda)
                 for nϵ=1:nmax0, nα=1:nmax0
                     if isvalidlnn(cmodes, 0, nrho, nϵ) && isvalidlnn(cmodes, 0, nϵ, nα) && isvalidlnn(cmodes, 0, nα, nlambda)
                         j1 = getidx(cmodes, 0, nrho, nϵ)
                         j2 = getidx(cmodes, 0, nϵ, nα)
                         j3 = getidx(cmodes, 0, nα, nlambda)
-                        fNf = fskyinvlnn[j1] * NW_th[j2] * fskyinvlnn[j3]
+                        fNf += fskyinvlnn[j1] * NW_th[j2] * fskyinvlnn[j3]
+                        #@show fNf
                     end
                 end
             end
 
-            # add N2+N3 term:
-            j2 = getidx(cmodes, 0, nrho, nlambda)
-            j3 = getidx(cmodes, 0, nlambda, nrho)
-            fNf += fskyinvlnn[j2] + fskyinvlnn[j3]
+            # add N2 term:
+            if isvalidlnn(cmodes, 0, nrho, nlambda)
+                j2 = getidx(cmodes, 0, nrho, nlambda)
+                fNf -= fskyinvlnn[j2] / nbar
+            end
+            #@show fNf
+
+            # add N3 term:
+            if isvalidlnn(cmodes, 0, nlambda, nrho)
+                j3 = getidx(cmodes, 0, nlambda, nrho)
+                fNf -= fskyinvlnn[j3] / nbar
+            end
+            #@show fNf
+
+            #@show (l,n1,n2),nrho,nlambda,fNf
 
             if fNf == 0
                 continue
@@ -270,17 +284,18 @@ function calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes, amodes_red, wW
             for m=-l:l
                 wW_rhomu = get_anlmNLM_r(wWmix, wWmix_negm, nl_μμ, m, nl_ρ, 0)
                 wW_lamnu = get_anlmNLM_r(wWmix, wWmix_negm, nl_νμ, m, nl_λ, 0)
-                N4 += real(wW_rhomu * fNf * wW_lamnu)
+                N234 += real(wW_rhomu * fNf * wW_lamnu)
             end
         end
-        N4arr[i] = 1 / (2*l + 1) * N4
+        N234arr[i] = 1 / (2*l + 1) * N234
     end
 
 
     @show NwW_th[1:5]
-    @show N4arr[1:5]
+    @show NW_th[1:5]
+    @show N234arr[1:5]
 
-    NwWA = NwW_th - N4arr
+    NwWA = NwW_th + N234arr
     return NwWA
 end
 
