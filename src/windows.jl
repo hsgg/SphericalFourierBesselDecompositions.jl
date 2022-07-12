@@ -59,7 +59,7 @@ using Distributed
 using SharedArrays
 using ProgressMeter
 using Base.Threads
-#using Base.Threads  # Threads.@threads macro, export JULIA_NUM_THREADS=8
+using ThreadsX
 
 const progressmeter_update_interval = haskey(ENV, "PROGRESSMETER_UPDATE_INTERVAL") ? parse(Int, ENV["PROGRESSMETER_UPDATE_INTERVAL"]) : 1
 
@@ -148,13 +148,13 @@ function apply_window(rθϕ::AbstractArray{T}, win, rmin, rmax, win_r, win_Δr; 
     nside = npix2nside(size(win,2))
     reso = Resolution(nside)
     ooWmax = 1 / maximum(win)
-    insample = Array{Bool}(undef, Ngals)
+    nr = length(win_r)
+    #insample = Array{Bool}(undef, Ngals)
     #insample = BitArray(undef, Ngals)
-    Threads.@threads for i=1:Ngals
+    insample = ThreadsX.map(1:Ngals) do i
         r = rθϕ[1,i]
         if !(rmin <= r <= rmax)
-            insample[i] = false
-            continue
+            return false
         end
         θ = rθϕ[2,i]
         ϕ = rθϕ[3,i]
@@ -162,19 +162,16 @@ function apply_window(rθϕ::AbstractArray{T}, win, rmin, rmax, win_r, win_Δr; 
         idx_r = ceil(Int, (r - rmin) / win_Δr)
         if idx_r == 0  # if r == rmin
             idx_r = 1
-        end
-        if idx_r > length(r)
-            insample[i] = false
-            continue
+        elseif idx_r > nr
+            return false
         end
 
         idx_ang = ang2pixRing(reso, θ, ϕ)
 
         if rand(rng) <= win[idx_r,idx_ang] * ooWmax
-            insample[i] = true
-        else
-            insample[i] = false
+            return true
         end
+        return false
     end
     return collect(rθϕ[:,insample])
 end
