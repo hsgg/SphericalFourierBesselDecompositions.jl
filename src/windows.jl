@@ -145,7 +145,7 @@ proportional probability so that none are kept where `win <= 0`.
 """
 function apply_window(rθϕ::AbstractArray{T}, win, rmin, rmax, win_r, win_Δr; rng=Random.GLOBAL_RNG) where {T<:Real}
     Ngals = size(rθϕ, 2)
-    nside= npix2nside(size(win,2))
+    nside = npix2nside(size(win,2))
     reso = Resolution(nside)
     ooWmax = 1 / maximum(win)
     insample = Array{Bool}(undef, Ngals)
@@ -158,13 +158,23 @@ function apply_window(rθϕ::AbstractArray{T}, win, rmin, rmax, win_r, win_Δr; 
         end
         θ = rθϕ[2,i]
         ϕ = rθϕ[3,i]
+
         idx_r = ceil(Int, (r - rmin) / win_Δr)
-        idx_ang = ang2pixRing(reso, θ, ϕ)
-        if rand(rng) <= win[idx_r,idx_ang] * ooWmax
-            insample[i] = true
+        if idx_r == 0  # if r == rmin
+            idx_r = 1
+        end
+        if idx_r > length(r)
+            insample[i] = false
             continue
         end
-        insample[i] = false
+
+        idx_ang = ang2pixRing(reso, θ, ϕ)
+
+        if rand(rng) <= win[idx_r,idx_ang] * ooWmax
+            insample[i] = true
+        else
+            insample[i] = false
+        end
     end
     return collect(rθϕ[:,insample])
 end
