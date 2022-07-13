@@ -145,7 +145,8 @@ proportional probability so that none are kept where `win <= 0`.
 """
 function apply_window(rθϕ::AbstractArray{T}, win, rmin, rmax, win_r, win_Δr; rng=Random.GLOBAL_RNG) where {T<:Real}
     Ngals = size(rθϕ, 2)
-    nside = npix2nside(size(win,2))
+    npix = size(win, 2)
+    nside = npix2nside(npix)
     reso = Resolution(nside)
     ooWmax = 1 / maximum(win)
     nr = length(win_r)
@@ -167,6 +168,9 @@ function apply_window(rθϕ::AbstractArray{T}, win, rmin, rmax, win_r, win_Δr; 
         end
 
         idx_ang = ang2pixRing(reso, θ, ϕ)
+        if !(1 <= idx_ang <= npix)
+            @error "healpixel outside healpix map" reso nside θ ϕ idx_ang npix
+        end
 
         if rand(rng) <= win[idx_r,idx_ang] * ooWmax
             return true
