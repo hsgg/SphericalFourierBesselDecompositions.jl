@@ -389,6 +389,86 @@ function calc_CobsA_term4(C_th, cmix_W, cmix_wW, Veff, cmodes)
 end
 
 
+function calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, Wmix, Wmix_negm, fskyinvlnn)
+    lnnsize = getlnnsize(cmodes)
+    T23mat = fill(0.0, lnnsize, lnnsize)
+    nmax0 = cmodes.amodes.nmax_l[1]
+    for i=1:lnnsize, j=1:lnnsize
+        lμ, nμ, nν = getlnn(cmodes, i)
+        lσ, nσ, nα = getlnn(cmodes, j)
+
+        if !isvalidnlm(amodes_red, nσ, lσ, 0) ||
+            !isvalidnlm(amodes_red, nα, lσ, 0) ||
+            !isvalidnlm(amodes_red, nμ, lμ, 0) ||
+            !isvalidnlm(amodes_red, nν, lμ, 0)
+            # Yes, both terms 2 and 3 need all four to be valid modes.
+            continue
+        end
+        nσlσ = getidx(amodes_red, nσ, lσ, 0)
+        nαlσ = getidx(amodes_red, nα, lσ, 0)
+        nμlμ = getidx(amodes_red, nμ, lμ, 0)
+        nνlμ = getidx(amodes_red, nν, lμ, 0)
+
+        T23 = 0.0im
+        for nβ=1:nmax0, nλ=1:nmax0
+            if !isvalidlnn(cmodes, 0, nβ, nλ)
+                continue
+            end
+            f0nβnλ = fskyinvlnn[getidx(cmodes, 0, nβ, nλ)]
+
+            nβl0 = getidx(amodes_red, nβ, 0, 0)
+            nλl0 = getidx(amodes_red, nλ, 0, 0)
+
+            for mσ=-lσ:lσ
+                W_nαlσmσ_nβ00 = get_anlmNLM_r(Wmix, Wmix_negm, nαlσ, mσ, nβl0, 0)
+                for mμ=-lμ:lμ
+                    wW_nλ00_nνlμmμ = get_anlmNLM_r(wWmix, wWmix_negm, nλl0, 0, nνlμ, mμ)
+                    wW_nλ00_nμlμmμ = get_anlmNLM_r(wWmix, wWmix_negm, nλl0, 0, nμlμ, mμ)
+                    wW_μ_σ = get_anlmNLM_r(wWmix, wWmix_negm, nμlμ, mμ, nσlσ, mσ)
+                    wW_ν_σ = get_anlmNLM_r(wWmix, wWmix_negm, nνlμ, mμ, nσlσ, mσ)
+
+                    T23 += f0nβnλ * W_nαlσmσ_nβ00 * (wW_nλ00_nνlμmμ * wW_μ_σ + wW_nλ00_nμlμmμ * wW_ν_σ)
+                end
+            end
+        end
+        T23mat[i,j] = real(T23) / (2*lμ + 1)
+    end
+
+    return T23mat
+end
+
+
+function calc_C4lnn_z(C_th, cmix_W, cmix_wW, cmodes, fskyinvlnn)
+    nmax0 = cmodes.amodes.nmax[1]
+
+    CW = cmix_W * C_th
+    CW0nn = [isvalidlnn(cmodes, 0, nϵ, nα) ? CW[getidx(cmodes, 0, nϵ, nα)] : 0.0
+             for nϵ=1:nmax0, nα=1:nmax0]
+
+    finv_n00_n00 = [isvalidlnn(cmodes, 0, nϵ, nα) ? fskyinvlnn[getidx(cmodes, 0, nϵ, nα)] : 0.0
+                    for nϵ=1:nmax0, nα=1:nmax0]
+
+    fCWf = finv_n00_n00 * CW0nn * finv_n00_n00
+
+    lnnsize = getlnnsize(cmodes)
+    C4lnn = fill(0.0, lnnsize)
+    for i=1:lnnsize
+        lμ, nμ, nν = getlnn(cmodes, i)
+        C4 = 0.0
+        for nρ=1:nmax0, nλ=1:nmax0
+            if isvalidlnn(cmodes, 0, nρ, nλ)
+                j = getidx(cmodes, 0, nρ, nλ)
+                C4 += cmix_wW[i,j] * fCWf[nρ,nλ]
+            end
+        end
+        C4lnn[i] = C4
+    end
+
+    return C4lnn
+end
+
+
+
 @doc raw"""
     calc_CNobsA(Clnn, Nobs_th, cmix, nbar, Veff, cmodes, wk_cache=nothing; kwargs...)
 
