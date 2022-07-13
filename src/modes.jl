@@ -144,11 +144,6 @@ function AnlmModes(kmax::Real, rmin::Real, rmax::Real; cache=true, nside=nothing
 end
 
 
-@doc raw"""
-    AnlmModes(nmax, lmax, rmin, rmax; cache=true, nside=nothing)
-
-Just testing what this looks like in the docs.
-"""
 function AnlmModes(nmax::Int, lmax::Int, rmin::Real, rmax::Real; cache=true, nside=nothing)
     lmax_n = [lmax for n=1:nmax]
     nmax_l = [nmax for l=0:lmax]
