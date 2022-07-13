@@ -72,7 +72,8 @@ estimate_nside(lmax) = 2^max(2, ceil(Int, log2((2*lmax + 1) / 2)))
 
 
 @doc raw"""
-    AnlmModes
+    AnlmModes(kmax, rmin, rmax; cache=true, nside=nothing)
+    AnlmModes(nmax, lmax, rmin, rmax; cache=true, nside=nothing)
 
 This is where we define which modes are included. As our criterium, we set a
 maximum qmax = kmax * rmax, and we include all modes below that.
@@ -83,11 +84,11 @@ m > 0, and we assume a real field.
 
 Example:
 ```julia-repl
-julia> kmax = 0.2
+julia> kmax = 0.05
+julia> rmin = 500.0
 julia> rmax = 1000.0
-julia> modes = AnlmModes(kmax * rmax)
+julia> modes = AnlmModes(kmax, rmin, rmax)
 ```
-
 """
 struct AnlmModes{T}
     rmin::Float64
@@ -143,6 +144,11 @@ function AnlmModes(kmax::Real, rmin::Real, rmax::Real; cache=true, nside=nothing
 end
 
 
+@doc raw"""
+    AnlmModes(nmax, lmax, rmin, rmax; cache=true, nside=nothing)
+
+Just testing what this looks like in the docs.
+"""
 function AnlmModes(nmax::Int, lmax::Int, rmin::Real, rmax::Real; cache=true, nside=nothing)
     lmax_n = [lmax for n=1:nmax]
     nmax_l = [nmax for l=0:lmax]
