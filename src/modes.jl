@@ -111,8 +111,8 @@ iterate(s::AnlmModes) = s, nothing
 iterate(s::AnlmModes, x) = nothing
 
 
-function AnlmModes(kmax::Real, rmin::Real, rmax::Real; cache=true, nside=nothing)
-    sphbesg = SphericalBesselGnl(kmax, rmin, rmax, cache=cache)
+function AnlmModes(kmax::Real, rmin::Real, rmax::Real; cache=true, nside=nothing, nmax=typemax(Int64), lmax=typemax(Int64))
+    sphbesg = SphericalBesselGnl(kmax, rmin, rmax, cache=cache; nmax, lmax)
     knl = sphbesg.knl
     nmax, lmax = size(knl) .- (0,1)
     modes = @. knl <= kmax

@@ -29,6 +29,9 @@ using Test
 
     s = @. knl2 < kmax1
     @show length(knl1) length(knl2[s])
+
+
+    SFB.GNL.calc_knl_potential(0.05, 500.0, 1000.0; nmax=10, lmax=10)
 end
 
 

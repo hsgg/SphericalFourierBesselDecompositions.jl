@@ -236,7 +236,7 @@ end
 
 @doc raw"""
     calc_knl_potential(nmax, lmax, rmin, rmax)
-    calc_knl_potential(kmax, rmin, rmax)
+    calc_knl_potential(kmax, rmin, rmax; nmax=typemax(Int64), lmax=typemax(Int64))
 
 Calculate the `knl` for potential boundary conditions.
 """
@@ -254,9 +254,12 @@ function calc_knl_potential(nmax, lmax, rmin, rmax)
 end
 
 
-function calc_knl_potential(kmax, rmin, rmax)
-    nmax = ceil(Int64, kmax * rmax / π) + 1
-    lmax = ceil(Int64, kmax * rmax)
+function calc_knl_potential(kmax, rmin, rmax; nmax=typemax(Int64), lmax=typemax(Int64))
+    nmax_calc = ceil(Int64, kmax * rmax / π) + 1
+    lmax_calc = ceil(Int64, kmax * rmax)
+    kmax_lim = (lmax > lmax_calc && nmax > nmax_calc)
+    nmax = min(nmax, nmax_calc)
+    lmax = min(lmax, lmax_calc)
     knl = fill(NaN, nmax, lmax+1)
     for l=0:lmax
         δ = π/rmax/4
@@ -270,13 +273,11 @@ function calc_knl_potential(kmax, rmin, rmax)
             throw("nmax too small")
             @assert nmax >= length(kn)
         end
-        (l==lmax) && @assert length(kn) == 0
+        kmax_lim && (l==lmax) && @assert length(kn) == 0
         for i=1:length(kn)
             knl[i,l+1] = kn[i]
         end
     end
-    nmax = findfirst(isnan.(knl[:,1])) - 1
-    lmax = findfirst(isnan.(knl[1,:])) - 1 - 1
     @assert all(knl[@. isfinite(knl)] .> 0)
     return knl
 end
@@ -406,7 +407,7 @@ end
 
 @doc raw"""
     SphericalBesselGnl(nmax, lmax, rmin, rmax)
-    SphericalBesselGnl(kmax, rmin, rmax)
+    SphericalBesselGnl(kmax, rmin, rmax; nmax=typemax(Int64), lmax=typemax(Int64))
 
 Generate `gnl(n,l,r)`. Returns a struct that can be called for calculating
 `gnl`. Note that the last argument is `r`, *not* `kr`.
@@ -421,9 +422,9 @@ function SphericalBesselGnl(nmax, lmax, rmin, rmax; cache=true)
     return SphericalBesselGnl(nmax, lmax, rmin, rmax, knl, cnl, dnl)
 end
 
-function SphericalBesselGnl(kmax, rmin, rmax; cache=true)
+function SphericalBesselGnl(kmax, rmin, rmax; cache=true, nmax=typemax(Int64), lmax=typemax(Int64))
     (rmin < rmax) || @error "rmin >= rmax" rmin rmax
-    knl = calc_knl_potential(kmax, rmin, rmax)
+    knl = calc_knl_potential(kmax, rmin, rmax; nmax, lmax)
     cnl, dnl = calc_cnl_dnl(knl, rmin, rmax)
     nmax, lmax = size(knl) .- (0,1)
     if !cache
