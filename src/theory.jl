@@ -47,6 +47,9 @@ using QuadGK
 using LinearAlgebra
 using SparseArrays
 
+include("MyBroadcast.jl")
+using .MyBroadcast
+
 
 function gen_Clnn_theory(pk, cmodes)
     # Currently this only supports the simplest model. Be ready to support more.
@@ -391,9 +394,15 @@ end
 
 function calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, Wmix, Wmix_negm, fskyinvlnn)
     lnnsize = getlnnsize(cmodes)
-    T23mat = fill(0.0, lnnsize, lnnsize)
+    #T23mat = fill(0.0, lnnsize, lnnsize)
     nmax0 = cmodes.amodes.nmax_l[1]
-    for i=1:lnnsize, j=1:lnnsize
+    #Threads.@threads for i=1:lnnsize
+    #for j=1:lnnsize
+    T23mat = mybroadcast2d(1:lnnsize, (1:lnnsize)') do ii,jj
+        out = Array{Float64}(undef, length(ii))
+        for k=1:length(ii)
+        i = ii[k]
+        j = jj[k]
         lμ, nμ, nν = getlnn(cmodes, i)
         lσ, nσ, nα = getlnn(cmodes, j)
 
@@ -402,6 +411,7 @@ function calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, Wmix, Wmix_n
             !isvalidnlm(amodes_red, nμ, lμ, 0) ||
             !isvalidnlm(amodes_red, nν, lμ, 0)
             # Yes, both terms 2 and 3 need all four to be valid modes.
+            out[k] = 0.0
             continue
         end
         nσlσ = getidx(amodes_red, nσ, lσ, 0)
@@ -409,7 +419,7 @@ function calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, Wmix, Wmix_n
         nμlμ = getidx(amodes_red, nμ, lμ, 0)
         nνlμ = getidx(amodes_red, nν, lμ, 0)
 
-        T23 = 0.0im
+        T23 = 0.0
         for nβ=1:nmax0, nλ=1:nmax0
             if !isvalidlnn(cmodes, 0, nβ, nλ)
                 continue
@@ -427,11 +437,14 @@ function calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, Wmix, Wmix_n
                     wW_μ_σ = get_anlmNLM_r(wWmix, wWmix_negm, nμlμ, mμ, nσlσ, mσ)
                     wW_ν_σ = get_anlmNLM_r(wWmix, wWmix_negm, nνlμ, mμ, nσlσ, mσ)
 
-                    T23 += f0nβnλ * W_nαlσmσ_nβ00 * (wW_nλ00_nνlμmμ * wW_μ_σ + wW_nλ00_nμlμmμ * wW_ν_σ)
+                    T23 += real(f0nβnλ * W_nαlσmσ_nβ00 * (wW_nλ00_nνlμmμ * wW_μ_σ + wW_nλ00_nμlμmμ * wW_ν_σ))
                 end
             end
         end
-        T23mat[i,j] = real(T23) / (2*lμ + 1)
+        #T23mat[i,j] = T23 / (2*lμ + 1)
+        out[k] = T23 / (2*lμ + 1)
+    end
+    out
     end
 
     return T23mat
