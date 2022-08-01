@@ -419,11 +419,11 @@ function calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, Wmix, Wmix_n
             nβl0 = getidx(amodes_red, nβ, 0, 0)
             nλl0 = getidx(amodes_red, nλ, 0, 0)
 
-            for mσ=-lσ:lσ
-                W_nαlσmσ_nβ00 = get_anlmNLM_r(Wmix, Wmix_negm, nαlσ, mσ, nβl0, 0)
-                for mμ=-lμ:lμ
-                    wW_nλ00_nνlμmμ = get_anlmNLM_r(wWmix, wWmix_negm, nλl0, 0, nνlμ, mμ)
-                    wW_nλ00_nμlμmμ = get_anlmNLM_r(wWmix, wWmix_negm, nλl0, 0, nμlμ, mμ)
+            for mμ=-lμ:lμ
+                wW_nλ00_nνlμmμ = get_anlmNLM_r(wWmix, wWmix_negm, nλl0, 0, nνlμ, mμ)
+                wW_nλ00_nμlμmμ = get_anlmNLM_r(wWmix, wWmix_negm, nλl0, 0, nμlμ, mμ)
+                for mσ=-lσ:lσ
+                    W_nαlσmσ_nβ00 = get_anlmNLM_r(Wmix, Wmix_negm, nαlσ, mσ, nβl0, 0)
                     wW_μ_σ = get_anlmNLM_r(wWmix, wWmix_negm, nμlμ, mμ, nσlσ, mσ)
                     wW_ν_σ = get_anlmNLM_r(wWmix, wWmix_negm, nνlμ, mμ, nσlσ, mσ)
 
