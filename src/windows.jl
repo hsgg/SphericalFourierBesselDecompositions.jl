@@ -350,7 +350,6 @@ end
 
 # This should be very performant
 function win_lnn(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes)
-    println("===")
     lnnsize = getlnnsize(cmodes)
     Wlnn = fill(NaN, lnnsize)
     @show length(Wlnn), size(Wlnn)
@@ -876,19 +875,19 @@ end
 check_nsamp_1gnl(amodes, wmodes::ConfigurationSpaceModes) = check_nsamp_1gnl(amodes, wmodes.nr)
 function check_nsamp_1gnl(amodes, nr)
     num_imprecise = 0
-    max_Nsamp = 0
+    max_nr_needed = 0
     lmax = amodes.lmax
     nmax_l = amodes.nmax_l
     for L=0:lmax, N=1:nmax_l[L+1]
-        Nsamp = 8 * N
-        max_Nsamp = max(max_Nsamp, Nsamp)
-        if Nsamp > nr
+        nr_needed = 8 * N
+        max_nr_needed = max(max_nr_needed, nr_needed)
+        if nr_needed > nr
             num_imprecise += 1
         end
     end
     if num_imprecise > 0
-        @warn "Radial integral over one gnl(r) unlikely to converge" num_imprecise max_Nsamp nr amodes.rmin amodes.rmax amodes.lmax amodes.nmax amodes.nmax_l
-        #throw(ErrorException("Nsamp > nr"))
+        @warn "Radial integral over one gnl(r) unlikely to converge" num_imprecise max_nr_needed nr amodes.rmin amodes.rmax amodes.lmax amodes.nmax amodes.nmax_l
+        #throw(ErrorException("nr_needed > nr"))
     end
 end
 
@@ -896,21 +895,21 @@ end
 check_nsamp(amodes, wmodes::ConfigurationSpaceModes) = check_nsamp(amodes, wmodes.nr)
 function check_nsamp(amodes, nr)
     num_imprecise = 0
-    max_Nsamp = 0
+    max_nr_needed = 0
     lmax = amodes.lmax
     nmax_l = amodes.nmax_l
     for L=0:lmax, N=1:nmax_l[L+1]
         for l=0:lmax, n=1:nmax_l[l+1]
-            Nsamp = 8 * (n + N)
-            max_Nsamp = max(max_Nsamp, Nsamp)
-            if Nsamp > nr
+            nr_needed = 8 * (n + N)
+            max_nr_needed = max(max_nr_needed, nr_needed)
+            if nr_needed > nr
                 num_imprecise += 1
             end
         end
     end
     if num_imprecise > 0
-        @warn "Radial integrals unlikely to converge" num_imprecise max_Nsamp nr amodes.rmin amodes.rmax amodes.lmax amodes.nmax amodes.nmax_l
-        #throw(ErrorException("Nsamp > nr"))
+        @warn "Radial integrals unlikely to converge" num_imprecise max_nr_needed nr amodes.rmin amodes.rmax amodes.lmax amodes.nmax amodes.nmax_l
+        #throw(ErrorException("nr_needed > nr"))
     end
 end
 
