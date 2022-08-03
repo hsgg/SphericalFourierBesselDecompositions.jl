@@ -79,8 +79,30 @@ end
     fskyinvlnn = SFB.win_lnn(win, wmodes, cmodes)
 
     println("Calculate T23:")
-    @time SFB.Theory.calc_T23_z(cmix, cmodes, amodes, wmix, wmix_negm, wmix, wmix_negm, fskyinvlnn)
-    @time SFB.Theory.calc_T23_z(cmix, cmodes, amodes, wmix, wmix_negm, wmix, wmix_negm, fskyinvlnn)
+    @time T23 = SFB.Theory.calc_T23_z(cmix, cmodes, amodes, wmix, wmix_negm, wmix, wmix_negm, fskyinvlnn)
+
+    for i=1:lnnsize, j=1:lnnsize
+        lμ, nμ, nν = getlnn(cmodes, i)
+        lσ, nσ, nα = getlnn(cmodes, j)
+
+        # calculate correct T23 for full-sky, constant unity weighting,
+        # constant unity radial selection
+        T23_correct = 0
+        isnonzero = (lμ == lσ == 0 && ((nα == nν && nσ == nμ) || (nα == nμ && nσ == nν)))
+        is2 = (lμ == lσ == 0 && ((nα == nν && nσ == nμ) && (nα == nμ && nσ == nν)))
+        if isnonzero
+            if !is2
+                T23_correct = 1
+            else
+                T23_correct = 2
+            end
+        end
+
+        # compare
+        if abs(T23[i,j] - T23_correct) > 1e-4
+            @error "T23 incorrect" i,j lμ,nμ,nν lσ,nσ,nα T23[i,j] T23_correct
+        end
+    end
 end
 
 
