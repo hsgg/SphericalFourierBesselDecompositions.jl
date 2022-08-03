@@ -80,6 +80,8 @@ end
 
     println("Calculate T23:")
     @time T23 = SFB.Theory.calc_T23_z(cmix, cmodes, amodes, wmix, wmix_negm, wmix, wmix_negm, fskyinvlnn)
+    @time T23 = SFB.Theory.calc_T23_z(cmix, cmodes, amodes, wmix, wmix_negm, wmix, wmix_negm, fskyinvlnn)
+    @time T23 = SFB.Theory.calc_T23_z(cmix, cmodes, amodes, wmix, wmix_negm, wmix, wmix_negm, fskyinvlnn)
 
     lnnsize = SFB.getlnnsize(cmodes)
     for i=1:lnnsize, j=1:lnnsize
