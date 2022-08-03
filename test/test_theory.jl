@@ -68,8 +68,8 @@ end
     rmin = 500.0
     rmax = 1000.0
     nr = 250
-    amodes = SFB.AnlmModes(0.04, rmin, rmax)
-    cmodes = SFB.ClnnModes(amodes, Δnmax=1)
+    amodes = SFB.AnlmModes(0.02, rmin, rmax)
+    cmodes = SFB.ClnnModes(amodes, Δnmax=Inf)
     wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
 
     win = SFB.make_window(wmodes, :fullsky)
@@ -81,9 +81,10 @@ end
     println("Calculate T23:")
     @time T23 = SFB.Theory.calc_T23_z(cmix, cmodes, amodes, wmix, wmix_negm, wmix, wmix_negm, fskyinvlnn)
 
+    lnnsize = SFB.getlnnsize(cmodes)
     for i=1:lnnsize, j=1:lnnsize
-        lμ, nμ, nν = getlnn(cmodes, i)
-        lσ, nσ, nα = getlnn(cmodes, j)
+        lμ, nμ, nν = SFB.getlnn(cmodes, i)
+        lσ, nσ, nα = SFB.getlnn(cmodes, j)
 
         # calculate correct T23 for full-sky, constant unity weighting,
         # constant unity radial selection
@@ -102,6 +103,7 @@ end
         if abs(T23[i,j] - T23_correct) > 1e-4
             @error "T23 incorrect" i,j lμ,nμ,nν lσ,nσ,nα T23[i,j] T23_correct
         end
+        @test abs(T23[i,j] - T23_correct) < 1e-4
     end
 end
 
