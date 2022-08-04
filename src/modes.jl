@@ -52,7 +52,7 @@ using SparseArrays
 export AnlmModes, ClnnModes, ClnnBinnedModes
 export estimate_nside, estimate_nr
 export getnlmsize, getlmsize, getnlm, getidx, getklm, isvalidnlm
-export getlnnsize, getlnn, isvalidlnn
+export getlnnsize, getlnn, isvalidlnn, isvalidlnn_symmetric
 export getlkk, getidxapprox
 export bandpower_binning_weights, bandpower_eigen_weights
 export get_incomplete_bins, find_most_hi_k_convolved_mode, find_klarge, get_hi_k_affection
@@ -235,7 +235,11 @@ This is where we define which modes are included in the power spectrum, given a
 `AnlmModes` struct.
 
 The modes are arranged in the following order. The fastest loop is through 'n̄',
-then 'Δn', finally 'ℓ', from small number to larger number.
+then 'Δn', finally 'ℓ', from small number to larger number. We make the
+convention that `n̄` is the smaller of the k-modes, and `Δn >= 0`.
+
+More useful is the labeling by `ℓ, n₁, n₂`. In that case we make the convention
+that `n₁ = n̄` and `n₂ = n̄ + Δn`.
 """
 struct ClnnModes
     amodes::AnlmModes
@@ -321,16 +325,22 @@ end
 
 function isvalidlnn(cmodes::ClnnModes, l, n1, n2)
     @assert cmodes.symmetric
-    Δn = abs(n1 - n2)
-    n̄ = min(n1, n2)
+    Δn = n2 - n1
+    n̄ = n1
     return (0 <= l <= cmodes.amodes.lmax &&
             0 <= Δn <= cmodes.Δnmax_l[l+1] &&
             1 <= n̄ <= cmodes.amodes.nmax_l[l+1] - Δn)
 end
 
 
-function check_isvalidclnn(cmodes::ClnnModes, l, n1, n2)
-    if !isvalidlnn(cmodes, l, n1, n2)
+function isvalidlnn_symmetric(cmodes::ClnnModes, l, n1, n2)
+    n1, n2 = minmax(n1, n2)
+    return isvalidlnn(cmodes, l, n1, n2)
+end
+
+
+function check_isvalidclnn_symmetric(cmodes::ClnnModes, l, n1, n2)
+    if !isvalidlnn_symmetric(cmodes, l, n1, n2)
         lmax = cmodes.amodes.lmax
         nmax = cmodes.amodes.nmax
         nmax_l = cmodes.amodes.nmax_l
@@ -348,7 +358,7 @@ end
 
 
 function getidx(cmodes::ClnnModes, l, n1, n2)
-    check_isvalidclnn(cmodes, l, n1, n2)
+    check_isvalidclnn_symmetric(cmodes, l, n1, n2)
     Δn = abs(n1 - n2)
     n̄ = min(n1, n2)
     idx = 0

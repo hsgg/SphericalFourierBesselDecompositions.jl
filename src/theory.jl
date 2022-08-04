@@ -74,7 +74,7 @@ function Clnn2CnlmNLM(Clnn, cmodes)
         n, l, m = getnlm(amodes, i)
         n′, l′, m′ = getnlm(amodes, i′)
         if l′==l && m′==m
-            if isvalidlnn(cmodes, l, n, n′)
+            if isvalidlnn_symmetric(cmodes, l, n, n′)
                 idx = getidx(cmodes, l, n, n′)
                 CnlmNLM[i,i′] = Clnn[idx]
             end
@@ -250,9 +250,9 @@ function calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes, amodes_red, wW
             fNf = 0.0
 
             # add N4 term:
-            if isvalidlnn(cmodes, 0, nrho, nlambda)
+            if isvalidlnn_symmetric(cmodes, 0, nrho, nlambda)
                 for nϵ=1:nmax0, nα=1:nmax0
-                    if isvalidlnn(cmodes, 0, nrho, nϵ) && isvalidlnn(cmodes, 0, nϵ, nα) && isvalidlnn(cmodes, 0, nα, nlambda)
+                    if isvalidlnn_symmetric(cmodes, 0, nrho, nϵ) && isvalidlnn_symmetric(cmodes, 0, nϵ, nα) && isvalidlnn_symmetric(cmodes, 0, nα, nlambda)
                         j1 = getidx(cmodes, 0, nrho, nϵ)
                         j2 = getidx(cmodes, 0, nϵ, nα)
                         j3 = getidx(cmodes, 0, nα, nlambda)
@@ -263,14 +263,14 @@ function calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes, amodes_red, wW
             end
 
             # add N2 term:
-            if isvalidlnn(cmodes, 0, nrho, nlambda)
+            if isvalidlnn_symmetric(cmodes, 0, nrho, nlambda)
                 j2 = getidx(cmodes, 0, nrho, nlambda)
                 fNf -= fskyinvlnn[j2] / nbar
             end
             #@show fNf
 
             # add N3 term:
-            if isvalidlnn(cmodes, 0, nlambda, nrho)
+            if isvalidlnn_symmetric(cmodes, 0, nlambda, nrho)
                 j3 = getidx(cmodes, 0, nlambda, nrho)
                 fNf -= fskyinvlnn[j3] / nbar
             end

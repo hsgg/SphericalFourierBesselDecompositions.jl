@@ -92,13 +92,8 @@ end
         # constant unity radial selection
         T23_correct = 0
         isnonzero = (lμ == lσ == 0 && ((nα == nν && nσ == nμ) || (nα == nμ && nσ == nν)))
-        is2 = (lμ == lσ == 0 && ((nα == nν && nσ == nμ) && (nα == nμ && nσ == nν)))
         if isnonzero
-            if !is2
-                T23_correct = 1
-            else
-                T23_correct = 2
-            end
+            T23_correct = 2
         end
 
         # compare

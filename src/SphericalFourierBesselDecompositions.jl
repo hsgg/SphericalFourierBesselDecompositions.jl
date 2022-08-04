@@ -133,8 +133,8 @@ function amln2clnn(anlm, cmodes::ClnnModes)
     clnn = fill(NaN, getlnnsize(cmodes))
     nmax = cmodes.amodes.nmax
     for n̄=1:nmax, Δn=0:cmodes.Δnmax
-        n1 = n̄ + Δn
-        n2 = n̄
+        n1 = n̄
+        n2 = n̄ + Δn
         if n1 > nmax || n2 > nmax
             continue
         end
