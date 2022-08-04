@@ -80,7 +80,7 @@ maximum qmax = kmax * rmax, and we include all modes below that.
 
 The modes are arranged in the following order. The fastest loop is through 'm',
 then 'l', finally 'n', from small number to larger number. We restrict 'm' to
-m > 0, and we assume a real field.
+m >= 0, and we assume a real field.
 
 Example:
 ```julia-repl
