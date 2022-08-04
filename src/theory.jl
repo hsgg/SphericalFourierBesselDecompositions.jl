@@ -421,7 +421,7 @@ function calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, Wmix, Wmix_n
 
         T23 = 0.0
         for nβ=1:nmax0, nλ=1:nmax0
-            if !isvalidlnn(cmodes, 0, nβ, nλ)
+            if !isvalidlnn_symmetric(cmodes, 0, nβ, nλ)
                 continue
             end
             f0nβnλ = fskyinvlnn[getidx(cmodes, 0, nβ, nλ)]
@@ -461,21 +461,22 @@ function calc_C4lnn_z(C_th, cmix_W, cmix_wW, cmodes, fskyinvlnn)
     nmax0 = cmodes.amodes.nmax[1]
 
     CW = cmix_W * C_th
-    CW0nn = [isvalidlnn(cmodes, 0, nϵ, nα) ? CW[getidx(cmodes, 0, nϵ, nα)] : 0.0
+    CW0nn = [isvalidlnn_symmetric(cmodes, 0, nϵ, nα) ? CW[getidx(cmodes, 0, nϵ, nα)] : 0.0
              for nϵ=1:nmax0, nα=1:nmax0]
 
-    finv_n00_n00 = [isvalidlnn(cmodes, 0, nϵ, nα) ? fskyinvlnn[getidx(cmodes, 0, nϵ, nα)] : 0.0
+    finv_n00_n00 = [isvalidlnn_symmetric(cmodes, 0, nϵ, nα) ? fskyinvlnn[getidx(cmodes, 0, nϵ, nα)] : 0.0
                     for nϵ=1:nmax0, nα=1:nmax0]
 
     fCWf = finv_n00_n00 * CW0nn * finv_n00_n00
+
 
     lnnsize = getlnnsize(cmodes)
     C4lnn = fill(0.0, lnnsize)
     for i=1:lnnsize
         lμ, nμ, nν = getlnn(cmodes, i)
         C4 = 0.0
-        for nρ=1:nmax0, nλ=1:nmax0
-            if isvalidlnn(cmodes, 0, nρ, nλ)
+        for nρ=1:nmax0, nλ=nρ:nmax0  # cmix already doubled-includes symmetric terms
+            if isvalidlnn(cmodes, 0, nρ, nλ)  # cmix already doubled-includes symmetric terms
                 j = getidx(cmodes, 0, nρ, nλ)
                 C4 += cmix_wW[i,j] * fCWf[nρ,nλ]
             end
