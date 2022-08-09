@@ -614,18 +614,13 @@ end
 get_tls_vec(key, len) = get_tls_vec(Float64, key, len)
 
 
-function calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes::ClnnModes, Wr_lm, L1M1cache, div2Lp1)
+function calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes::ClnnModes, Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
     l, n, n′ = getlnn(cmodes, i)
     #L, N, N′ = getlnn(cmodes, i′)
 
     #showthis = ((l==L==0 && n==N′==1 && n′==N==2) || (l==L==0 && n==N′==2 && n′==N==1))
     #showthis && @show "huzzah",i,i′, n,n′, N,N′, l,L
     #@show i,i′, (l,n,n′), (L,N,N′)
-
-    # get task-local work arrays
-    len = length(r)
-    gg1 = get_tls_vec(:gg1, len)
-    gg2 = get_tls_vec(:gg2, len)
 
     @views @. gg1 = r^2 * gnlr[:,n,l+1] * gnlr[:,N,L+1]
     @views @. gg2 = r^2 * gnlr[:,n′,l+1] * gnlr[:,N′,L+1]
@@ -648,7 +643,12 @@ function calc_cmixii(i, i′, cmodes::ClnnModes, r, Δr, gnlr, Wr_lm, L1M1cache,
         N, N′ = N′, N
     end
 
-    mix = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes, Wr_lm, L1M1cache, div2Lp1)
+    # get task-local work arrays
+    len = length(r)
+    gg1 = get_tls_vec(:gg1, len)
+    gg2 = get_tls_vec(:gg2, len)
+
+    mix = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes, Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
 
     return mix
 end
@@ -695,9 +695,15 @@ function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, int
         end
 
         for i=i′:lnnsize
-        #Threads.@threads for i=i′:lnnsize  # leads to extra work-array allocations
+            #Threads.@threads for i=i′:lnnsize  # leads to extra work-array allocations
+
+            # get task-local work arrays
+            len = length(r)
+            gg1 = get_tls_vec(:gg1, len)
+            gg2 = get_tls_vec(:gg2, len)
+
             @turbo mix[i,i′] = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes,
-                                           Wr_lm, L1M1cache, div2Lp1)
+                                           Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
             #mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
             #@show i,i′, mix[i,i′]
         end
