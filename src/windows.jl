@@ -368,7 +368,7 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
     nlnlsize = nlsize * nlsize
     #clear_each_tls.([:gg1, :buffer1, :buffer2, :wtmp])
     #@time @threads for nlnl=1:nlnlsize
-    mybroadcast2d(1:nlsize, (1:nlsize)') do nlarr, n′l′arr
+    @time mybroadcast2d(1:nlsize, (1:nlsize)') do nlarr, n′l′arr
         gg1 = Vector{real(T)}(undef, nr)
         wtmp = Vector{T}(undef, (lmax+1)^2)
         buffer1 = Vector{real(T)}(undef, 0)
