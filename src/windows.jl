@@ -584,36 +584,6 @@ function calc_cmix_ang(l, L, L1M1cache, gg1, gg2, Wr_lm)
 end
 
 
-function clear_tls(key)
-    tls = task_local_storage()
-    if haskey(tls, key)
-        delete!(tls, key)
-    end
-end
-
-
-function clear_each_tls(key)
-    for _=1:nthreads()
-        clear_tls(key)
-    end
-end
-
-
-function get_tls_vec(T, key, len)
-    tls = task_local_storage()
-    if !haskey(tls, key)
-        tls[key] = Vector{T}(undef, len)
-    end
-    return resize!(tls[key]::Vector{T}, len)
-    #v = tls[key]::Vector{Float64}
-    #if length(v) < len
-    #    resize!(v, len)
-    #end
-    #return v
-end
-get_tls_vec(key, len) = get_tls_vec(Float64, key, len)
-
-
 function calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes::ClnnModes, Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
     l, n, n′ = getlnn(cmodes, i)
     #L, N, N′ = getlnn(cmodes, i′)
@@ -637,16 +607,11 @@ end
 
 
 # for backward compatiblity
-function calc_cmixii(i, i′, cmodes::ClnnModes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, interchange_NN′)
+function calc_cmixii(i, i′, cmodes::ClnnModes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, interchange_NN′, gg1, gg2)
     L, N, N′ = getlnn(cmodes, i′)
     if interchange_NN′
         N, N′ = N′, N
     end
-
-    # get task-local work arrays
-    len = length(r)
-    gg1 = get_tls_vec(:gg1, len)
-    gg2 = get_tls_vec(:gg2, len)
 
     mix = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes, Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
 
@@ -686,29 +651,30 @@ function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, int
     p = Progress(lnnsize, progressmeter_update_interval, "cmix full: ")
 
     #@time for i′=1:lnnsize
-    @time Threads.@threads for i′=1:lnnsize
+    #@time Threads.@threads for i′=1:lnnsize
     #@time @tturbo for i′=1:lnnsize
+    @time mybroadcast(1:lnnsize) do ii′
+        len = length(r)
+        gg1 = Array{Float64}(undef, len)
+        gg2 = Array{Float64}(undef, len)
 
-        L, N, N′ = getlnn(cmodes, i′)
-        if interchange_NN′
-            N, N′ = N′, N
+        for idx=1:length(ii′)
+            i′ = ii′[idx]
+
+            L, N, N′ = getlnn(cmodes, i′)
+            if interchange_NN′
+                N, N′ = N′, N
+            end
+
+            for i=i′:lnnsize
+                @turbo mix[i,i′] = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes,
+                                               Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
+                #mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
+                #@show i,i′, mix[i,i′]
+            end
         end
-
-        for i=i′:lnnsize
-            #Threads.@threads for i=i′:lnnsize  # leads to extra work-array allocations
-
-            # get task-local work arrays
-            len = length(r)
-            gg1 = get_tls_vec(:gg1, len)
-            gg2 = get_tls_vec(:gg2, len)
-
-            @turbo mix[i,i′] = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes,
-                                           Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
-            #mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
-            #@show i,i′, mix[i,i′]
-        end
-
-        next!(p)
+        next!(p, step=length(ii′))
+        return zero(Float64)
     end
 
     @time fill_almost_symmetric_cmix_lower_half!(mix, cmodes)
@@ -756,49 +722,7 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
     println("Calculate gnlr:")
     @time gnlr = precompute_gnlr(amodes, wmodes)
 
-    ## crashes at end:
-    #@time @threads for i′=1:lnnsize
-    #    @show i′, lnnsize
-    #    @time for i=1:lnnsize
-    #        mix[i,i′] = calc_cmixii(i, i′, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache)
-    #        #@show i,i′, mix[i,i′]
-    #    end
-    #end
-
-    ## too slow:
-    #@time mix = pmap(idx -> calc_cmixii(idx[1], idx[2], cmodes, r, Δr, gnlr, Wr_lm, L1M1cache),
-    #                 CartesianIndices((1:lnnsize, 1:lnnsize)))
-
-    #@show "full"
-    #@time @sync @distributed for i′=1:lnnsize
-    #    @time for i=1:lnnsize
-    #        mix[i,i′] = calc_cmixii(i, i′, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache)
-    #        #@show i,i′, mix[i,i′]
-    #    end
-    #end
-    #mix1 = deepcopy(mix)
-
     mix = calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, interchange_NN′)
-    #@assert mix == mix1
-
-    ##@show "symmetric pmap"
-    #batchsize = lnnsize ÷ nworkers()^2 + 1
-    #@showprogress progressmeter_update_interval "cmix full: " pmap(i′ -> begin
-    #               L, = getlnn(cmodes, i′)
-    #               #@show i′,L,lnnsize
-    #               for i=i′:lnnsize
-    #                   l, = getlnn(cmodes, i)
-    #                   mix[i,i′] = calc_cmixii(i, i′, cmodes, r, Δr, gnlr,
-    #                                           Wr_lm, L1M1cache, div2Lp1,
-    #                                           interchange_NN′)
-    #                   mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
-    #                   #@show i,i′, mix[i,i′]
-    #               end
-    #               return i′  # return something that doesn't take much memory
-    #           end,
-    #           1:lnnsize,
-    #           batch_size=batchsize)
-    #@assert mix == mix1
 
     @assert all(isfinite.(mix))
     return mix
@@ -834,6 +758,8 @@ function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes;
     m_idxs = SeparableArray(ones(Int, LNNsize1), LNNsize2:-1:1)
     batchsize = (LNNsize1 * LNNsize2) ÷ (nworkers()^2) + 1
     @show LNNsize1, LNNsize2, batchsize
+    gg1 = Array{Float64}(undef, length(r))
+    gg2 = Array{Float64}(undef, length(r))
     mix = @showprogress progressmeter_update_interval "cmix: " pmap((n,m) -> begin
             w̃mat_n = w̃mat[n,:]
             vmat_m = vmat[:,m]
@@ -846,7 +772,7 @@ function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes;
                 w̃ = w̃mat_n[i]
                 w̃==0 && continue
                 c += w̃ * v * calc_cmixii(i, i′, cmodes, r, Δr, gnlr, Wr_lm,
-                                         L1M1cache, div2Lp1, interchange_NN′)
+                                         L1M1cache, div2Lp1, interchange_NN′, gg1, gg2)
             end
             return c
         end,
