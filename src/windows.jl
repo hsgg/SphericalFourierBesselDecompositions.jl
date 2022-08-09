@@ -347,37 +347,37 @@ end
 
 # This should be very performant
 function win_lnn(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes)
-    lnnsize = getlnnsize(cmodes)
-    Wlnn = fill(NaN, lnnsize)
-    @show length(Wlnn), size(Wlnn)
-
-    r, Δr = window_r(wmodes)
-
     println("Calculate Wr_00:")
-    # Note: the maximum ℓ we need is 0. However, healpy changes precision, and
-    # for comparison we use the same lmax as elsewhere.
-    @time Wr_00 = Array{Float64,1}(calc_Wr_lm(win, 2*cmodes.amodes.lmax, cmodes.amodes.nside)[:,1])
+    # Note: the maximum ℓ we need here is 0. However, healpy changes precision,
+    # and for comparison we use the same lmax as elsewhere.
+    @time Wr_00 = Vector{Float64}(calc_Wr_lm(win, 2*cmodes.amodes.lmax, cmodes.amodes.nside)[:,1])
     @assert all(isfinite, Wr_00)
 
     check_nsamp(cmodes.amodes, wmodes)
 
     println("Calculate gnlr:")
     @time gnlr = precompute_gnlr(cmodes.amodes, wmodes)
+    r, Δr = window_r(wmodes)
+    @time @. gnlr *= r * √Δr * √Wr_00  # add part of the integral measure and Wr_00
 
     println("Calculate Wlnn:")
-    @time Threads.@threads for i=1:lnnsize
-        l, n, n′ = getlnn(cmodes, i)
-        #@show i, l,n,n′, lnnsize
+    lnnsize = getlnnsize(cmodes)
+    @time Wlnn = mybroadcast(1:lnnsize) do ii
+        out = Vector{Float64}(undef, length(ii))
+        for i=1:length(ii)
+            l, n, n′ = getlnn(cmodes, ii[i])
+            #@show i, l,n,n′, lnnsize
 
-        gg = get_tls_vec(:gg, length(r))
-        @views @turbo @. gg = r^2 * gnlr[:,n,l+1] * gnlr[:,n′,l+1] * Wr_00
+            @views sgg = gnlr[:,n,l+1]' * gnlr[:,n′,l+1]
 
-        Wlnn[i] = Δr * sum(gg) / √(4π)
+            out[i] = sgg / √(4π)
 
-        #if !isfinite(Wlnn[i])
-        #    @error "not finite" i l,n,n′ extrema(gg) Δr sum(gg) Wlnn[i]
-        #    break
-        #end
+            #if !isfinite(out[i])
+            #    @error "Wlnn not finite" i l,n,n′ extrema(gg) Δr sum(gg) out[i]
+            #    break
+            #end
+        end
+        return out
     end
     @assert all(isfinite, Wlnn)
     return Wlnn

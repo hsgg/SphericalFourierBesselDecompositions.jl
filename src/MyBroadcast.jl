@@ -66,7 +66,7 @@ end
 
 
 function mybroadcast(fn, arr)
-    Treturn = Base.return_types(fn, (eltype(arr),))[1]
+    Treturn = eltype(Base.return_types(fn, (eltype(arr),))[1])
     out = similar(arr, Treturn)
     mybroadcast!(out, fn, arr)
     return out
