@@ -46,6 +46,7 @@ using ..Cat2Anlm
 using QuadGK
 using LinearAlgebra
 using SparseArrays
+using ProgressMeter
 
 using ..MyBroadcast
 
@@ -395,61 +396,63 @@ function calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, Wmix, Wmix_n
     lnnsize = getlnnsize(cmodes)
     #T23mat = fill(0.0, lnnsize, lnnsize)
     nmax0 = cmodes.amodes.nmax_l[1]
+    #p = Progress(lnnsize^2, 0.2, "T23: ")
     #Threads.@threads for i=1:lnnsize
     #for j=1:lnnsize
     T23mat = mybroadcast2d(1:lnnsize, (1:lnnsize)') do ii,jj
         out = Array{Float64}(undef, length(ii))
         for k=1:length(ii)
-        i = ii[k]
-        j = jj[k]
-        lμ, nμ, nν = getlnn(cmodes, i)
-        lσ, nσ, nα = getlnn(cmodes, j)
+            i = ii[k]
+            j = jj[k]
+            lμ, nμ, nν = getlnn(cmodes, i)
+            lσ, nσ, nα = getlnn(cmodes, j)
 
-        if !isvalidnlm(amodes_red, nσ, lσ, 0) ||
-            !isvalidnlm(amodes_red, nα, lσ, 0) ||
-            !isvalidnlm(amodes_red, nμ, lμ, 0) ||
-            !isvalidnlm(amodes_red, nν, lμ, 0)
-            # Yes, both terms 2 and 3 need all four to be valid modes.
-            out[k] = 0.0
-            continue
-        end
-        nσlσ = getidx(amodes_red, nσ, lσ, 0)
-        nαlσ = getidx(amodes_red, nα, lσ, 0)
-        nμlμ = getidx(amodes_red, nμ, lμ, 0)
-        nνlμ = getidx(amodes_red, nν, lμ, 0)
-
-        T23 = 0.0
-        for nβ=1:nmax0, nλ=1:nmax0
-            if !isvalidlnn_symmetric(cmodes, 0, nβ, nλ)
+            if !isvalidnlm(amodes_red, nσ, lσ, 0) ||
+                !isvalidnlm(amodes_red, nα, lσ, 0) ||
+                !isvalidnlm(amodes_red, nμ, lμ, 0) ||
+                !isvalidnlm(amodes_red, nν, lμ, 0)
+                # Yes, both terms 2 and 3 need all four to be valid modes.
+                out[k] = 0.0
                 continue
             end
-            f0nβnλ = fskyinvlnn[getidx(cmodes, 0, nβ, nλ)]
+            nσlσ = getidx(amodes_red, nσ, lσ, 0)
+            nαlσ = getidx(amodes_red, nα, lσ, 0)
+            nμlμ = getidx(amodes_red, nμ, lμ, 0)
+            nνlμ = getidx(amodes_red, nν, lμ, 0)
 
-            nβl0 = getidx(amodes_red, nβ, 0, 0)
-            nλl0 = getidx(amodes_red, nλ, 0, 0)
+            T23 = 0.0
+            for nβ=1:nmax0, nλ=1:nmax0
+                if !isvalidlnn_symmetric(cmodes, 0, nβ, nλ)
+                    continue
+                end
+                f0nβnλ = fskyinvlnn[getidx(cmodes, 0, nβ, nλ)]
 
-            for mμ=-lμ:lμ
-                wW_nλ00_nνlμmμ = get_anlmNLM_r(wWmix, wWmix_negm, nλl0, 0, nνlμ, mμ)
-                wW_nλ00_nμlμmμ = get_anlmNLM_r(wWmix, wWmix_negm, nλl0, 0, nμlμ, mμ)
-                for mσ=-lσ:lσ
-                    W_nαlσmσ_nβ00 = get_anlmNLM_r(Wmix, Wmix_negm, nαlσ, mσ, nβl0, 0)
-                    wW_μ_σ = get_anlmNLM_r(wWmix, wWmix_negm, nμlμ, mμ, nσlσ, mσ)
-                    wW_ν_σ = get_anlmNLM_r(wWmix, wWmix_negm, nνlμ, mμ, nσlσ, mσ)
+                nβl0 = getidx(amodes_red, nβ, 0, 0)
+                nλl0 = getidx(amodes_red, nλ, 0, 0)
 
-                    T23 += real(f0nβnλ * W_nαlσmσ_nβ00 * (wW_nλ00_nνlμmμ * wW_μ_σ + wW_nλ00_nμlμmμ * wW_ν_σ))
+                for mμ=-lμ:lμ
+                    wW_nλ00_nνlμmμ = get_anlmNLM_r(wWmix, wWmix_negm, nλl0, 0, nνlμ, mμ)
+                    wW_nλ00_nμlμmμ = get_anlmNLM_r(wWmix, wWmix_negm, nλl0, 0, nμlμ, mμ)
+                    for mσ=-lσ:lσ
+                        W_nαlσmσ_nβ00 = get_anlmNLM_r(Wmix, Wmix_negm, nαlσ, mσ, nβl0, 0)
+                        wW_μ_σ = get_anlmNLM_r(wWmix, wWmix_negm, nμlμ, mμ, nσlσ, mσ)
+                        wW_ν_σ = get_anlmNLM_r(wWmix, wWmix_negm, nνlμ, mμ, nσlσ, mσ)
+
+                        T23 += real(f0nβnλ * W_nαlσmσ_nβ00 * (wW_nλ00_nνlμmμ * wW_μ_σ + wW_nλ00_nμlμmμ * wW_ν_σ))
+                    end
                 end
             end
+            #T23mat[i,j] = T23 / (2*lμ + 1)
+            out[k] = T23 / (2*lμ + 1)
+            if nσ != nα
+                # We assume that whatever we are multiplying is symmetric in nσ and
+                # nα, and that the redundant values are not stored. Hence, we need
+                # to explicitly account for those symmetric terms.
+                out[k] *= 2
+            end
         end
-        #T23mat[i,j] = T23 / (2*lμ + 1)
-        out[k] = T23 / (2*lμ + 1)
-        if nσ != nα
-            # We assume that whatever we are multiplying is symmetric in nσ and
-            # nα, and that the redundant values are not stored. Hence, we need
-            # to explicitly account for those symmetric terms.
-            out[k] *= 2
-        end
-    end
-    out
+        #next!(p, step=length(ii))
+        return out
     end
 
     return T23mat
