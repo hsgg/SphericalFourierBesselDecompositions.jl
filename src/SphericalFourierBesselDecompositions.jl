@@ -36,6 +36,7 @@ include("Splines.jl")
 include("gnl.jl")  # SphericalBesselGnls
 include("modes.jl")  # AnlmModes, ClnnModes, ClnnBinnedModes
 include("SeparableArrays.jl")
+include("MyBroadcast.jl")
 include("LMcalcStructs.jl")
 include("windows.jl")  # window function related
 include("NDIterators.jl")
@@ -51,6 +52,7 @@ using WignerD
 #using Roots
 using Healpix
 using Scanf
+using .MyBroadcast
 using .HealPy
 using .HealpixHelpers
 using .Splines
@@ -133,8 +135,8 @@ function amln2clnn(anlm, cmodes::ClnnModes)
     clnn = fill(NaN, getlnnsize(cmodes))
     nmax = cmodes.amodes.nmax
     for n̄=1:nmax, Δn=0:cmodes.Δnmax
-        n1 = n̄ + Δn
-        n2 = n̄
+        n1 = n̄
+        n2 = n̄ + Δn
         if n1 > nmax || n2 > nmax
             continue
         end

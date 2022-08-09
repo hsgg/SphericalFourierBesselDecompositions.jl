@@ -46,12 +46,7 @@ end
 
 
 @testset "Local average effect" begin
-    #rmin = 500.0
-    #rmax = 1000.0
-    #amodes = SFB.AnlmModes(3, 5, rmin, rmax)
-    #cmodes = SFB.ClnnModes(amodes, Δnmax=1)
-
-    function testagain()
+    function testaccess()
         w = rand(ComplexF64, 100, 100)
         w′ = rand(ComplexF64, 100, 100)
         nl = 12
@@ -67,7 +62,46 @@ end
         @time SFB.Theory.get_anlmNLM_r(w, w′, nl, m, NL, M)
         @time SFB.Theory.get_anlmNLM_r(w, w′, nl, m, NL, M)
     end
-    testagain()
+    testaccess()
+
+
+    rmin = 500.0
+    rmax = 1000.0
+    nr = 250
+    amodes = SFB.AnlmModes(0.02, rmin, rmax)
+    cmodes = SFB.ClnnModes(amodes, Δnmax=Inf)
+    wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
+
+    win = SFB.make_window(wmodes, :fullsky)
+    cmix = SFB.power_win_mix(win, wmodes, cmodes)
+    wmix = SFB.calc_wmix(win, wmodes, amodes)
+    wmix_negm = SFB.calc_wmix(win, wmodes, amodes; neg_m=true)
+    fskyinvlnn = SFB.win_lnn(win, wmodes, cmodes)
+
+    println("Calculate T23:")
+    @time T23 = SFB.Theory.calc_T23_z(cmix, cmodes, amodes, wmix, wmix_negm, wmix, wmix_negm, fskyinvlnn)
+    @time T23 = SFB.Theory.calc_T23_z(cmix, cmodes, amodes, wmix, wmix_negm, wmix, wmix_negm, fskyinvlnn)
+    @time T23 = SFB.Theory.calc_T23_z(cmix, cmodes, amodes, wmix, wmix_negm, wmix, wmix_negm, fskyinvlnn)
+
+    lnnsize = SFB.getlnnsize(cmodes)
+    for i=1:lnnsize, j=1:lnnsize
+        lμ, nμ, nν = SFB.getlnn(cmodes, i)
+        lσ, nσ, nα = SFB.getlnn(cmodes, j)
+
+        # calculate correct T23 for full-sky, constant unity weighting,
+        # constant unity radial selection
+        T23_correct = 0
+        isnonzero = (lμ == lσ == 0 && ((nα == nν && nσ == nμ) || (nα == nμ && nσ == nν)))
+        if isnonzero
+            T23_correct = 2
+        end
+
+        # compare
+        if abs(T23[i,j] - T23_correct) > 1e-4
+            @error "T23 incorrect" i,j lμ,nμ,nν lσ,nσ,nα T23[i,j] T23_correct
+        end
+        @test abs(T23[i,j] - T23_correct) < 1e-4
+    end
 end
 
 

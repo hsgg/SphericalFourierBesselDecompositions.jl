@@ -46,6 +46,9 @@ using ..Cat2Anlm
 using QuadGK
 using LinearAlgebra
 using SparseArrays
+using ProgressMeter
+
+using ..MyBroadcast
 
 
 function gen_Clnn_theory(pk, cmodes)
@@ -71,7 +74,7 @@ function Clnn2CnlmNLM(Clnn, cmodes)
         n, l, m = getnlm(amodes, i)
         n′, l′, m′ = getnlm(amodes, i′)
         if l′==l && m′==m
-            if isvalidlnn(cmodes, l, n, n′)
+            if isvalidlnn_symmetric(cmodes, l, n, n′)
                 idx = getidx(cmodes, l, n, n′)
                 CnlmNLM[i,i′] = Clnn[idx]
             end
@@ -247,9 +250,9 @@ function calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes, amodes_red, wW
             fNf = 0.0
 
             # add N4 term:
-            if isvalidlnn(cmodes, 0, nrho, nlambda)
+            if isvalidlnn_symmetric(cmodes, 0, nrho, nlambda)
                 for nϵ=1:nmax0, nα=1:nmax0
-                    if isvalidlnn(cmodes, 0, nrho, nϵ) && isvalidlnn(cmodes, 0, nϵ, nα) && isvalidlnn(cmodes, 0, nα, nlambda)
+                    if isvalidlnn_symmetric(cmodes, 0, nrho, nϵ) && isvalidlnn_symmetric(cmodes, 0, nϵ, nα) && isvalidlnn_symmetric(cmodes, 0, nα, nlambda)
                         j1 = getidx(cmodes, 0, nrho, nϵ)
                         j2 = getidx(cmodes, 0, nϵ, nα)
                         j3 = getidx(cmodes, 0, nα, nlambda)
@@ -260,14 +263,14 @@ function calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes, amodes_red, wW
             end
 
             # add N2 term:
-            if isvalidlnn(cmodes, 0, nrho, nlambda)
+            if isvalidlnn_symmetric(cmodes, 0, nrho, nlambda)
                 j2 = getidx(cmodes, 0, nrho, nlambda)
                 fNf -= fskyinvlnn[j2] / nbar
             end
             #@show fNf
 
             # add N3 term:
-            if isvalidlnn(cmodes, 0, nlambda, nrho)
+            if isvalidlnn_symmetric(cmodes, 0, nlambda, nrho)
                 j3 = getidx(cmodes, 0, nlambda, nrho)
                 fNf -= fskyinvlnn[j3] / nbar
             end
@@ -391,47 +394,65 @@ end
 
 function calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, Wmix, Wmix_negm, fskyinvlnn)
     lnnsize = getlnnsize(cmodes)
-    T23mat = fill(0.0, lnnsize, lnnsize)
+    #T23mat = fill(0.0, lnnsize, lnnsize)
     nmax0 = cmodes.amodes.nmax_l[1]
-    for i=1:lnnsize, j=1:lnnsize
-        lμ, nμ, nν = getlnn(cmodes, i)
-        lσ, nσ, nα = getlnn(cmodes, j)
+    #p = Progress(lnnsize^2, 0.2, "T23: ")
+    #Threads.@threads for i=1:lnnsize
+    #for j=1:lnnsize
+    T23mat = mybroadcast2d(1:lnnsize, (1:lnnsize)') do ii,jj
+        out = Array{Float64}(undef, length(ii))
+        for k=1:length(ii)
+            i = ii[k]
+            j = jj[k]
+            lμ, nμ, nν = getlnn(cmodes, i)
+            lσ, nσ, nα = getlnn(cmodes, j)
 
-        if !isvalidnlm(amodes_red, nσ, lσ, 0) ||
-            !isvalidnlm(amodes_red, nα, lσ, 0) ||
-            !isvalidnlm(amodes_red, nμ, lμ, 0) ||
-            !isvalidnlm(amodes_red, nν, lμ, 0)
-            # Yes, both terms 2 and 3 need all four to be valid modes.
-            continue
-        end
-        nσlσ = getidx(amodes_red, nσ, lσ, 0)
-        nαlσ = getidx(amodes_red, nα, lσ, 0)
-        nμlμ = getidx(amodes_red, nμ, lμ, 0)
-        nνlμ = getidx(amodes_red, nν, lμ, 0)
-
-        T23 = 0.0im
-        for nβ=1:nmax0, nλ=1:nmax0
-            if !isvalidlnn(cmodes, 0, nβ, nλ)
+            if !isvalidnlm(amodes_red, nσ, lσ, 0) ||
+                !isvalidnlm(amodes_red, nα, lσ, 0) ||
+                !isvalidnlm(amodes_red, nμ, lμ, 0) ||
+                !isvalidnlm(amodes_red, nν, lμ, 0)
+                # Yes, both terms 2 and 3 need all four to be valid modes.
+                out[k] = 0.0
                 continue
             end
-            f0nβnλ = fskyinvlnn[getidx(cmodes, 0, nβ, nλ)]
+            nσlσ = getidx(amodes_red, nσ, lσ, 0)
+            nαlσ = getidx(amodes_red, nα, lσ, 0)
+            nμlμ = getidx(amodes_red, nμ, lμ, 0)
+            nνlμ = getidx(amodes_red, nν, lμ, 0)
 
-            nβl0 = getidx(amodes_red, nβ, 0, 0)
-            nλl0 = getidx(amodes_red, nλ, 0, 0)
+            T23 = 0.0
+            for nβ=1:nmax0, nλ=1:nmax0
+                if !isvalidlnn_symmetric(cmodes, 0, nβ, nλ)
+                    continue
+                end
+                f0nβnλ = fskyinvlnn[getidx(cmodes, 0, nβ, nλ)]
 
-            for mμ=-lμ:lμ
-                wW_nλ00_nνlμmμ = get_anlmNLM_r(wWmix, wWmix_negm, nλl0, 0, nνlμ, mμ)
-                wW_nλ00_nμlμmμ = get_anlmNLM_r(wWmix, wWmix_negm, nλl0, 0, nμlμ, mμ)
-                for mσ=-lσ:lσ
-                    W_nαlσmσ_nβ00 = get_anlmNLM_r(Wmix, Wmix_negm, nαlσ, mσ, nβl0, 0)
-                    wW_μ_σ = get_anlmNLM_r(wWmix, wWmix_negm, nμlμ, mμ, nσlσ, mσ)
-                    wW_ν_σ = get_anlmNLM_r(wWmix, wWmix_negm, nνlμ, mμ, nσlσ, mσ)
+                nβl0 = getidx(amodes_red, nβ, 0, 0)
+                nλl0 = getidx(amodes_red, nλ, 0, 0)
 
-                    T23 += f0nβnλ * W_nαlσmσ_nβ00 * (wW_nλ00_nνlμmμ * wW_μ_σ + wW_nλ00_nμlμmμ * wW_ν_σ)
+                for mμ=-lμ:lμ
+                    wW_nλ00_nνlμmμ = get_anlmNLM_r(wWmix, wWmix_negm, nλl0, 0, nνlμ, mμ)
+                    wW_nλ00_nμlμmμ = get_anlmNLM_r(wWmix, wWmix_negm, nλl0, 0, nμlμ, mμ)
+                    for mσ=-lσ:lσ
+                        W_nαlσmσ_nβ00 = get_anlmNLM_r(Wmix, Wmix_negm, nαlσ, mσ, nβl0, 0)
+                        wW_μ_σ = get_anlmNLM_r(wWmix, wWmix_negm, nμlμ, mμ, nσlσ, mσ)
+                        wW_ν_σ = get_anlmNLM_r(wWmix, wWmix_negm, nνlμ, mμ, nσlσ, mσ)
+
+                        T23 += real(f0nβnλ * W_nαlσmσ_nβ00 * (wW_nλ00_nνlμmμ * wW_μ_σ + wW_nλ00_nμlμmμ * wW_ν_σ))
+                    end
                 end
             end
+            #T23mat[i,j] = T23 / (2*lμ + 1)
+            out[k] = T23 / (2*lμ + 1)
+            if nσ != nα
+                # We assume that whatever we are multiplying is symmetric in nσ and
+                # nα, and that the redundant values are not stored. Hence, we need
+                # to explicitly account for those symmetric terms.
+                out[k] *= 2
+            end
         end
-        T23mat[i,j] = real(T23) / (2*lμ + 1)
+        #next!(p, step=length(ii))
+        return out
     end
 
     return T23mat
@@ -442,21 +463,22 @@ function calc_C4lnn_z(C_th, cmix_W, cmix_wW, cmodes, fskyinvlnn)
     nmax0 = cmodes.amodes.nmax[1]
 
     CW = cmix_W * C_th
-    CW0nn = [isvalidlnn(cmodes, 0, nϵ, nα) ? CW[getidx(cmodes, 0, nϵ, nα)] : 0.0
+    CW0nn = [isvalidlnn_symmetric(cmodes, 0, nϵ, nα) ? CW[getidx(cmodes, 0, nϵ, nα)] : 0.0
              for nϵ=1:nmax0, nα=1:nmax0]
 
-    finv_n00_n00 = [isvalidlnn(cmodes, 0, nϵ, nα) ? fskyinvlnn[getidx(cmodes, 0, nϵ, nα)] : 0.0
+    finv_n00_n00 = [isvalidlnn_symmetric(cmodes, 0, nϵ, nα) ? fskyinvlnn[getidx(cmodes, 0, nϵ, nα)] : 0.0
                     for nϵ=1:nmax0, nα=1:nmax0]
 
     fCWf = finv_n00_n00 * CW0nn * finv_n00_n00
+
 
     lnnsize = getlnnsize(cmodes)
     C4lnn = fill(0.0, lnnsize)
     for i=1:lnnsize
         lμ, nμ, nν = getlnn(cmodes, i)
         C4 = 0.0
-        for nρ=1:nmax0, nλ=1:nmax0
-            if isvalidlnn(cmodes, 0, nρ, nλ)
+        for nρ=1:nmax0, nλ=nρ:nmax0  # cmix already doubled-includes symmetric terms
+            if isvalidlnn(cmodes, 0, nρ, nλ)  # cmix already doubled-includes symmetric terms
                 j = getidx(cmodes, 0, nρ, nλ)
                 C4 += cmix_wW[i,j] * fCWf[nρ,nλ]
             end

@@ -44,6 +44,7 @@ export calc_fvol
 using ..Modes
 #using ..HealPy
 using ..SeparableArrays
+using ..MyBroadcast
 using ..HealpixHelpers
 using ..LMcalcStructs
 using Healpix
@@ -277,10 +278,6 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
     wmix = fill(NaN*im, nlmsize, nlmsize)
     @show length(wmix), size(wmix), nlsize
 
-    r, Δr = window_r(wmodes)
-    r²Δr = @. r^2 * Δr
-    nr = Int64(wmodes.nr)
-
     println("Calculate Wr_lm:")
     LMAX = 2 * amodes.lmax
     #Wr_lm, LMLM = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, amodes.nside), LMAX)
@@ -289,46 +286,46 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
 
     println("Calculate gnlr:")
     @time gnlr = precompute_gnlr(amodes, wmodes)
+    r, Δr = window_r(wmodes)
+    nr = Int64(wmodes.nr)
+    @time @. gnlr *= r * √Δr  # part of the integral measure
 
 
     println("Starting wmix calculation:")
-    #@showprogress progressmeter_update_interval "wmix full: "
-    #@time for nl=1:nlsize, n′l′=1:nlsize
-    nlnlsize = nlsize * nlsize
-    #clear_each_tls.([:gg1, :buffer1, :buffer2, :wtmp])
-    @time @threads for nlnl=1:nlnlsize
-        nl = (nlnl - 1) % nlsize + 1
-        n′l′ = (nlnl - 1) ÷ nlsize + 1
-        #println("==> $nl, $n′l′")
+    #p = Progress(nlsize^2, progressmeter_update_interval, "wmix full: ")
+    @time mybroadcast2d(1:nlsize, (1:nlsize)') do nlarr, n′l′arr
+        gg1 = Vector{real(T)}(undef, nr)
+        wtmp = Vector{T}(undef, (lmax+1)^2)
+        buffer1 = Vector{real(T)}(undef, 0)
+        buffer2 = Vector{real(T)}(undef, 0)
 
-        l, n, _ = getlnn(nlmodes, nl)
-        l′, n′, _ = getlnn(nlmodes, n′l′)
+        for i=1:length(nlarr)
+            l, n, _ = getlnn(nlmodes, nlarr[i])
+            l′, n′, _ = getlnn(nlmodes, n′l′arr[i])
 
-        ibase = getidx(amodes, n, l, 0)
-        i′base = getidx(amodes, n′, l′, 0)
+            ibase = getidx(amodes, n, l, 0)
+            i′base = getidx(amodes, n′, l′, 0)
 
-        gg1 = get_tls_vec(:gg1_superfab, nr)
-        @views @. gg1 = r²Δr * gnlr[:,n,l+1] * gnlr[:,n′,l′+1]
+            @views @. gg1 = gnlr[:,n,l+1] * gnlr[:,n′,l′+1]
 
-        wtmp = get_tls_vec(T, :wtmp_superfab, (lmax+1)^2)
-        ll = 1:((l+1)*(l′+1))
-        w = @views reshape(wtmp[ll], l+1, l′+1)
+            ll = 1:((l+1)*(l′+1))
+            w = @views reshape(wtmp[ll], l+1, l′+1)
 
-        buffer1 = get_tls_vec(:buffer1_superfab, 0)
-        buffer2 = get_tls_vec(:buffer2_superfab, 0)
-        for m=0:l, m′=0:l′
-            am = m
-            if neg_m
-                m = -m
+            for m=0:l, m′=0:l′
+                am = m
+                if neg_m
+                    m = -m
+                end
+                w[am+1,m′+1] = calc_wmix_ii(l, m, l′, m′, gg1, Wr_lm, LMLM; buffer1, buffer2)
             end
-            w[am+1,m′+1] = calc_wmix_ii(l, m, l′, m′, gg1, Wr_lm, LMLM; buffer1, buffer2)
-        end
 
-        mm = ibase .+ (0:l)
-        mm′ = i′base .+ (0:l′)
-        @views @. wmix[mm,mm′] = w
+            mm = ibase .+ (0:l)
+            mm′ = i′base .+ (0:l′)
+            @views @. wmix[mm,mm′] = w
+        end
+        #next!(p, step=length(nlarr))
+        return zero(real(T))  # must return something broadcastable for mybroadcast2d()
     end
-    #clear_each_tls.([:gg1, :buffer1, :buffer2, :wtmp])
     #@assert all(isfinite, wmix)
     return wmix
 end
@@ -350,38 +347,37 @@ end
 
 # This should be very performant
 function win_lnn(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes)
-    println("===")
-    lnnsize = getlnnsize(cmodes)
-    Wlnn = fill(NaN, lnnsize)
-    @show length(Wlnn), size(Wlnn)
-
-    r, Δr = window_r(wmodes)
-
     println("Calculate Wr_00:")
-    # Note: the maximum ℓ we need is 0. However, healpy changes precision, and
-    # for comparison we use the same lmax as elsewhere.
-    @time Wr_00 = Array{Float64,1}(calc_Wr_lm(win, 2*cmodes.amodes.lmax, cmodes.amodes.nside)[:,1])
+    # Note: the maximum ℓ we need here is 0. However, healpy changes precision,
+    # and for comparison we use the same lmax as elsewhere.
+    @time Wr_00 = Vector{Float64}(calc_Wr_lm(win, 2*cmodes.amodes.lmax, cmodes.amodes.nside)[:,1])
     @assert all(isfinite, Wr_00)
 
     check_nsamp(cmodes.amodes, wmodes)
 
     println("Calculate gnlr:")
     @time gnlr = precompute_gnlr(cmodes.amodes, wmodes)
+    r, Δr = window_r(wmodes)
+    @time @. gnlr *= r * √Δr * √Wr_00  # add part of the integral measure and Wr_00
 
     println("Calculate Wlnn:")
-    @time Threads.@threads for i=1:lnnsize
-        l, n, n′ = getlnn(cmodes, i)
-        #@show i, l,n,n′, lnnsize
+    lnnsize = getlnnsize(cmodes)
+    @time Wlnn = mybroadcast(1:lnnsize) do ii
+        out = Vector{Float64}(undef, length(ii))
+        for i=1:length(ii)
+            l, n, n′ = getlnn(cmodes, ii[i])
+            #@show i, l,n,n′, lnnsize
 
-        gg = get_tls_vec(:gg, length(r))
-        @views @turbo @. gg = r^2 * gnlr[:,n,l+1] * gnlr[:,n′,l+1] * Wr_00
+            @views sgg = gnlr[:,n,l+1]' * gnlr[:,n′,l+1]
 
-        Wlnn[i] = Δr * sum(gg) / √(4π)
+            out[i] = sgg / √(4π)
 
-        #if !isfinite(Wlnn[i])
-        #    @error "not finite" i l,n,n′ extrema(gg) Δr sum(gg) Wlnn[i]
-        #    break
-        #end
+            #if !isfinite(out[i])
+            #    @error "Wlnn not finite" i l,n,n′ extrema(gg) Δr sum(gg) out[i]
+            #    break
+            #end
+        end
+        return out
     end
     @assert all(isfinite, Wlnn)
     return Wlnn
@@ -588,48 +584,13 @@ function calc_cmix_ang(l, L, L1M1cache, gg1, gg2, Wr_lm)
 end
 
 
-function clear_tls(key)
-    tls = task_local_storage()
-    if haskey(tls, key)
-        delete!(tls, key)
-    end
-end
-
-
-function clear_each_tls(key)
-    for _=1:nthreads()
-        clear_tls(key)
-    end
-end
-
-
-function get_tls_vec(T, key, len)
-    tls = task_local_storage()
-    if !haskey(tls, key)
-        tls[key] = Vector{T}(undef, len)
-    end
-    return resize!(tls[key]::Vector{T}, len)
-    #v = tls[key]::Vector{Float64}
-    #if length(v) < len
-    #    resize!(v, len)
-    #end
-    #return v
-end
-get_tls_vec(key, len) = get_tls_vec(Float64, key, len)
-
-
-function calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes::ClnnModes, Wr_lm, L1M1cache, div2Lp1)
+function calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes::ClnnModes, Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
     l, n, n′ = getlnn(cmodes, i)
     #L, N, N′ = getlnn(cmodes, i′)
 
     #showthis = ((l==L==0 && n==N′==1 && n′==N==2) || (l==L==0 && n==N′==2 && n′==N==1))
     #showthis && @show "huzzah",i,i′, n,n′, N,N′, l,L
     #@show i,i′, (l,n,n′), (L,N,N′)
-
-    # get task-local work arrays
-    len = length(r)
-    gg1 = get_tls_vec(:gg1, len)
-    gg2 = get_tls_vec(:gg2, len)
 
     @views @. gg1 = r^2 * gnlr[:,n,l+1] * gnlr[:,N,L+1]
     @views @. gg2 = r^2 * gnlr[:,n′,l+1] * gnlr[:,N′,L+1]
@@ -646,13 +607,13 @@ end
 
 
 # for backward compatiblity
-function calc_cmixii(i, i′, cmodes::ClnnModes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, interchange_NN′)
+function calc_cmixii(i, i′, cmodes::ClnnModes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, interchange_NN′, gg1, gg2)
     L, N, N′ = getlnn(cmodes, i′)
     if interchange_NN′
         N, N′ = N′, N
     end
 
-    mix = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes, Wr_lm, L1M1cache, div2Lp1)
+    mix = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes, Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
 
     return mix
 end
@@ -690,23 +651,30 @@ function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, int
     p = Progress(lnnsize, progressmeter_update_interval, "cmix full: ")
 
     #@time for i′=1:lnnsize
-    @time Threads.@threads for i′=1:lnnsize
+    #@time Threads.@threads for i′=1:lnnsize
     #@time @tturbo for i′=1:lnnsize
+    @time mybroadcast(1:lnnsize) do ii′
+        len = length(r)
+        gg1 = Array{Float64}(undef, len)
+        gg2 = Array{Float64}(undef, len)
 
-        L, N, N′ = getlnn(cmodes, i′)
-        if interchange_NN′
-            N, N′ = N′, N
+        for idx=1:length(ii′)
+            i′ = ii′[idx]
+
+            L, N, N′ = getlnn(cmodes, i′)
+            if interchange_NN′
+                N, N′ = N′, N
+            end
+
+            for i=i′:lnnsize
+                @turbo mix[i,i′] = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes,
+                                               Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
+                #mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
+                #@show i,i′, mix[i,i′]
+            end
         end
-
-        for i=i′:lnnsize
-        #Threads.@threads for i=i′:lnnsize  # leads to extra work-array allocations
-            @turbo mix[i,i′] = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes,
-                                           Wr_lm, L1M1cache, div2Lp1)
-            #mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
-            #@show i,i′, mix[i,i′]
-        end
-
-        next!(p)
+        next!(p, step=length(ii′))
+        return zero(Float64)
     end
 
     @time fill_almost_symmetric_cmix_lower_half!(mix, cmodes)
@@ -754,49 +722,7 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
     println("Calculate gnlr:")
     @time gnlr = precompute_gnlr(amodes, wmodes)
 
-    ## crashes at end:
-    #@time @threads for i′=1:lnnsize
-    #    @show i′, lnnsize
-    #    @time for i=1:lnnsize
-    #        mix[i,i′] = calc_cmixii(i, i′, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache)
-    #        #@show i,i′, mix[i,i′]
-    #    end
-    #end
-
-    ## too slow:
-    #@time mix = pmap(idx -> calc_cmixii(idx[1], idx[2], cmodes, r, Δr, gnlr, Wr_lm, L1M1cache),
-    #                 CartesianIndices((1:lnnsize, 1:lnnsize)))
-
-    #@show "full"
-    #@time @sync @distributed for i′=1:lnnsize
-    #    @time for i=1:lnnsize
-    #        mix[i,i′] = calc_cmixii(i, i′, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache)
-    #        #@show i,i′, mix[i,i′]
-    #    end
-    #end
-    #mix1 = deepcopy(mix)
-
     mix = calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, interchange_NN′)
-    #@assert mix == mix1
-
-    ##@show "symmetric pmap"
-    #batchsize = lnnsize ÷ nworkers()^2 + 1
-    #@showprogress progressmeter_update_interval "cmix full: " pmap(i′ -> begin
-    #               L, = getlnn(cmodes, i′)
-    #               #@show i′,L,lnnsize
-    #               for i=i′:lnnsize
-    #                   l, = getlnn(cmodes, i)
-    #                   mix[i,i′] = calc_cmixii(i, i′, cmodes, r, Δr, gnlr,
-    #                                           Wr_lm, L1M1cache, div2Lp1,
-    #                                           interchange_NN′)
-    #                   mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
-    #                   #@show i,i′, mix[i,i′]
-    #               end
-    #               return i′  # return something that doesn't take much memory
-    #           end,
-    #           1:lnnsize,
-    #           batch_size=batchsize)
-    #@assert mix == mix1
 
     @assert all(isfinite.(mix))
     return mix
@@ -832,6 +758,8 @@ function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes;
     m_idxs = SeparableArray(ones(Int, LNNsize1), LNNsize2:-1:1)
     batchsize = (LNNsize1 * LNNsize2) ÷ (nworkers()^2) + 1
     @show LNNsize1, LNNsize2, batchsize
+    gg1 = Array{Float64}(undef, length(r))
+    gg2 = Array{Float64}(undef, length(r))
     mix = @showprogress progressmeter_update_interval "cmix: " pmap((n,m) -> begin
             w̃mat_n = w̃mat[n,:]
             vmat_m = vmat[:,m]
@@ -844,7 +772,7 @@ function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes;
                 w̃ = w̃mat_n[i]
                 w̃==0 && continue
                 c += w̃ * v * calc_cmixii(i, i′, cmodes, r, Δr, gnlr, Wr_lm,
-                                         L1M1cache, div2Lp1, interchange_NN′)
+                                         L1M1cache, div2Lp1, interchange_NN′, gg1, gg2)
             end
             return c
         end,
@@ -876,19 +804,19 @@ end
 check_nsamp_1gnl(amodes, wmodes::ConfigurationSpaceModes) = check_nsamp_1gnl(amodes, wmodes.nr)
 function check_nsamp_1gnl(amodes, nr)
     num_imprecise = 0
-    max_Nsamp = 0
+    max_nr_needed = 0
     lmax = amodes.lmax
     nmax_l = amodes.nmax_l
     for L=0:lmax, N=1:nmax_l[L+1]
-        Nsamp = 8 * N
-        max_Nsamp = max(max_Nsamp, Nsamp)
-        if Nsamp > nr
+        nr_needed = 8 * N
+        max_nr_needed = max(max_nr_needed, nr_needed)
+        if nr_needed > nr
             num_imprecise += 1
         end
     end
     if num_imprecise > 0
-        @warn "Radial integral over one gnl(r) unlikely to converge" num_imprecise max_Nsamp nr amodes.rmin amodes.rmax amodes.lmax amodes.nmax amodes.nmax_l
-        #throw(ErrorException("Nsamp > nr"))
+        @warn "Radial integral over one gnl(r) unlikely to converge" num_imprecise max_nr_needed nr amodes.rmin amodes.rmax amodes.lmax amodes.nmax amodes.nmax_l
+        #throw(ErrorException("nr_needed > nr"))
     end
 end
 
@@ -896,21 +824,21 @@ end
 check_nsamp(amodes, wmodes::ConfigurationSpaceModes) = check_nsamp(amodes, wmodes.nr)
 function check_nsamp(amodes, nr)
     num_imprecise = 0
-    max_Nsamp = 0
+    max_nr_needed = 0
     lmax = amodes.lmax
     nmax_l = amodes.nmax_l
     for L=0:lmax, N=1:nmax_l[L+1]
         for l=0:lmax, n=1:nmax_l[l+1]
-            Nsamp = 8 * (n + N)
-            max_Nsamp = max(max_Nsamp, Nsamp)
-            if Nsamp > nr
+            nr_needed = 8 * (n + N)
+            max_nr_needed = max(max_nr_needed, nr_needed)
+            if nr_needed > nr
                 num_imprecise += 1
             end
         end
     end
     if num_imprecise > 0
-        @warn "Radial integrals unlikely to converge" num_imprecise max_Nsamp nr amodes.rmin amodes.rmax amodes.lmax amodes.nmax amodes.nmax_l
-        #throw(ErrorException("Nsamp > nr"))
+        @warn "Radial integrals unlikely to converge" num_imprecise max_nr_needed nr amodes.rmin amodes.rmax amodes.lmax amodes.nmax amodes.nmax_l
+        #throw(ErrorException("nr_needed > nr"))
     end
 end
 
