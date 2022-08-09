@@ -36,6 +36,7 @@ include("Splines.jl")
 include("gnl.jl")  # SphericalBesselGnls
 include("modes.jl")  # AnlmModes, ClnnModes, ClnnBinnedModes
 include("SeparableArrays.jl")
+include("MyBroadcast.jl")
 include("LMcalcStructs.jl")
 include("windows.jl")  # window function related
 include("NDIterators.jl")
@@ -51,6 +52,7 @@ using WignerD
 #using Roots
 using Healpix
 using Scanf
+using .MyBroadcast
 using .HealPy
 using .HealpixHelpers
 using .Splines

@@ -44,6 +44,7 @@ export calc_fvol
 using ..Modes
 #using ..HealPy
 using ..SeparableArrays
+using ..MyBroadcast
 using ..HealpixHelpers
 using ..LMcalcStructs
 using Healpix
@@ -266,7 +267,7 @@ end
 
 # This should be very performant
 # Also checkout calc_wmix_all() in window_chains.jl.
-function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_m=false)
+function calc_wmix1(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_m=false)
     T = ComplexF64
 
     nlmodes = ClnnModes(amodes, Δnmax=0)  # to make it easy to iterate over l,n
@@ -327,6 +328,87 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
         mm = ibase .+ (0:l)
         mm′ = i′base .+ (0:l′)
         @views @. wmix[mm,mm′] = w
+    end
+    #clear_each_tls.([:gg1, :buffer1, :buffer2, :wtmp])
+    #@assert all(isfinite, wmix)
+    return wmix
+end
+
+
+# This should be very performant
+# Also checkout calc_wmix_all() in window_chains.jl.
+function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_m=false)
+    T = ComplexF64
+
+    nlmodes = ClnnModes(amodes, Δnmax=0)  # to make it easy to iterate over l,n
+    nlsize = getlnnsize(nlmodes)
+
+    nlmsize = getnlmsize(amodes)
+    lmax = amodes.lmax
+    wmix = fill(NaN*im, nlmsize, nlmsize)
+    @show length(wmix), size(wmix), nlsize
+
+
+    println("Calculate Wr_lm:")
+    LMAX = 2 * amodes.lmax
+    #Wr_lm, LMLM = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, amodes.nside), LMAX)
+    Wr_lm, LMLM = calc_Wr_lm(win, LMAX, amodes.nside), LMcalcStruct(LMAX)
+    #@debug "Wr_lm" LMAX amodes.nside size(Wr_lm) Wr_lm[:,1]
+
+    println("Calculate gnlr:")
+    @time gnlr = precompute_gnlr(amodes, wmodes)
+    r, Δr = window_r(wmodes)
+    nr = Int64(wmodes.nr)
+    @time @. gnlr *= r * √Δr  # part of the integral measure
+
+
+    println("Starting wmix calculation:")
+    #@showprogress progressmeter_update_interval "wmix full: "
+    #@time for nl=1:nlsize, n′l′=1:nlsize
+    nlnlsize = nlsize * nlsize
+    #clear_each_tls.([:gg1, :buffer1, :buffer2, :wtmp])
+    #@time @threads for nlnl=1:nlnlsize
+    mybroadcast2d(1:nlsize, (1:nlsize)') do nlarr, n′l′arr
+        gg1 = Vector{real(T)}(undef, nr)
+        wtmp = Vector{T}(undef, (lmax+1)^2)
+        buffer1 = Vector{real(T)}(undef, 0)
+        buffer2 = Vector{real(T)}(undef, 0)
+
+        for i=1:length(nlarr)
+            #nl = (nlnl - 1) % nlsize + 1
+            #n′l′ = (nlnl - 1) ÷ nlsize + 1
+            nl = nlarr[i]
+            n′l′ = n′l′arr[i]
+            ##println("==> $nl, $n′l′")
+
+            l, n, _ = getlnn(nlmodes, nl)
+            l′, n′, _ = getlnn(nlmodes, n′l′)
+
+            ibase = getidx(amodes, n, l, 0)
+            i′base = getidx(amodes, n′, l′, 0)
+
+            #gg1 = get_tls_vec(:gg1_superfab, nr)
+            @views @. gg1 = gnlr[:,n,l+1] * gnlr[:,n′,l′+1]
+
+            #wtmp = get_tls_vec(T, :wtmp_superfab, (lmax+1)^2)
+            ll = 1:((l+1)*(l′+1))
+            w = @views reshape(wtmp[ll], l+1, l′+1)
+
+            #buffer1 = get_tls_vec(:buffer1_superfab, 0)
+            #buffer2 = get_tls_vec(:buffer2_superfab, 0)
+            for m=0:l, m′=0:l′
+                am = m
+                if neg_m
+                    m = -m
+                end
+                w[am+1,m′+1] = calc_wmix_ii(l, m, l′, m′, gg1, Wr_lm, LMLM; buffer1, buffer2)
+            end
+
+            mm = ibase .+ (0:l)
+            mm′ = i′base .+ (0:l′)
+            @views @. wmix[mm,mm′] = w
+        end
+        return zero(real(T))  # must return something broadcastable for mybroadcast2d()
     end
     #clear_each_tls.([:gg1, :buffer1, :buffer2, :wtmp])
     #@assert all(isfinite, wmix)

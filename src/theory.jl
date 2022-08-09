@@ -47,8 +47,7 @@ using QuadGK
 using LinearAlgebra
 using SparseArrays
 
-include("MyBroadcast.jl")
-using .MyBroadcast
+using ..MyBroadcast
 
 
 function gen_Clnn_theory(pk, cmodes)
