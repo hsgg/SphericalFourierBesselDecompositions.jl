@@ -442,14 +442,14 @@ function calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, Wmix, Wmix_n
                     end
                 end
             end
-            #T23mat[i,j] = T23 / (2*lμ + 1)
-            out[k] = T23 / (2*lμ + 1)
             if nσ != nα
                 # We assume that whatever we are multiplying is symmetric in nσ and
                 # nα, and that the redundant values are not stored. Hence, we need
                 # to explicitly account for those symmetric terms.
-                out[k] *= 2
+                T23 *= 2
             end
+            #T23mat[i,j] = T23 / (2*lμ + 1)
+            out[k] = T23 / (2*lμ + 1)
         end
         #next!(p, step=length(ii))
         return out

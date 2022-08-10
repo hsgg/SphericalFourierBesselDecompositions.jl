@@ -667,8 +667,13 @@ function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, int
             end
 
             for i=i′:lnnsize
-                @turbo mix[i,i′] = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes,
+                @turbo mixii′ = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes,
                                                Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
+                #if N != N′
+                #    # Since we only save the symmetric part where N′ >= N
+                #    mixii′ *= 2
+                #end
+                mix[i,i′] = mixii′
                 #mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
                 #@show i,i′, mix[i,i′]
             end
