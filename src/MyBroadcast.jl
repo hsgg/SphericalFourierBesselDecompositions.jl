@@ -3,7 +3,7 @@
 
 This module defines the function `mybroadcast`. It behave similarly to a
 threaded broadcast, except that it tries to batch iterations such that each
-batch takes about 1.0 seconds to perform.
+batch takes about 0.2 seconds to perform.
 
 The idea is to automatically adjust the number of iterations per batch so that
 overhead per iteration is low and batch size is small so that the threads keep
@@ -12,7 +12,7 @@ getting scheduled.
 For example, imagine that the execution time per iteration increases. With a
 static scheduler, this would mean that the first threads finish long before the
 last thread. This avoids that by adjusting the number of iterations so that
-each batch should take approximately 1.0 seconds.
+each batch should take approximately 0.2 seconds.
 """
 module MyBroadcast
 
@@ -25,7 +25,7 @@ include("MeshedArrays.jl")
 using .MeshedArrays
 
 
-function calc_i_per_thread(time, i_per_thread_old; batch_avgtime=1.0, batch_maxadjust=2.0)
+function calc_i_per_thread(time, i_per_thread_old; batch_avgtime=0.2, batch_maxadjust=2.0)
     adjust = batch_avgtime / time  # if we have accurate measurement of time
     adjust = min(batch_maxadjust, adjust)  # limit upward adjustment
     adjust = max(1/batch_maxadjust, adjust)  # limit downward adjustment
@@ -57,57 +57,96 @@ function calc_outsize(x...)
 end
 
 
+function calc_newbatchsize!(oldbatchsize, newbatchsizechannel)
+    batchsize = oldbatchsize
+    n = 1
+    while isready(newbatchsizechannel)
+        newbatchsize = take!(newbatchsizechannel)
+        batchsize += newbatchsize
+        n += 1
+        #@show n,batchsize,newbatchsize
+    end
+
+    newbatchsize = batchsize / n
+
+    if newbatchsize < oldbatchsize
+        batchsize = floor(Int, newbatchsize)
+    else
+        batchsize = ceil(Int, newbatchsize)
+    end
+
+    batchsize = max(batchsize, 1)
+    return batchsize
+end
+
+
+function clear_channel(channel)
+    while isready(channel)
+        take!(channel)
+    end
+end
+
+
 function mybroadcast!(out, fn, x...)
     ntasks = prod(calc_outsize(x...))
     @assert size(out) == calc_outsize(x...)
 
-    ifirst = 1
-    i_per_thread = Atomic{Int}(1)
-    last_ifirst = 0
-    lk = Threads.Condition()
+    num_threads = Threads.nthreads()
 
-    num_free_threads = Atomic{Int}(Threads.nthreads())
-    @assert num_free_threads[] > 0
+    batchsize = 1
+    newbatchsizechannel = Channel{Int}(2 * num_threads)
+    batchchannel = Channel{UnitRange{Int}}(2 * num_threads)
 
     all_indices = eachindex(out, x...)
 
-    @sync while ifirst <= ntasks
-        while num_free_threads[] < 1
-            # Don't spawn the next batch until a thread is free. This has
-            # several implications. First, Ctrl-C actually works (seems like
-            # threadid=1 is the one catching the signal, and no tasks are
-            # waiting on the other threads so they actually finish instead of
-            # continuing in the background). Second, printing and ProgressMeter
-            # actually work. Why? Not sure. Maybe because printing uses locks
-            # and yields()? Maybe tasks need to be cleaned up?
-            yield()
-        end
-        num_free_threads[] -= 1
+    # worker threads process the data
+    tsk = Task[]
+    for _ in 1:num_threads
+        t = @spawn begin
+            iset = take!(batchchannel)
+            while length(iset) > 0
+                time = @elapsed begin
+                    idxs = all_indices[iset]
 
-        ilast = min(ntasks, ifirst + i_per_thread[] - 1)
-        iset = ifirst:ilast  # no need to interpolate local variables
+                    #xs = x[1][idxs]
+                    #ys = x[2][idxs]
+                    #outs = fn(xs, ys)
 
-        @async Threads.@spawn begin
-            time = @elapsed begin
-                idxs = all_indices[iset]
-                xs = (x[i][idxs] for i=1:length(x))
-                outs = fn(xs...)
-                out[idxs] .= outs
-            end
+                    xs = (x[i][idxs] for i=1:length(x))
+                    outs = fn(xs...)
 
-            i_per_thread_new = calc_i_per_thread(time, length(iset))
-            lock(lk) do
-                if last_ifirst < iset[1]
-                    i_per_thread[] = i_per_thread_new
-                    last_ifirst = iset[1]
+                    out[idxs] .= outs
                 end
+
+                newbatchsize = calc_i_per_thread(time, length(iset))
+                put!(newbatchsizechannel, newbatchsize)
+                iset = take!(batchchannel)
             end
-            num_free_threads[] += 1
         end
+        push!(tsk, t)
+    end
+
+    # feed the workers
+    ifirst = 1
+    while ifirst <= ntasks
+        batchsize = calc_newbatchsize!(batchsize, newbatchsizechannel)
+
+        ilast = min(ntasks, ifirst + batchsize - 1)
+        #@show ifirst,ilast-ifirst
+
+        put!(batchchannel, ifirst:ilast)
 
         ifirst = ilast + 1
-        yield()  # let some threads finish so that i_per_thread[] gets updated asap
     end
+
+    # close channels
+    for _ in 1:num_threads
+        clear_channel(newbatchsizechannel)
+        put!(batchchannel, 1:0)  # tell thread to exit
+    end
+    clear_channel(newbatchsizechannel)
+
+    wait.(tsk)
 
     return out
 end
