@@ -396,10 +396,10 @@ function calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, Wmix, Wmix_n
     lnnsize = getlnnsize(cmodes)
     #T23mat = fill(0.0, lnnsize, lnnsize)
     nmax0 = cmodes.amodes.nmax_l[1]
-    #p = Progress(lnnsize^2, 0.2, "T23: ")
+    p = Progress(lnnsize^2, 1.0, "T23: ")
     #Threads.@threads for i=1:lnnsize
     #for j=1:lnnsize
-    T23mat = mybroadcast2d(1:lnnsize, (1:lnnsize)') do ii,jj
+    T23mat = mybroadcast(1:lnnsize, (1:lnnsize)') do ii,jj
         out = Array{Float64}(undef, length(ii))
         for k=1:length(ii)
             i = ii[k]
@@ -451,7 +451,7 @@ function calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, Wmix, Wmix_n
             #T23mat[i,j] = T23 / (2*lμ + 1)
             out[k] = T23 / (2*lμ + 1)
         end
-        #next!(p, step=length(ii))
+        next!(p, step=length(ii), showvalues=[(:batchsize, length(ii))])
         return out
     end
 

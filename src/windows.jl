@@ -292,8 +292,8 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
 
 
     println("Starting wmix calculation:")
-    #p = Progress(nlsize^2, progressmeter_update_interval, "wmix full: ")
-    @time mybroadcast2d(1:nlsize, (1:nlsize)') do nlarr, n′l′arr
+    p = Progress(nlsize^2, progressmeter_update_interval, "wmix full: ")
+    @time mybroadcast(1:nlsize, (1:nlsize)') do nlarr, n′l′arr
         gg1 = Vector{real(T)}(undef, nr)
         wtmp = Vector{T}(undef, (lmax+1)^2)
         buffer1 = Vector{real(T)}(undef, 0)
@@ -323,8 +323,8 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
             mm′ = i′base .+ (0:l′)
             @views @. wmix[mm,mm′] = w
         end
-        #next!(p, step=length(nlarr))
-        return zero(real(T))  # must return something broadcastable for mybroadcast2d()
+        next!(p, step=length(nlarr), showvalues=[(:batchsize, length(nlarr))])
+        return zero(real(T))  # must return something broadcastable for mybroadcast()
     end
     #@assert all(isfinite, wmix)
     return wmix
@@ -678,7 +678,7 @@ function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, int
                 #@show i,i′, mix[i,i′]
             end
         end
-        next!(p, step=length(ii′))
+        next!(p, step=length(ii′), showvalues=[(:batchsize, length(ii′))])
         return zero(Float64)
     end
 
