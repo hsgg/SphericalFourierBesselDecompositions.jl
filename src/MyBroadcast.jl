@@ -66,17 +66,15 @@ function calc_newbatchsize!(oldbatchsize, newbatchsizechannel)
         n += 1
         #@show n,batchsize,newbatchsize
     end
+    avgbatchsize = batchsize / n
 
-    newbatchsize = batchsize / n
-
-    if newbatchsize < oldbatchsize
-        batchsize = floor(Int, newbatchsize)
+    if avgbatchsize < oldbatchsize
+        batchsize = floor(Int, avgbatchsize)
     else
-        batchsize = ceil(Int, newbatchsize)
+        batchsize = ceil(Int, avgbatchsize)
     end
 
-    batchsize = max(batchsize, 1)
-    return batchsize
+    return max(batchsize, 1)
 end
 
 
