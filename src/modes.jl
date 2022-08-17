@@ -140,6 +140,7 @@ function AnlmModes(kmax::Real, rmin::Real, rmax::Real; cache=true, nside=nothing
         nside = estimate_nside(lmax)
     end
     kmax = maximum(x->isnan(x) ? -Inf : x, knl)
+    knl = collect(knl[1:nmax,1:lmax+1])
     return AnlmModes(rmin, rmax, kmax, sphbesg, nmax, lmax, nmax_l, lmax_n, nside, knl)
 end
 
