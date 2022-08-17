@@ -22,6 +22,10 @@ using LinearAlgebra
         @test 2*modes.nside >= modes.lmax
         @test maximum(modes.lmax_n) == modes.lmax
         @test maximum(modes.nmax_l) == modes.nmax
+        @test length(modes.lmax_n) == modes.nmax
+        @test length(modes.nmax_l) == modes.lmax + 1
+        @test_broken size(modes.knl,1) == modes.nmax  # knl is larger than needed
+        @test_broken size(modes.knl,2) == modes.lmax + 1  # knl is larger than needed
         @show SFB.getnlmsize(modes)
         @time for n=1:modes.nmax, l=0:modes.lmax_n[n], m=0:l
             idx = SFB.getidx(modes, n, l, m)
