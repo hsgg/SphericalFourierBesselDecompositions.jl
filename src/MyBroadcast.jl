@@ -100,7 +100,7 @@ function mybroadcast!(out, fn, x...)
     # worker threads process the data
     tsk = Task[]
     for _ in 1:num_threads
-        t = @spawn begin
+        t = Threads.@spawn begin
             iset = take!(batchchannel)
             while length(iset) > 0
                 time = @elapsed begin
