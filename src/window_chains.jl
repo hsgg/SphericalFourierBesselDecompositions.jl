@@ -66,7 +66,6 @@ using WignerSymbols
 using WignerFamilies
 using Healpix
 using ..HealpixHelpers
-#using ..HealPy
 using ..NDIterators
 using ..SeparableArrays
 using ..WignerChains

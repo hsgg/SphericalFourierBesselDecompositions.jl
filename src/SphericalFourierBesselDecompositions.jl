@@ -30,7 +30,6 @@
 
 module SphericalFourierBesselDecompositions
 
-include("HealPy.jl")
 include("healpix_helpers.jl")
 include("Splines.jl")
 include("gnl.jl")  # SphericalBesselGnls
@@ -53,7 +52,6 @@ using WignerD
 using Healpix
 using Scanf
 using .MyBroadcast
-using .HealPy
 using .HealpixHelpers
 using .Splines
 using .GNL
@@ -71,7 +69,6 @@ using .Cat2Anlm
 #using FastGaussQuadrature
 using Distributed
 #using Base.Threads
-using PyCall
 
 ## for testing only
 #using MeasureAngularPowerSpectra
@@ -340,16 +337,11 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
     end
 
     if :rotate in features
-        if hp != PyNULL()
-            rot = hp.Rotator(coord=["E", "G"])
-            mask = rot.rotate_map_pixel(mask)
-        else
-            a = -0.0004052885
-            b = 1.05048844473
-            c = 1.68221794936
-            mask = HealpixMap{Float64,Healpix.RingOrder}(mask)
-            mask = rotate_euler(mask, a, b, c)
-        end
+        a = -0.0004052885
+        b = 1.05048844473
+        c = 1.68221794936
+        mask = HealpixMap{Float64,Healpix.RingOrder}(mask)
+        mask = rotate_euler(mask, a, b, c)
         features = filter(i -> i != :rotate, features)
     end
 
@@ -409,6 +401,7 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
     for feat in features
         sfeat = string(feat)
         println("Processing feature $feat...")
+        @show extrema(win)
 
         if occursin("radial_cossin_l", sfeat)
             numform, l, m = @scanf(sfeat, "radial_cossin_l%f_m%f", Float64, Float64)
@@ -446,7 +439,8 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
         features = filter(i -> i != feat, features)
     end
 
-    @assert maximum(win) == 1
+    @show extrema(win)
+    @assert maximum(win) ≈ 1  rtol=eps(1.0)
 
     return win
 end

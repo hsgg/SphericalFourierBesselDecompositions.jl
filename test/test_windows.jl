@@ -165,7 +165,9 @@ using Healpix
         wmix = SFB.calc_wmix(win, wmodes, amodes)
         wmix = SFB.calc_wmix(win, wmodes, amodes)
         @show wmix[123,121]
-        @test wmix[123,121] ≈ 0.0031756395970370306 + 0.02813773208852665im
+        # only useful for detecting changes:
+        #@test wmix[123,121] ≈ 0.0031756395970370306 + 0.02813773208852665im  # healpy :rotate E->G
+        @test wmix[123,121] ≈ -0.025014220949702827 - 1.01407936505596e-5im
     end
 
 

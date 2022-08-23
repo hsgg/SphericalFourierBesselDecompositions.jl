@@ -14,7 +14,9 @@ using LinearAlgebra
     # Note: a lot of the differences here come down to the choice of nside and
     # details of how healpy is used.
 
-    @testset "Wmix" begin
+    run_tests = true
+
+    run_tests && @testset "Wmix" begin
         rmin = 500.0
         rmax = 1000.0
         amodes = SFB.AnlmModes(3, 5, rmin, rmax)
@@ -111,7 +113,7 @@ using LinearAlgebra
     end
 
 
-    @testset "k = 1" begin
+    run_tests && @testset "k = 1" begin
         k = 1
         rmin = 500.0
         rmax = 1000.0
@@ -166,7 +168,7 @@ using LinearAlgebra
     end
 
 
-    @testset "k = 2" begin
+    run_tests && @testset "k = 2" begin
         k = 2
         rmin = 500.0
         rmax = 1000.0
@@ -230,7 +232,7 @@ using LinearAlgebra
     end
 
 
-    @testset "Wk method agreement" begin
+    run_tests && @testset "Wk method agreement" begin
         rmin = 500.0
         rmax = 1000.0
         amodes = SFB.AnlmModes(8, 4, rmin, rmax)
@@ -330,7 +332,8 @@ using LinearAlgebra
     end
 
 
-    @testset "Symmetricizing f=$features" for features in [(), (:separable,)]
+    run_tests && @testset "Symmetricizing f=$features" for features in [(), (:separable,)]
+    #@testset "Symmetricizing f=$features" for features in [(), (:separable,)]
         rmin = 500.0
         rmax = 1000.0
         amodes = SFB.AnlmModes(8, 4, rmin, rmax)
@@ -345,11 +348,12 @@ using LinearAlgebra
         symmetries = [1=>0, 2=>1, 3=>2]
         wkfull = SFB.window_chain(ell, n1, n2, cache, symmetries)
         @show wkfull
-        @test wkfull ≈ -1.2707026010569427e-8  # only useful for detecting changes
+        #@test wkfull ≈ -1.2707026010569427e-8  # if :rotate is by E->G with healpy
+        @test wkfull ≈ -7.224995629370737e-9  # only useful for detecting changes
     end
 
 
-    @testset "Wk single pixel mask" begin
+    run_tests && @testset "Wk single pixel mask" begin
         rmin = 500.0
         rmax = 1000.0
         nside = 16
@@ -398,7 +402,7 @@ using LinearAlgebra
     end
 
 
-    @testset "Other tests" begin
+    run_tests && @testset "Other tests" begin
         rmin = 0.0
         rmax = 2000.0
         amodes = SFB.AnlmModes(0.03, rmin, rmax)
@@ -472,7 +476,7 @@ using LinearAlgebra
     end
 
 
-    @testset "calc_wmix_all()" begin
+    run_tests && @testset "calc_wmix_all()" begin
         rmin = 500.0
         rmax = 1000.0
         amodes = SFB.AnlmModes(0.02, rmin, rmax)

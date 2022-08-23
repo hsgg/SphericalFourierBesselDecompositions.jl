@@ -37,7 +37,6 @@ export field2anlm
 using SharedArrays
 using Healpix
 using ..HealpixHelpers
-#using ..HealPy
 using ..SeparableArrays
 using ..Modes
 
@@ -283,14 +282,6 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weight=ones(eltype(rθϕ), s
             #@show extrema(map1 ./ map0 .- 1)
             #@show extrema(map2 ./ map0 .- 1)
             #@show extrema(map3 ./ map0 .- 1)
-            #hp.mollview(map0, title="direct")
-            #hp.mollview(map1, title="direct, splined")
-            #hp.mollview(map2, title="quadratic")
-            #hp.mollview(map3, title="quadratic cached")
-            #hp.mollview(map0 .- map, title="map1 - map")
-            #hp.mollview(map1 .- map, title="map1 - map")
-            #hp.mollview(map2 .- map, title="map2 - map")
-            #hp.mollview(map3 .- map, title="map3 - map")
             #readline()
             #close("all")
             #@show mean(map ./ map1),std(map ./ map1)

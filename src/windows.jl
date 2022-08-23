@@ -42,7 +42,6 @@ export check_nsamp
 export calc_fvol
 
 using ..Modes
-#using ..HealPy
 using ..SeparableArrays
 using ..MyBroadcast
 using ..HealpixHelpers
