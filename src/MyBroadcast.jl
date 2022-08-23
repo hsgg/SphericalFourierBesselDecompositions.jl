@@ -13,6 +13,12 @@ For example, imagine that the execution time per iteration increases. With a
 static scheduler, this would mean that the first threads finish long before the
 last thread. This avoids that by adjusting the number of iterations so that
 each batch should take approximately 0.2 seconds.
+
+So why batch iterations? Imagine you need to allocate a buffer for each
+iteration, and this buffer can be shared for sequentially run iterations.
+Allocating a separate buffer would add a lot of overhead, so that traditional
+`map()` can take longer than the serial implementation. Batching avoids that
+pitfall.
 """
 module MyBroadcast
 
