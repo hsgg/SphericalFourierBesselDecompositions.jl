@@ -400,6 +400,13 @@ function getlkk(cmodes::ClnnModes)
 end
 
 
+function getlkk(cmodes::ClnnModes, l, n1, n2)
+    k1 = cmodes.knl[n1,l+1]
+    k2 = cmodes.knl[n2,l+1]
+    return l, k1, k2
+end
+
+
 function estimate_nr(cmodes::ClnnModes)
     # Note this is a pretty shitty algorithm. Speeding it up should be fairly easy.
     lnnsize = getlnnsize(cmodes)
