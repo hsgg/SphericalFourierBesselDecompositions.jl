@@ -219,6 +219,7 @@ using Healpix
         fskyinvlnn1 = fskyz2fskyinvlnn(fskyz)
         r0 = (rmin + rmax) / 2  # default value
         rfirst = wmodes.r[1]
+        normalization = exp(- rfirst / r0)  # first evaluation is in the bin center, and that sets the normalization of phi(r)
         for n1=1:nmax, n2=1:nmax
             if SFB.isvalidlnn(cmodes, 0, n1, n2)
                 l, k1, k2 = SFB.getlkk(cmodes, 0, n1, n2)
@@ -228,8 +229,7 @@ using Healpix
                 bracket2 = m1_nn - expRr0
                 prefac1 = r0 / (1 + (k1+k2)^2 * r0^2)
                 prefac2 = r0 / (1 + (k1-k2)^2 * r0^2)
-                adjust = exp(- rfirst / r0)  # first evaluation is in the bin center, and that sets the normalization of phi(r)
-                result = adjust * (prefac1 * bracket1 - prefac2 * bracket2) / rmax
+                result = normalization * (prefac1 * bracket1 - prefac2 * bracket2) / rmax
 
                 idx = SFB.getidx(cmodes, 0, n1, n2)
 
