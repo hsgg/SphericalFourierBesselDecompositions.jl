@@ -70,6 +70,9 @@ function calc_newbatchsize!(oldbatchsize, newbatchsizechannel)
         newbatchsize = take!(newbatchsizechannel)
         batchsize += newbatchsize
         n += 1
+        if newbatchsize < 1
+            return newbatchsize
+        end
         #@show n,batchsize,newbatchsize
     end
     avgbatchsize = batchsize / n
@@ -84,7 +87,7 @@ function calc_newbatchsize!(oldbatchsize, newbatchsizechannel)
 end
 
 
-function clear_channel(channel)
+function clear_channel!(channel)
     while isready(channel)
         take!(channel)
     end
@@ -100,15 +103,18 @@ function mybroadcast!(out, fn, x...)
     batchsize = 1
     newbatchsizechannel = Channel{Int}(2 * num_threads)
     batchchannel = Channel{UnitRange{Int}}(2 * num_threads)
+    errorchannel = Channel{Any}(2 * num_threads)
 
     all_indices = eachindex(out, x...)
 
     # worker threads process the data
     tsk = Task[]
     for _ in 1:num_threads
-        t = Threads.@spawn begin
+        t = Threads.@spawn try
+            #println("Starting $(Threads.threadid())...")
             iset = take!(batchchannel)
             while length(iset) > 0
+                #println("Working on $iset ($(Threads.threadid()))...")
                 time = @elapsed begin
                     idxs = all_indices[iset]
 
@@ -121,36 +127,68 @@ function mybroadcast!(out, fn, x...)
 
                     out[idxs] .= outs
                 end
+                #println("Finished $iset ($(Threads.threadid())).")
 
                 newbatchsize = calc_i_per_thread(time, length(iset))
                 put!(newbatchsizechannel, newbatchsize)
+                #println("New batchsize advertized ($(Threads.threadid())).")
                 iset = take!(batchchannel)
             end
+            #println("Exiting $(Threads.threadid())...")
+        catch e
+            put!(newbatchsizechannel, 0)
+            bt = catch_backtrace()
+            @warn "Exception in thread $(Threads.threadid()):\n  $e"
+            put!(errorchannel, (Threads.threadid(), e, bt))
+            take!(batchchannel)
         end
         push!(tsk, t)
     end
 
+
     # feed the workers
     ifirst = 1
     while ifirst <= ntasks
+        #@show ifirst
         batchsize = calc_newbatchsize!(batchsize, newbatchsizechannel)
+        if batchsize < 1
+            clear_channel!(batchchannel)
+            break
+        end
 
         ilast = min(ntasks, ifirst + batchsize - 1)
-        #@show ifirst,ilast-ifirst
+        #@show ifirst,ilast-ifirst+1
 
         put!(batchchannel, ifirst:ilast)
 
         ifirst = ilast + 1
     end
 
-    # close channels
+    #println("Notifying workers to quit..")
     for _ in 1:num_threads
-        clear_channel(newbatchsizechannel)
+        clear_channel!(newbatchsizechannel)
         put!(batchchannel, 1:0)  # tell thread to exit
     end
-    clear_channel(newbatchsizechannel)
+    clear_channel!(newbatchsizechannel)
 
+    #println("Wait for workers to finish...")
     wait.(tsk)
+
+    num_failed_tasks = 0
+    while isready(errorchannel)
+        num_failed_tasks += 1
+        tid, e, stack = take!(errorchannel)
+        println(stdout)
+        @error "Exception in thread $tid of $num_threads:\n  $e"
+        showerror(stdout, e, stack)
+        println(stdout)
+    end
+    if num_failed_tasks > 0
+        println(stdout)
+        @error "Exceptions in threads" num_failed_tasks num_threads
+        error("Exceptions in threads")
+    end
+    #println("All workers finished.")
 
     return out
 end
