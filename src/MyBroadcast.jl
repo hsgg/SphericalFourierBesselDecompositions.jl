@@ -136,43 +136,52 @@ function mybroadcast!(out, fn, x...)
             end
             #println("Exiting $(Threads.threadid())...")
         catch e
-            put!(newbatchsizechannel, 0)
-            bt = catch_backtrace()
-            @warn "Exception in thread $(Threads.threadid()):\n  $e"
-            put!(errorchannel, (Threads.threadid(), e, bt))
-            take!(batchchannel)
+            if e isa InvalidStateException
+                @info "Exiting thread $(Threads.threadid()) due to closed channel"
+            else  # we caused the exception
+                close(newbatchsizechannel)
+                close(batchchannel)
+                bt = catch_backtrace()
+                @warn "Exception in thread $(Threads.threadid()):\n  $e"
+                put!(errorchannel, (Threads.threadid(), e, bt))
+            end
         end
         push!(tsk, t)
     end
 
 
-    # feed the workers
-    ifirst = 1
-    while ifirst <= ntasks
-        #@show ifirst
-        batchsize = calc_newbatchsize!(batchsize, newbatchsizechannel)
-        if batchsize < 1
-            clear_channel!(batchchannel)
-            break
+    try
+        # feed the workers
+        ifirst = 1
+        while ifirst <= ntasks
+            #@show ifirst
+            batchsize = calc_newbatchsize!(batchsize, newbatchsizechannel)
+
+            ilast = min(ntasks, ifirst + batchsize - 1)
+            #@show ifirst,ilast-ifirst+1
+
+            put!(batchchannel, ifirst:ilast)
+
+            ifirst = ilast + 1
         end
 
-        ilast = min(ntasks, ifirst + batchsize - 1)
-        #@show ifirst,ilast-ifirst+1
 
-        put!(batchchannel, ifirst:ilast)
-
-        ifirst = ilast + 1
-    end
-
-    #println("Notifying workers to quit..")
-    for _ in 1:num_threads
+        # notify workers of the end
+        for _ in 1:num_threads
+            clear_channel!(newbatchsizechannel)
+            put!(batchchannel, 1:0)  # tell thread to exit
+        end
         clear_channel!(newbatchsizechannel)
-        put!(batchchannel, 1:0)  # tell thread to exit
-    end
-    clear_channel!(newbatchsizechannel)
 
-    #println("Wait for workers to finish...")
-    wait.(tsk)
+    catch e
+        if !(e isa InvalidStateException)
+            rethrow(e)
+        end
+    end
+
+
+    wait.(tsk)  # all tasks should finish cleanly
+
 
     num_failed_tasks = 0
     while isready(errorchannel)
@@ -188,7 +197,7 @@ function mybroadcast!(out, fn, x...)
         @error "Exceptions in threads" num_failed_tasks num_threads
         error("Exceptions in threads")
     end
-    #println("All workers finished.")
+
 
     return out
 end
