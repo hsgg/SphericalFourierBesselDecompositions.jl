@@ -65,8 +65,6 @@ using .WindowChains
 using .NDIterators
 using .Cat2Anlm
 
-#using QuadGK
-#using FastGaussQuadrature
 using Distributed
 #using Base.Threads
 

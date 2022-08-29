@@ -160,14 +160,84 @@ using Healpix
 
         @time cmodes = SFB.ClnnModes(amodes, Δnmax=100)
         wlnn = SFB.win_lnn(win, wmodes, cmodes)
-        wlnn = SFB.win_lnn(win, wmodes, cmodes)
 
-        wmix = SFB.calc_wmix(win, wmodes, amodes)
         wmix = SFB.calc_wmix(win, wmodes, amodes)
         @show wmix[123,121]
         # only useful for detecting changes:
         #@test wmix[123,121] ≈ 0.0031756395970370306 + 0.02813773208852665im  # healpy :rotate E->G
         @test wmix[123,121] ≈ -0.025014220949702827 - 1.01407936505596e-5im
+        wlnn2 = SFB.sum_m_lmeqLM(wmix, cmodes)
+
+        @test wlnn ≈ wlnn2
+    end
+
+
+    run_tests && @testset "win_lnn() rmin=0" begin
+    #@testset "win_lnn() rmin=0" begin
+        rmin = 0.0
+        rmax = 1000.0
+        kmax = 0.02
+        nr = 1000
+        @time amodes = SFB.AnlmModes(kmax, rmin, rmax, cache=false)
+        @time cmodes = SFB.ClnnModes(amodes, Δnmax=100)
+        @time wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
+        @time win = SFB.make_window(wmodes, :radial_expmrr0, :separable)
+
+        wlnn = SFB.win_lnn(win, wmodes, cmodes)
+        wmix = SFB.calc_wmix(win, wmodes, amodes)
+        wlnn2 = SFB.sum_m_lmeqLM(wmix, cmodes)
+        @test wlnn ≈ wlnn2  atol=1e-6
+
+        fskyz2fskyinvlnn(fskyz) = begin
+            num_angpix = nside2npix(wmodes.nside)
+            fskyinv = SFB.SeparableArray(1 ./ fskyz, ones(num_angpix), name1=:phi, name2=:mask)
+            fskyinvlnn = SFB.win_lnn(fskyinv, wmodes, cmodes)
+            return fskyinvlnn
+        end
+
+
+        nmax = amodes.nmax
+        lmax = amodes.lmax
+
+
+        # uniform radial selection
+        fskyinvlnn0 = fskyz2fskyinvlnn(ones(nr))
+        for l=0:lmax, n1=1:nmax, n2=1:nmax
+            if SFB.isvalidlnn(cmodes, l, n1, n2)
+                idx = SFB.getidx(cmodes, l, n1, n2)
+                if n1 == n2
+                    @test fskyinvlnn0[idx] ≈ 1  rtol=1e-4
+                else
+                    @test fskyinvlnn0[idx] ≈ 0  atol=1e-4
+                end
+            end
+        end
+
+
+        # phi(r) = ℯ^{-r/r0}
+        fskyz = win.phi
+        fskyinvlnn1 = fskyz2fskyinvlnn(fskyz)
+        r0 = (rmin + rmax) / 2  # default value
+        rfirst = wmodes.r[1]
+        for n1=1:nmax, n2=1:nmax
+            if SFB.isvalidlnn(cmodes, 0, n1, n2)
+                l, k1, k2 = SFB.getlkk(cmodes, 0, n1, n2)
+                m1_nn = (-1)^(n1 + n2)
+                expRr0 = exp(rmax / r0)
+                bracket1 = m1_nn + expRr0
+                bracket2 = m1_nn - expRr0
+                prefac1 = r0 / (1 + (k1+k2)^2 * r0^2)
+                prefac2 = r0 / (1 + (k1-k2)^2 * r0^2)
+                adjust = exp(- rfirst / r0)  # first evaluation is in the bin center, and that sets the normalization of phi(r)
+                result = adjust * (prefac1 * bracket1 - prefac2 * bracket2) / rmax
+
+                idx = SFB.getidx(cmodes, 0, n1, n2)
+
+                @show n1,n2
+                skipit = isodd(n1 - n2)
+                @test result ≈ fskyinvlnn1[idx]  atol=1e-4
+            end
+        end
     end
 
 

@@ -43,6 +43,7 @@ export calc_fvol
 
 using ..Modes
 using ..SeparableArrays
+using ..Splines
 using ..MyBroadcast
 using ..HealpixHelpers
 using ..LMcalcStructs
@@ -54,6 +55,7 @@ using WignerFamilies
 using SparseArrays
 using Random
 using LoopVectorization
+#using FastGaussQuadrature
 
 using Distributed
 using SharedArrays
@@ -66,6 +68,7 @@ const progressmeter_update_interval = haskey(ENV, "PROGRESSMETER_UPDATE_INTERVAL
 #using QuadGK  # for testing
 
 #using Profile
+#using PyPlot
 
 
 #SparseArrays.rowvals(mat) = 1:size(mat,1)  # we also want to use it for full vectors
@@ -354,10 +357,24 @@ function win_lnn(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes)
 
     check_nsamp(cmodes.amodes, wmodes)
 
-    println("Calculate gnlr:")
-    @time gnlr = precompute_gnlr(cmodes.amodes, wmodes)
     r, Δr = window_r(wmodes)
-    @time @. gnlr *= r * √Δr * √Wr_00  # add part of the integral measure and Wr_00
+    #r0 = (wmodes.rmax + wmodes.rmin) / 2
+    #@show extrema(win)
+    #@show extrema(win.phi)
+    #@show extrema(win.mask)
+    #@show Wr_00[1:2]
+    #Wr_00 = @. √(4π) * win[:,1]
+    #@show Wr_00[1:2]
+    #Wr_00 = @. √(4π) * exp(r/r0)
+    #@show Wr_00[1:2]
+    #@show √(4π)
+
+    println("Calculate gnlr:")
+    @time gnlr, nodes, weights = precompute_gnlr_nodes_weights(cmodes.amodes, wmodes)
+    Wr_00 = Spline1D(r, Wr_00).(nodes)
+    @time @. gnlr *= nodes * √weights * √Wr_00  # add part of the integral measure and Wr_00
+
+    #close("all")
 
     println("Calculate Wlnn:")
     lnnsize = getlnnsize(cmodes)
@@ -370,6 +387,28 @@ function win_lnn(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes)
             @views sgg = gnlr[:,n,l+1]' * gnlr[:,n′,l+1]
 
             out[i] = sgg / √(4π)
+
+            #if l == 0
+            #    #@show n,n′
+            #    #@show gnlr[1:3,n,l+1]
+            #    #@show gnlr[1:3,n′,l+1]
+            #    #@show gnlr[1:3,n,l+1] .* gnlr[1:3,n′,l+1]
+            #    k = cmodes.amodes.knl[n,l+1]
+            #    #@show (nodes .* √(2/π) .* k .* sinc.(nodes.*k))[1:3]
+            #    #@show sinc(wmodes.rmax*k)
+            #    #flush(stdout)
+            #    #figure()
+            #    #hlines(0, extrema(nodes)..., color="0.75")
+            #    #plot(nodes, gnlr[:,n,l+1], label="\$n=$n\$")
+            #    #plot(nodes, gnlr[:,n′,l+1], label="\$n′=$n′\$")
+            #    #plot(nodes, gnlr[:,n,l+1] .* gnlr[:,n′,l+1], label="mult")
+            #    #k = cmodes.amodes.knl[n,l+1]
+            #    ##plot(nodes, nodes .* sphericalbesselj.(l, nodes.*k), label="sphbes")
+            #    #text(800, 0, "$(out[i])")
+            #    #xlabel(L"r")
+            #    #ylabel(L"g_{n\ell}(r)")
+            #    #legend()
+            #end
 
             #if !isfinite(out[i])
             #    @error "Wlnn not finite" i l,n,n′ extrema(gg) Δr sum(gg) out[i]
@@ -490,6 +529,32 @@ function precompute_gnlr(amodes, wmodes)
     check_nsamp(amodes, wmodes)
     return gnlr
 end
+
+
+function precompute_gnlr_nodes_weights(amodes, wmodes)
+    nr = wmodes.nr
+    rmin = wmodes.rmin
+    rmax = wmodes.rmax
+
+    # Trapezoidal nodes and weights
+    nodes, weights = window_r(wmodes)
+
+    ## Gauss-Legendre nodes and weights
+    #nodes, weights = gausslegendre(nr)
+    #@. weights *= (rmax - rmin) / 2
+    #@. nodes = (rmin + rmax) / 2 + (rmax - rmin) / 2 * nodes
+
+    gnl = amodes.basisfunctions
+    gnlr = fill(NaN, nr, size(gnl.knl)...)
+    Threads.@threads for l=0:amodes.lmax
+        for n=1:amodes.nmax_l[l+1]
+            @views @. gnlr[:,n,l+1] = gnl(n,l,nodes)
+        end
+    end
+    check_nsamp(amodes, wmodes)
+    return gnlr, nodes, weights
+end
+
 
 
 function optimize_Wr_lm_layout(Wr_lm, LMAX)
