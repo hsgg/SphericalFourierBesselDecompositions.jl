@@ -383,6 +383,12 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
         features = filter(i -> i != :step_rmax, features)
     end
 
+    if :radial_expmrr0 in features
+        r0 = (rmin + rmax) / 2
+        phi = @. exp(- r / r0)
+        features = filter(i -> i != :radial_expmrr0, features)
+    end
+
     win = phi * mask'
     maxwin = maximum(win)
 
