@@ -31,7 +31,7 @@ include("MeshedArrays.jl")
 using .MeshedArrays
 
 
-function calc_i_per_thread(time, i_per_thread_old; batch_avgtime=0.2, batch_maxadjust=2.0)
+function calc_i_per_thread(time, i_per_thread_old; batch_avgtime=1.0, batch_maxadjust=2.0)
     adjust = batch_avgtime / time  # if we have accurate measurement of time
     adjust = min(batch_maxadjust, adjust)  # limit upward adjustment
     adjust = max(1/batch_maxadjust, adjust)  # limit downward adjustment
