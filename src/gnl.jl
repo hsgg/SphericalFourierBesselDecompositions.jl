@@ -330,7 +330,7 @@ function calc_cnl_dnl(knl, n, l, rmin, rmax)
     #@show num_one
     @assert num_one >= 0
     # Note: the sign doesn't really matter
-    cnl = (-1)^((1-floor(Int, 1/(l+1))) * (1-floor(Int,1/n))) / √num_one
+    cnl = (-1)^(n + (1-floor(Int, 1/(l+1))) * (1-floor(Int,1/n))) / √num_one
     dnl = dc * cnl
     return cnl, dnl
 end
