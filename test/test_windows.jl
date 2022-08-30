@@ -216,28 +216,9 @@ using Healpix
 
         # phi(r) = ℯ^{-r/r0}
         fskyz = win.phi
-        fskyinvlnn1 = fskyz2fskyinvlnn(fskyz)
-        r0 = (rmin + rmax) / 2  # default value
-        rfirst = wmodes.r[1]
-        normalization = exp(- rfirst / r0)  # first evaluation is in the bin center, and that sets the normalization of phi(r)
-        for n1=1:nmax, n2=1:nmax
-            if SFB.isvalidlnn(cmodes, 0, n1, n2)
-                l, k1, k2 = SFB.getlkk(cmodes, 0, n1, n2)
-                m1_nn = (-1)^(n1 + n2)
-                expRr0 = exp(rmax / r0)
-                bracket1 = m1_nn + expRr0
-                bracket2 = m1_nn - expRr0
-                prefac1 = r0 / (1 + (k1+k2)^2 * r0^2)
-                prefac2 = r0 / (1 + (k1-k2)^2 * r0^2)
-                result = normalization * (prefac1 * bracket1 - prefac2 * bracket2) / rmax
-
-                idx = SFB.getidx(cmodes, 0, n1, n2)
-
-                @show n1,n2
-                skipit = isodd(n1 - n2)
-                @test result ≈ fskyinvlnn1[idx]  atol=1e-4
-            end
-        end
+        fskyinvlnn1 = SFB.get_0nn(fskyz2fskyinvlnn(fskyz), cmodes)
+        fskyinvlnn2 = SFB.fskyinv0nn_expmrr0(wmodes, cmodes)
+        @test fskyinvlnn1 ≈ fskyinvlnn2  atol=1e-4
     end
 
 

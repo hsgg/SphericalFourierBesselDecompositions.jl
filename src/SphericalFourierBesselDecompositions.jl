@@ -44,6 +44,7 @@ include("wigner_chains.jl")  # Wigner symbol related
 include("window_chains.jl")  # window function related
 include("theory.jl")  # mostly for testing the package, may be split at some point
 include("covariance.jl")  # mostly theory, may be split at some point
+include("utils.jl")  # mostly theory, may be split at some point
 
 using Statistics
 using FastTransforms
@@ -64,6 +65,7 @@ using .WignerChains
 using .WindowChains
 using .NDIterators
 using .Cat2Anlm
+using .utils
 
 using Distributed
 #using Base.Threads
