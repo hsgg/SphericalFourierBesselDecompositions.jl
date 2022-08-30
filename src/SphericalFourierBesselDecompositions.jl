@@ -302,36 +302,36 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
     nside = wmodes.nside
     @show rmin rmax nr Δr nside
 
-    #features = features..., :separable
+    features = Set(features)
 
     phi = fill(1.0, nr)
     mask = fill(1.0, wmodes.npix)
     win = fill(1.0, nr, length(mask))
-    features = filter(i -> i != :fullsky, features)
+    delete!(features, :fullsky)
 
     if :ang_75 in features
         mask = gen_mask(nside, 0.75)
-        features = filter(i -> i != :ang_75, features)
+        delete!(features, :ang_75)
     end
 
     if :ang_half in features
         mask = gen_mask(nside, 1/2)
-        features = filter(i -> i != :ang_half, features)
+        delete!(features, :ang_half)
     end
 
     if :ang_quarter in features
         mask = gen_mask(nside, 1/4)
-        features = filter(i -> i != :ang_quarter, features)
+        delete!(features, :ang_quarter)
     end
 
     if :ang_eighth in features
         mask = gen_mask(nside, 1/8)
-        features = filter(i -> i != :ang_eighth, features)
+        delete!(features, :ang_eighth)
     end
 
     if :ang_sixteenth in features
         mask = gen_mask(nside, 1/16)
-        features = filter(i -> i != :ang_sixteenth, features)
+        delete!(features, :ang_sixteenth)
     end
 
     if :rotate in features
@@ -340,7 +340,7 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
         c = 1.68221794936
         mask = HealpixMap{Float64,Healpix.RingOrder}(mask)
         mask = rotate_euler(mask, a, b, c)
-        features = filter(i -> i != :rotate, features)
+        delete!(features, :rotate)
     end
 
     if :flip in features
@@ -353,7 +353,7 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
             p = ang2pixRing(reso, θ, ϕ)
             maskflipped[p] = mask[i]
         end
-        features = filter(i -> i != :flip, features)
+        delete!(features, :flip)
     end
 
 
@@ -362,7 +362,7 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
         for i=1:nr
             phi[i] = exp(- (r[i] / r0)^2)
         end
-        features = filter(i -> i != :radial, features)
+        delete!(features, :radial)
     end
 
     if :step_rmin in features
@@ -370,7 +370,7 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
         for i=1:nr
             phi[i] = (r[i] < r0) ? 0.0 : phi[i]
         end
-        features = filter(i -> i != :step_rmin, features)
+        delete!(features, :step_rmin)
     end
 
     if :step_rmax in features
@@ -378,13 +378,13 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
         for i=1:nr
             phi[i] = (r[i] > r0) ? 0.0 : phi[i]
         end
-        features = filter(i -> i != :step_rmax, features)
+        delete!(features, :step_rmax)
     end
 
     if :radial_expmrr0 in features
         r0 = (rmin + rmax) / 2
         phi = @. exp(- r / r0)
-        features = filter(i -> i != :radial_expmrr0, features)
+        delete!(features, :radial_expmrr0)
     end
 
     win = phi * mask'
@@ -393,7 +393,7 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
     if :separable in features
         phi ./= maxwin
         win = @SeparableArray phi mask
-        features = filter(i -> i != :separable, features)
+        delete!(features, :separable)
     else
         win ./= maxwin
     end
@@ -408,6 +408,7 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
         @show extrema(win)
 
         if occursin("radial_cossin_l", sfeat)
+            delete!(features, feat)
             numform, l, m = @scanf(sfeat, "radial_cossin_l%f_m%f", Float64, Float64)
             @assert numform == 2
             l /= 10
@@ -417,6 +418,7 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
         end
 
         if occursin("rotate_", sfeat)
+            delete!(features, feat)
             numform, α, β, γ = @scanf(sfeat, "rotate_%f_%f_%f", Float64, Float64, Float64)
             @assert numform == 3
             α *= π/180
@@ -427,6 +429,7 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
         end
 
         if feat == :binary_mask
+            delete!(features, feat)
             if typeof(win) <: SeparableArray
                 for i=1:length(win.mask)
                     win.mask[i] = (win.mask[i] > 0.5) ? 1 : 0
@@ -439,12 +442,17 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
                 end
             end
         end
-
-        features = filter(i -> i != feat, features)
     end
 
     @show extrema(win)
     @assert maximum(win) ≈ 1  rtol=eps(1.0)
+
+    if length(features) != 0
+        # Maybe it is a bit harsh to error on this. However, it is better to be
+        # strict here, because we want to avoid running, say, 1000 simulations
+        # with the wrong window.
+        error("Unsupported features $features")
+    end
 
     return win
 end
