@@ -384,7 +384,7 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
     end
 
     if :radial_expmrr0 in features
-        r0 = (rmin + rmax) / 2
+        r0 = (rmin + rmax) / 2 / 3
         phi = @. exp(- r / r0)
         delete!(features, :radial_expmrr0)
     end
