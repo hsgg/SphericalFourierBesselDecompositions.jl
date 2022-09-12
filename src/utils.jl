@@ -57,22 +57,23 @@ function calc_T23_expmrr0(wmodes, cmodes)
 
     parens = W0nn * f0nn * W0nn
 
+    nmax = cmodes.amodes.nmax
     lnnsize = getlnnsize(cmodes)
     T23 = fill(0.0, lnnsize, lnnsize)
 
-    for i=1:lnnsize, j=1:lnnsize
+    for n1=1:nmax, n2=1:nmax, N1=1:nmax, N2=1:nmax
 
-        l, n1, n2 = getlnn(cmodes, i)
-        L, N1, N2 = getlnn(cmodes, j)
-
-        if l != 0 || L != 0
+        if !(isvalidlnn(cmodes, 0, n1, n2) && isvalidlnn(cmodes, 0, N1, N2))
             continue
         end
+
+        i = getidx(cmodes, 0, n1, n2)
+        j = getidx(cmodes, 0, N1, N2)
 
         T23[i,j] = parens[N2,n1] * W0nn[n2,N1] + parens[N2,n2] * W0nn[n1,N1]
 
         if N1 != N2
-            T23[i,j] *= 2
+            T23[i,j] += parens[N1,n1] * W0nn[n2,N2] + parens[N1,n2] * W0nn[n1,N2]
         end
     end
 
@@ -86,22 +87,23 @@ function calc_T4_expmrr0(wmodes, cmodes)
 
     parens = W0nn * f0nn * W0nn
 
+    nmax = cmodes.amodes.nmax
     lnnsize = getlnnsize(cmodes)
     T4 = fill(0.0, lnnsize, lnnsize)
 
-    for i=1:lnnsize, j=1:lnnsize
+    for n1=1:nmax, n2=1:nmax, N1=1:nmax, N2=1:nmax
 
-        l, n1, n2 = getlnn(cmodes, i)
-        L, N1, N2 = getlnn(cmodes, j)
-
-        if l != 0 || L != 0
+        if !(isvalidlnn(cmodes, 0, n1, n2) && isvalidlnn(cmodes, 0, N1, N2))
             continue
         end
+
+        i = getidx(cmodes, 0, n1, n2)
+        j = getidx(cmodes, 0, N1, N2)
 
         T4[i,j] = parens[n1,N1] * parens[N2,n2]
 
         if N1 != N2
-            T4[i,j] *= 2
+            T4[i,j] += parens[n1,N2] * parens[N1,n2]
         end
     end
 
@@ -116,7 +118,7 @@ function set_T1_ell0_expmrr0!(cmix, wmodes, cmodes)
 
     for n1=1:nmax, n2=1:nmax, N1=1:nmax, N2=1:nmax
 
-        if !(isvalidlnn_symmetric(cmodes, 0, n1, n2) && isvalidlnn_symmetric(cmodes, 0, N1, N2))
+        if !(isvalidlnn(cmodes, 0, n1, n2) && isvalidlnn(cmodes, 0, N1, N2))
             continue
         end
 
@@ -126,7 +128,8 @@ function set_T1_ell0_expmrr0!(cmix, wmodes, cmodes)
         cmix[i,j] = W0nn[n1,N1] * W0nn[N2,n2]
 
         if N1 != N2
-            cmix[i,j] *= 2
+            # also need to include the symmetric terms
+            cmix[i,j] += W0nn[n1,N2] * W0nn[N1,n2]
         end
     end
 
