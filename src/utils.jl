@@ -10,6 +10,8 @@ using LinearAlgebra
 
 # analytic solutions
 function fskyinv0nn_expmrr0(wmodes, cmodes; r0sign=1)
+    @assert wmodes.rmin == 0
+
     rmax = wmodes.rmax
     r0 = r0sign * rmax / 2 / 3
     nmax = cmodes.amodes.nmax
@@ -52,6 +54,8 @@ end
 
 
 function calc_T23_expmrr0(wmodes, cmodes)
+    @assert wmodes.rmin == 0
+
     f0nn = fskyinv0nn_expmrr0(wmodes, cmodes)
     W0nn = W0nn_expmrr0(wmodes, cmodes)
 
@@ -82,6 +86,8 @@ end
 
 
 function calc_T4_expmrr0(wmodes, cmodes)
+    @assert wmodes.rmin == 0
+
     f0nn = fskyinv0nn_expmrr0(wmodes, cmodes)
     W0nn = W0nn_expmrr0(wmodes, cmodes)
 
@@ -112,6 +118,8 @@ end
 
 
 function set_T1_ell0_expmrr0!(cmix, wmodes, cmodes)
+    @assert wmodes.rmin == 0
+
     W0nn = W0nn_expmrr0(wmodes, cmodes)
 
     nmax = cmodes.amodes.nmax
