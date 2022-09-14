@@ -34,7 +34,7 @@ export gen_Clnn_theory
 export Clnn2CnlmNLM, sum_m_lmeqLM
 export add_local_average_effect_nowindow
 export calc_NobsA, calc_CobsA, calc_CNobsA
-export calc_NobsA_z
+export calc_NobsA_z, calc_C4lnn_z
 
 # deprecated:
 export add_local_average_effect, calc_CNAnlmNLM
@@ -43,6 +43,7 @@ using ..Modes
 using ..Windows
 using ..WindowChains
 using ..Cat2Anlm
+using ..Utils
 using QuadGK
 using LinearAlgebra
 using SparseArrays
@@ -460,35 +461,20 @@ end
 
 
 function calc_C4lnn_z(C_th, cmix_W, cmix_wW, cmodes, fskyinvlnn)
-    nmax0 = cmodes.amodes.nmax[1]
 
     CW = cmix_W * C_th
-    CW0nn = [isvalidlnn_symmetric(cmodes, 0, nϵ, nα) ? CW[getidx(cmodes, 0, nϵ, nα)] : 0.0
-             for nϵ=1:nmax0, nα=1:nmax0]
+    CW0nn = get_0nn(CW, cmodes)
 
-    finv_n00_n00 = [isvalidlnn_symmetric(cmodes, 0, nϵ, nα) ? fskyinvlnn[getidx(cmodes, 0, nϵ, nα)] : 0.0
-                    for nϵ=1:nmax0, nα=1:nmax0]
+    finv_n00_n00 = get_0nn(fskyinvlnn, cmodes)
 
     fCWf = finv_n00_n00 * CW0nn * finv_n00_n00
 
+    fCWf_lnn, _ = get_lnn_from_0nn(fCWf, cmodes)
 
-    lnnsize = getlnnsize(cmodes)
-    C4lnn = fill(0.0, lnnsize)
-    for i=1:lnnsize
-        lμ, nμ, nν = getlnn(cmodes, i)
-        C4 = 0.0
-        for nρ=1:nmax0, nλ=nρ:nmax0  # cmix already doubled-includes symmetric terms
-            if isvalidlnn(cmodes, 0, nρ, nλ)  # cmix already doubled-includes symmetric terms
-                j = getidx(cmodes, 0, nρ, nλ)
-                C4 += cmix_wW[i,j] * fCWf[nρ,nλ]
-            end
-        end
-        C4lnn[i] = C4
-    end
+    C4lnn = cmix_wW * fCWf_lnn
 
     return C4lnn
 end
-
 
 
 @doc raw"""
