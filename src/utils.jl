@@ -1,11 +1,12 @@
-module utils
+module Utils
 
-export fskyinv0nn_expmrr0, W0nn_expmrr0, get_0nn,
+export fskyinv0nn_expmrr0, W0nn_expmrr0, get_0nn, get_lnn_from_0nn,
     calc_T23_expmrr0, calc_T4_expmrr0, set_T1_ell0_expmrr0!
 
 
 using ..Modes
 using LinearAlgebra
+using SparseArrays
 
 
 # analytic solutions
@@ -50,6 +51,26 @@ function get_0nn(Clnn, cmodes)
     end
     @assert issymmetric(matrix)
     return matrix
+end
+
+
+# inverse of `get_0nn()`.
+function get_lnn_from_0nn(f, cmodes)
+    nmax = cmodes.amodes.nmax[1]
+
+    lnnsize = getlnnsize(cmodes)
+    l0_idxs = Int[]
+    l0_vals = Float64[]
+
+    for n1=1:nmax, n2=n1:nmax
+        idx = getidx(cmodes, 0, n1, n2)
+        push!(l0_idxs, idx)
+        push!(l0_vals, f[n1,n2])
+    end
+
+    f_lnn = sparsevec(l0_idxs, l0_vals, lnnsize)
+
+    return f_lnn, l0_idxs
 end
 
 
@@ -134,10 +155,12 @@ function set_T1_ell0_expmrr0!(cmix, wmodes, cmodes)
         j = getidx(cmodes, 0, N1, N2)
 
         cmix[i,j] = W0nn[n1,N1] * W0nn[N2,n2]
+        #@show i,j,(n1,n2),(N1,N2),cmix[i,j]
 
         if N1 != N2
             # also need to include the symmetric terms
             cmix[i,j] += W0nn[n1,N2] * W0nn[N1,n2]
+            #@show cmix[i,j]
         end
     end
 

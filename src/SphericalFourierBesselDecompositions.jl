@@ -34,6 +34,7 @@ include("healpix_helpers.jl")
 include("Splines.jl")
 include("gnl.jl")  # SphericalBesselGnls
 include("modes.jl")  # AnlmModes, ClnnModes, ClnnBinnedModes
+include("utils.jl")  # mostly theory, may be split at some point
 include("SeparableArrays.jl")
 include("MyBroadcast.jl")
 include("LMcalcStructs.jl")
@@ -44,7 +45,6 @@ include("wigner_chains.jl")  # Wigner symbol related
 include("window_chains.jl")  # window function related
 include("theory.jl")  # mostly for testing the package, may be split at some point
 include("covariance.jl")  # mostly theory, may be split at some point
-include("utils.jl")  # mostly theory, may be split at some point
 
 using Statistics
 using FastTransforms
@@ -57,6 +57,7 @@ using .HealpixHelpers
 using .Splines
 using .GNL
 using .Modes
+using .Utils
 using .Windows
 using .SeparableArrays
 using .Theory
@@ -65,7 +66,6 @@ using .WignerChains
 using .WindowChains
 using .NDIterators
 using .Cat2Anlm
-using .utils
 
 using Distributed
 #using Base.Threads
