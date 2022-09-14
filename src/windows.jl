@@ -468,6 +468,51 @@ function calc_gaunts_L(l, l′, m, m′; buffer1=zeros(0), buffer2=zeros(0))
 end
 
 
+function power_win_mix_ii(lnn, LNN, wmix, wmix_negm, amodes)
+    l, n, n′ = lnn
+    L, N, N′ = LNN
+    mix = 0.0
+    for m=0:l, M=0:L
+        j = getidx(amodes, n, l, m)
+        j′ = getidx(amodes, n′, l, m)
+        J = getidx(amodes, N, L, M)
+        J′ = getidx(amodes, N′, L, M)
+
+        j0 = getidx(amodes, n, l, 0)
+        j′0 = getidx(amodes, n′, l, 0)
+        J0 = getidx(amodes, N, L, 0)
+        J′0 = getidx(amodes, N′, L, 0)
+
+        mix += real(wmix[j,J] * conj(wmix[j′,J′]))
+
+        if m>0
+            w1 = get_wmix(wmix, wmix_negm, j0, -m, J0, M)
+            w2 = get_wmix(wmix, wmix_negm, j′0, -m, J′0, M)
+            mix += real(w1 * conj(w2))
+
+            #mix += real(wmix_negm[j,J] * conj(wmix_negm[j′,J′]))
+        end
+
+        if M>0
+            w1 = get_wmix(wmix, wmix_negm, j0, m, J0, -M)
+            w2 = get_wmix(wmix, wmix_negm, j′0, m, J′0, -M)
+            mix += real(w1 * conj(w2))
+
+            #mix += real(conj(wmix_negm[J,j]) * wmix_negm[J′,j′])
+        end
+
+        if m>0 && M>0
+            w1 = get_wmix(wmix, wmix_negm, j0, -m, J0, -M)
+            w2 = get_wmix(wmix, wmix_negm, j′0, -m, J′0, -M)
+            mix += real(w1 * conj(w2))
+
+            #mix += real(conj(wmix[j,J]) * wmix[j′,J′])
+        end
+    end
+    return mix / (2*l + 1)
+end
+
+
 function power_win_mix(wmix, wmix_negm, cmodes)
     amodes = cmodes.amodes
     lnnsize = getlnnsize(cmodes)
@@ -475,24 +520,10 @@ function power_win_mix(wmix, wmix_negm, cmodes)
     for i′=1:lnnsize, i=1:lnnsize
         l, n, n′ = getlnn(cmodes, i)
         L, N, N′ = getlnn(cmodes, i′)
-        mix = 0.0
-        for m=0:l, M=0:L
-            j = getidx(amodes, n, l, m)
-            j′ = getidx(amodes, n′, l, m)
-            J = getidx(amodes, N, L, M)
-            J′ = getidx(amodes, N′, L, M)
-            mix += real(wmix[j,J] * conj(wmix[j′,J′]))
-            if m>0
-                mix += real(conj(wmix_negm[j,J]) * wmix_negm[j′,J′])
-            end
-            if M>0
-                mix += real(wmix_negm[j,J] * conj(wmix_negm[j′,J′]))
-            end
-            if m>0 && M>0
-                mix += real(conj(wmix[j,J]) * wmix[j′,J′])
-            end
+        mmix[i,i′] = power_win_mix_ii((l,n,n′), (L,N,N′), wmix, wmix_negm, amodes)
+        if N != N′
+            mmix[i,i′] += power_win_mix_ii((l,n,n′), (L,N′,N), wmix, wmix_negm, amodes)
         end
-        mmix[i,i′] = mix / (2*l + 1)
     end
     return mmix
 end
@@ -581,19 +612,6 @@ function optimize_Wr_lm_layout(Wr_lm::SeparableArray, LMAX)
 end
 
 
-function fill_almost_symmetric_cmix_lower_half!(cmix, cmodes)
-    lnnsize = size(cmix,1)
-    for i′=1:lnnsize
-        L, = getlnn(cmodes, i′)
-        for i=i′:lnnsize
-            l, = getlnn(cmodes, i)
-            cmix[i′,i] = (2*l+1) / (2*L+1) * cmix[i,i′]
-        end
-    end
-end
-
-
-
 function cmix_kernel(gg1, gg2, wr)
     #@show size(gg1) size(gg2) size(wr)
     real(dot(gg1, wr) * conj(dot(gg2, wr)))
@@ -679,6 +697,10 @@ function calc_cmixii(i, i′, cmodes::ClnnModes, r, Δr, gnlr, Wr_lm, L1M1cache,
 
     mix = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes, Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
 
+    if !interchange_NN′ && N != N′
+        mix += calc_cmixii(i, L, N′, N, r, Δr, gnlr, cmodes, Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
+    end
+
     return mix
 end
 
@@ -700,6 +722,13 @@ function calc_cmixii(i, i′, cmodes, r, Δr, gnlgNLϕ, ang_mix::AbstractMatrix,
     m_ang = ang_mix[l+1,L+1]
 
     mix = m_ang * gg1 * gg2
+
+    if !interchange_NN′ && N != N′
+        gg1 = gnlgNLϕ[n,l+1,N′,L+1]
+        gg2 = gnlgNLϕ[n′,l+1,N,L+1]
+        mix += m_ang * gg1 * gg2
+    end
+
     if !div2Lp1
         mix *= (2*L+1)
     end
@@ -710,19 +739,19 @@ end
 
 function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, interchange_NN′)
     println("cmix full:")
-    mix = fill(NaN, lnnsize, lnnsize)
 
     p = Progress(lnnsize, progressmeter_update_interval, "cmix full: ")
 
     #@time for i′=1:lnnsize
     #@time Threads.@threads for i′=1:lnnsize
     #@time @tturbo for i′=1:lnnsize
-    @time mybroadcast(1:lnnsize) do ii′
-        len = length(r)
-        gg1 = Array{Float64}(undef, len)
-        gg2 = Array{Float64}(undef, len)
+    mix = @time mybroadcast(1:lnnsize, (1:lnnsize)') do ii,ii′
+        gg1 = Array{Float64}(undef, length(r))
+        gg2 = Array{Float64}(undef, length(r))
+        mout = Array{Float64}(undef, length(ii′))
 
         for idx=1:length(ii′)
+            i = ii[idx]
             i′ = ii′[idx]
 
             L, N, N′ = getlnn(cmodes, i′)
@@ -730,23 +759,23 @@ function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, int
                 N, N′ = N′, N
             end
 
-            for i=i′:lnnsize
-                @turbo mixii′ = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes,
-                                               Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
-                #if N != N′
-                #    # Since we only save the symmetric part where N′ >= N
-                #    mixii′ *= 2
-                #end
-                mix[i,i′] = mixii′
-                #mix[i′,i] = (2*l+1) / (2*L+1) * mix[i,i′]
-                #@show i,i′, mix[i,i′]
+            @turbo mixii′ = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes,
+                                        Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
+            #l, n, n′ = getlnn(cmodes, i)
+            #@show i,i′,(l,n,n′),(L,N,N′),mixii′
+
+            if (!interchange_NN′) && (N != N′)
+                # Since we only save the symmetric part where N′ >= N
+                @turbo mixii′ += calc_cmixii(i, L, N′, N, r, Δr, gnlr, cmodes,
+                                             Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
+                #@show mixii′
             end
+
+            mout[idx] = mixii′
         end
         next!(p, step=length(ii′), showvalues=[(:batchsize, length(ii′))])
-        return zero(Float64)
+        return mout
     end
-
-    @time fill_almost_symmetric_cmix_lower_half!(mix, cmodes)
 
     return mix
 end
@@ -763,8 +792,8 @@ binning matrices `w̃mat` and `vmat` to calculate the coupling matrix of the
 binned modes $\mathcal{N}_{LNN'}^{lnn'}$. These assume the symmetry between $N$
 and $N'$.
 
-The last version is probably not useful. It takes a fully calculated window
-mixing matrix to calculate the coupling matrix brute-force.
+The last version is probably not useful except for testing. It takes a fully
+calculated window mixing matrix to calculate the coupling matrix brute-force.
 
 If `div2Lp1=true` then the whole matrix is divided by $2L+1$.
 
@@ -773,6 +802,11 @@ interchanged, which might be useful for the covariance matrix.
 
 Either version of `power_win_mix()` will specialize to a separable window
 function if `win` is a `SeparableArray`.
+
+The basic usage is to multiply the power spectrum Clnn by this matrix, and the
+assuption is that there is symmetry in the exchange of `k_n` and `k_n′`. (Note
+that this assumed symmetry, however, destroyes the symmetry in the coupling
+matrix.)
 """
 function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
                        div2Lp1=false, interchange_NN′=false)

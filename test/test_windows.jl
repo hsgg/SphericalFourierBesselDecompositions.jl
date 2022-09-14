@@ -14,6 +14,7 @@ using Healpix
 @testset "Mixing matrices" begin
 
     run_tests = true
+    #run_tests = false
 
 
     run_tests && @testset "Single-pixel masks" begin
@@ -156,12 +157,12 @@ using Healpix
         #kmax = 0.030  # ≈ 30 seconds in parallel, 42 sec serial
         @time amodes = SFB.AnlmModes(kmax, rmin, rmax, cache=false)
         @time wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 2032, amodes.nside)
+        @time cmodes = SFB.ClnnModes(amodes, Δnmax=Inf)
         @time win = SFB.make_window(wmodes, :radial, :ang_sixteenth, :rotate)
 
-        @time cmodes = SFB.ClnnModes(amodes, Δnmax=100)
         wlnn = SFB.win_lnn(win, wmodes, cmodes)
-
         wmix = SFB.calc_wmix(win, wmodes, amodes)
+
         @show wmix[123,121]
         # only useful for detecting changes:
         #@test wmix[123,121] ≈ 0.0031756395970370306 + 0.02813773208852665im  # healpy :rotate E->G
@@ -169,6 +170,52 @@ using Healpix
         wlnn2 = SFB.sum_m_lmeqLM(wmix, cmodes)
 
         @test wlnn ≈ wlnn2
+    end
+
+
+    run_tests && @testset "Wlnn, Wmix, Cmix: l=L=0" begin
+        rmin = 0.0
+        rmax = 1000.0
+
+        kmax = 0.019  # ≈ 50,000 nlm-modes
+        #kmax = 0.025  # ≈ 12.5 seconds in serial
+        #kmax = 0.030  # ≈ 30 seconds in parallel, 42 sec serial
+        @time amodes = SFB.AnlmModes(kmax, rmin, rmax, cache=false)
+        #@time amodes = SFB.AnlmModes(2, 0, rmin, rmax, cache=false)
+
+        @time wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 2032, amodes.nside)
+        @time cmodes = SFB.ClnnModes(amodes, Δnmax=Inf)
+        @time win = SFB.make_window(wmodes, :radial_expmrr0, :fullsky)
+        nmax = amodes.nmax
+
+        wlnn1 = SFB.win_lnn(win, wmodes, cmodes)
+        wmix = SFB.calc_wmix(win, wmodes, amodes)
+        cmix = SFB.power_win_mix(win, wmodes, cmodes)
+
+        w0nn0 = SFB.W0nn_expmrr0(wmodes, cmodes)
+        w0nn1 = SFB.get_0nn(wlnn1, cmodes)
+        w0nn2 = fill(0.0, size(w0nn1))
+        for i=1:nmax, j=1:nmax
+            nlm = SFB.getidx(amodes, i, 0, 0)
+            NLM = SFB.getidx(amodes, j, 0, 0)
+            w0nn2[i,j] = wmix[nlm,NLM]
+        end
+
+        @show norm(w0nn0-w0nn1)/norm(w0nn0)
+        @show norm(w0nn0-w0nn2)/norm(w0nn0)
+        @test w0nn0 ≈ w0nn1  rtol=1e-6
+        @test w0nn0 ≈ w0nn2  rtol=1e-6
+        @test w0nn1 ≈ w0nn2
+
+        # compare with cmix
+        cmix0 = SFB.set_T1_ell0_expmrr0!(deepcopy(cmix), wmodes, cmodes)
+        #@show cmix cmix0
+        @show norm(cmix0-cmix)/norm(cmix0)
+        @test cmix ≈ cmix0  rtol=1e-6
+
+        # bonus: higher ell
+        wlnn2 = SFB.sum_m_lmeqLM(wmix, cmodes)
+        @test wlnn1 ≈ wlnn2  rtol=1e-6
     end
 
 
@@ -182,6 +229,7 @@ using Healpix
         @time cmodes = SFB.ClnnModes(amodes, Δnmax=100)
         @time wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
         @time win = SFB.make_window(wmodes, :radial_expmrr0, :separable)
+        #@time cmix = SFB.power_win_mix(win, wmodes, cmodes)
 
         wlnn = SFB.win_lnn(win, wmodes, cmodes)
         wmix = SFB.calc_wmix(win, wmodes, amodes)
@@ -218,7 +266,12 @@ using Healpix
         fskyz = win.phi
         fskyinvlnn1 = SFB.get_0nn(fskyz2fskyinvlnn(fskyz), cmodes)
         fskyinvlnn2 = SFB.fskyinv0nn_expmrr0(wmodes, cmodes)
-        @test fskyinvlnn1 ≈ fskyinvlnn2  atol=1e-4
+
+        ret = @test fskyinvlnn1 ≈ fskyinvlnn2  rtol=1e-5
+
+        if ret isa Test.Fail
+            @error ret norm(fskyinvlnn1 - fskyinvlnn2) norm(fskyinvlnn1) norm(fskyinvlnn1 - fskyinvlnn2) / norm(fskyinvlnn1)
+        end
     end
 
 
@@ -340,19 +393,25 @@ using Healpix
 
     # complex windows
     win_descriptions = [
+                        (:fullsky,),
+                        (:radial_expmrr0,),
                         (:ang_75,),
                         (:ang_75, :radial),
                         (:ang_half, :radial),
                         (:ang_quarter, :radial),
+                        (:separable, :fullsky,),
+                        (:separable, :radial_expmrr0,),
                         (:separable, :ang_75,),
                         (:separable, :ang_75, :radial),
                         (:separable, :ang_half, :radial),
                         (:separable, :ang_quarter, :radial),
                       ]
     run_tests && @testset "Window $(win_features...)" for win_features in win_descriptions
+        println()
+        @show win_features
         rmin = 500.0
         rmax = 1000.0
-        amodes = SFB.AnlmModes(2, 5, rmin, rmax)
+        amodes = SFB.AnlmModes(2, 0, rmin, rmax)
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
         win = SFB.make_window(wmodes, win_features...)
 
@@ -360,19 +419,55 @@ using Healpix
         wmix = SFB.calc_wmix(win, wmodes, amodes)
         wmix_negm = SFB.calc_wmix(win, wmodes, amodes, neg_m=true)
 
+
         # M
         cmodes = SFB.ClnnModes(amodes, Δnmax=1)
-        mmix1 = SFB.power_win_mix(wmix, wmix_negm, cmodes)
-        M = SFB.power_win_mix(win, wmodes, cmodes)
-        @test M ≈ mmix1  rtol=1e-10
+        M0 = SFB.power_win_mix(wmix, wmix_negm, cmodes)
+        M1 = SFB.power_win_mix(win, wmodes, cmodes)
+
+        off_diagonal_index = SFB.getidx(cmodes, 0, 1, 2)
+        @show M0[1,off_diagonal_index], M0[off_diagonal_index,1]
+        @show M1[1,off_diagonal_index], M1[off_diagonal_index,1]
+
+        if :fullsky in win_features
+            # norm(I) = 1
+            @show norm(M0-I)
+            @show norm(M1-I)
+            @test M0 ≈ I  rtol=1e-5
+            @test M1 ≈ I  rtol=1e-5
+        end
+
+        if rmin == 0 && :radial_expmrr0 in win_features
+            M2 = deepcopy(M0)
+            M3 = deepcopy(M1)
+            SFB.set_T1_ell0_expmrr0!(M2, wmodes, cmodes)
+            SFB.set_T1_ell0_expmrr0!(M3, wmodes, cmodes)
+            @show M2[1,off_diagonal_index], M2[off_diagonal_index,1]
+            @show M3[1,off_diagonal_index], M3[off_diagonal_index,1]
+            @test M2[1,1] ≈ M0[1,1]
+            @test M3[1,1] ≈ M1[1,1]
+            @test M2 ≈ M0  rtol=1e-6
+            @test M3 ≈ M1  rtol=1e-6
+        end
+
+        @show M0[1:3,1:3] M1[1:3,1:3]
+        @test M1 ≈ M0  rtol=1e-6
+        continue
+
 
         # CWlnn
         pk(k) = 1e4 * (k/1e-2)^(-3.1)
         Clnn = SFB.gen_Clnn_theory(pk, cmodes)
+        Clnn[off_diagonal_index] = 1e5
         CnlmNLM = SFB.Clnn2CnlmNLM(Clnn, cmodes)
-        CWlnn1 = SFB.sum_m_lmeqLM(wmix * CnlmNLM * wmix', cmodes)
-        CWlnn2 = M * Clnn
-        @test CWlnn1 ≈ CWlnn2  rtol=1e-10
+        CWlnn0 = M0 * Clnn
+        CWlnn1 = M1 * Clnn
+        CWlnn2 = SFB.sum_m_lmeqLM(wmix * CnlmNLM * wmix', cmodes)
+        @show Clnn CWlnn1 CWlnn2 CWlnn3
+        @test CWlnn2 ≈ CWlnn1  rtol=1e-6
+        @test CWlnn1 ≈ CWlnn0  rtol=1e-6
+        @test CWlnn2 ≈ CWlnn0  rtol=1e-6
+        continue
 
         # Nshot
         nbar = 3e-4
@@ -384,9 +479,9 @@ using Healpix
         fsky = sum(win[1,:]) / size(win,2)
         Δℓ = round(Int, 1 / fsky)
         w̃, v = SFB.bandpower_binning_weights(cmodes; Δℓ=Δℓ, Δn=1)
-        N = w̃ * M * v
-        w = inv(N) * w̃ * M
-        ṽ = M * v * inv(N)
+        N = w̃ * M1 * v
+        w = inv(N) * w̃ * M1
+        ṽ = M1 * v * inv(N)
         @test w * v ≈ I  # these really just test linear algebra
         @test w̃ * ṽ ≈ I  # these really just test linear algebra
 
@@ -396,7 +491,7 @@ using Healpix
         @test Nmix ≈ N
         w̃M = SFB.power_win_mix(win, w̃, I, wmodes, bcmodes)
         Mv = SFB.power_win_mix(win, I, v, wmodes, bcmodes)
-        @test w̃M ≈ w̃ * M  rtol=1e-10
+        @test w̃M ≈ w̃ * M1  rtol=1e-6
         @test inv(Nmix) * w̃M ≈ w  rtol=1e-10
         @test Mv * inv(Nmix) ≈ ṽ  rtol=1e-10
     end

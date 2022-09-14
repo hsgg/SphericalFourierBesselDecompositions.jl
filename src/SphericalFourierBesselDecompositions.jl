@@ -257,7 +257,7 @@ end
 
 function rotate_euler!(alm::Alm, α, β, γ)
     for l=0:alm.lmax
-        @show l
+        #@show l
         Dlmm = wignerD(l, α, β, γ)
         m = 0:l
         ii = almIndex.(Ref(alm), l, m)
