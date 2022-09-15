@@ -505,7 +505,7 @@ using Healpix
 
         @show M0[1:3,1:3] M1[1:3,1:3]
         @test M1 ≈ M0  rtol=1e-6
-        continue
+        #continue
 
 
         # CWlnn
@@ -516,11 +516,11 @@ using Healpix
         CWlnn0 = M0 * Clnn
         CWlnn1 = M1 * Clnn
         CWlnn2 = SFB.sum_m_lmeqLM(wmix * CnlmNLM * wmix', cmodes)
-        @show Clnn CWlnn1 CWlnn2 CWlnn3
+        @show Clnn CWlnn0 CWlnn1 CWlnn2
         @test CWlnn2 ≈ CWlnn1  rtol=1e-6
         @test CWlnn1 ≈ CWlnn0  rtol=1e-6
         @test CWlnn2 ≈ CWlnn0  rtol=1e-6
-        continue
+        #continue
 
         # Nshot
         nbar = 3e-4
