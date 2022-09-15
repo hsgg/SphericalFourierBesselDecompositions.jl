@@ -99,6 +99,59 @@ using Healpix
     end
 
 
+    run_tests && @testset "Wmix orthogonality" begin
+    #@testset "Wmix orthogonality" begin
+        rmin = 500.0
+        rmax = 1000.0
+        amodes = SFB.AnlmModes(3, 5, rmin, rmax)
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
+        win = ones(wmodes.nr, wmodes.npix)
+
+        wmix = SFB.calc_wmix(win, wmodes, amodes)
+        wmix_negm = SFB.calc_wmix(win, wmodes, amodes; neg_m=true)
+
+        nlmsize = SFB.getnlmsize(amodes)
+        for i=1:nlmsize, j=1:nlmsize
+            n, l, m = SFB.getnlm(amodes, i)
+            N, L, M = SFB.getnlm(amodes, j)
+            nl = SFB.getidx(amodes, n, l, 0)
+            NL = SFB.getidx(amodes, N, L, 0)
+            w = SFB.get_wmix(wmix, wmix_negm, nl, m, NL, M)
+
+            if i != j
+                @test (n != N) || (l != L) || (m != M)
+                @test w ≈ 0  atol=1e-5
+
+                w = SFB.get_wmix(wmix, wmix_negm, nl, m, NL, -M)
+                @test w ≈ 0  atol=1e-5
+
+                w = SFB.get_wmix(wmix, wmix_negm, nl, -m, NL, M)
+                @test w ≈ 0  atol=1e-5
+
+                w = SFB.get_wmix(wmix, wmix_negm, nl, -m, NL, -M)
+                @test w ≈ 0  atol=1e-5
+            else
+                @test (n == N) && (l == L) && (m == M)
+                @test w ≈ 1  atol=1e-5
+
+                if m != 0
+                    w = SFB.get_wmix(wmix, wmix_negm, nl, m, NL, -M)
+                    @test w ≈ 0  atol=1e-5
+
+                    w = SFB.get_wmix(wmix, wmix_negm, nl, -m, NL, M)
+                    ret = @test w ≈ 0  atol=1e-5
+                    if ret isa Test.Fail
+                        @error ret i,j n,l,m N,L,M nl,-m NL,M w
+                    end
+
+                    w = SFB.get_wmix(wmix, wmix_negm, nl, -m, NL, -M)
+                    @test w ≈ 1  atol=1e-5
+                end
+            end
+        end
+    end
+
+
     run_tests && @testset "No window" begin
         # Note: inaccuracies in this test are dominated by inaccuracies in healpix.
         rmin = 500.0

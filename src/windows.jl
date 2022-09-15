@@ -38,6 +38,7 @@ module Windows
 export ConfigurationSpaceModes
 export window_r, apply_window, apodize_window
 export win_rhat_ln, integrate_window, calc_wmix, power_win_mix, win_lnn
+export get_wmix
 export check_nsamp
 export calc_fvol
 
@@ -244,7 +245,6 @@ end
 
 function calc_wmix_ii(l, m, l′, m′, gg1, Wr_lm, LMLM; buffer1=zeros(0), buffer2=zeros(0))
     M = m - m′
-    #@show l,m,l′,m′
 
     gaunt, L = calc_gaunts_L(l, l′, -m, m′; buffer1, buffer2)  # 4 allocations
 

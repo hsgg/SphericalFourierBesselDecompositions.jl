@@ -286,8 +286,8 @@ function calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes, amodes_red, wW
             nl_ρ = getidx(amodes_red, nrho, 0, 0)
             nl_λ = getidx(amodes_red, nlambda, 0, 0)
             for m=-l:l
-                wW_rhomu = get_anlmNLM_r(wWmix, wWmix_negm, nl_μμ, m, nl_ρ, 0)
-                wW_lamnu = get_anlmNLM_r(wWmix, wWmix_negm, nl_νμ, m, nl_λ, 0)
+                wW_rhomu = get_wmix(wWmix, wWmix_negm, nl_μμ, m, nl_ρ, 0)
+                wW_lamnu = get_wmix(wWmix, wWmix_negm, nl_νμ, m, nl_λ, 0)
                 N234 += real(wW_rhomu * fNf * wW_lamnu)
             end
         end
@@ -310,8 +310,6 @@ function get_anlm_r(anlm, nl, m)
     end
     return (-1)^m * conj(anlm[nl-m])
 end
-
-const get_anlmNLM_r = Windows.get_wmix
 
 
 function calc_terms23_transform(wW_nlm_NLM, wW_nlm_NLM_negm, wW_nlm, W_nlm, amodes_red::AnlmModes, cmodes::ClnnModes, Veff)
@@ -337,8 +335,8 @@ function calc_terms23_transform(wW_nlm_NLM, wW_nlm_NLM_negm, wW_nlm, W_nlm, amod
             Tμ = Complex{T}(0)
             Tν = Complex{T}(0)
             for m_ρ=-l_ρ:l_ρ
-                wW_μ_ρ = get_anlmNLM_r(wW_nlm_NLM, wW_nlm_NLM_negm, nl_μμ, m_μ, nl_ρρ, m_ρ)
-                wW_ν_ρ = get_anlmNLM_r(wW_nlm_NLM, wW_nlm_NLM_negm, nl_νμ, m_μ, nl_ρρ, m_ρ)
+                wW_μ_ρ = get_wmix(wW_nlm_NLM, wW_nlm_NLM_negm, nl_μμ, m_μ, nl_ρρ, m_ρ)
+                wW_ν_ρ = get_wmix(wW_nlm_NLM, wW_nlm_NLM_negm, nl_νμ, m_μ, nl_ρρ, m_ρ)
                 W_ω = get_anlm_r(W_nlm, nl_ωρ, m_ρ)
                 Tμ += wW_μ_ρ * W_ω
                 Tν += wW_ν_ρ * W_ω
@@ -393,63 +391,61 @@ function calc_CobsA_term4(C_th, cmix_W, cmix_wW, Veff, cmodes)
 end
 
 
-function calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, Wmix, Wmix_negm, fskyinvlnn)
+function calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, W̃mix, W̃mix_negm)
     lnnsize = getlnnsize(cmodes)
-    #T23mat = fill(0.0, lnnsize, lnnsize)
     nmax0 = cmodes.amodes.nmax_l[1]
     p = Progress(lnnsize^2, 1.0, "T23: ")
-    #Threads.@threads for i=1:lnnsize
-    #for j=1:lnnsize
     T23mat = mybroadcast(1:lnnsize, (1:lnnsize)') do ii,jj
         out = Array{Float64}(undef, length(ii))
         for k=1:length(ii)
             i = ii[k]
             j = jj[k]
             lμ, nμ, nν = getlnn(cmodes, i)
-            lσ, nσ, nα = getlnn(cmodes, j)
+            lρ, nρ, nκ = getlnn(cmodes, j)
 
-            if !isvalidnlm(amodes_red, nσ, lσ, 0) ||
-                !isvalidnlm(amodes_red, nα, lσ, 0) ||
+            if (# Yes, both terms 2 and 3 need all four to be valid modes.
+                !isvalidnlm(amodes_red, nκ, lρ, 0) ||
+                !isvalidnlm(amodes_red, nρ, lρ, 0) ||
                 !isvalidnlm(amodes_red, nμ, lμ, 0) ||
                 !isvalidnlm(amodes_red, nν, lμ, 0)
-                # Yes, both terms 2 and 3 need all four to be valid modes.
+               )
                 out[k] = 0.0
                 continue
             end
-            nσlσ = getidx(amodes_red, nσ, lσ, 0)
-            nαlσ = getidx(amodes_red, nα, lσ, 0)
+            nκlρ = getidx(amodes_red, nκ, lρ, 0)
+            nρlρ = getidx(amodes_red, nρ, lρ, 0)
             nμlμ = getidx(amodes_red, nμ, lμ, 0)
             nνlμ = getidx(amodes_red, nν, lμ, 0)
 
             T23 = 0.0
-            for nβ=1:nmax0, nλ=1:nmax0
-                if !isvalidlnn_symmetric(cmodes, 0, nβ, nλ)
-                    continue
-                end
-                f0nβnλ = fskyinvlnn[getidx(cmodes, 0, nβ, nλ)]
-
-                nβl0 = getidx(amodes_red, nβ, 0, 0)
+            for nλ=1:nmax0
                 nλl0 = getidx(amodes_red, nλ, 0, 0)
 
                 for mμ=-lμ:lμ
-                    wW_nλ00_nνlμmμ = get_anlmNLM_r(wWmix, wWmix_negm, nλl0, 0, nνlμ, mμ)
-                    wW_nλ00_nμlμmμ = get_anlmNLM_r(wWmix, wWmix_negm, nλl0, 0, nμlμ, mμ)
-                    for mσ=-lσ:lσ
-                        W_nαlσmσ_nβ00 = get_anlmNLM_r(Wmix, Wmix_negm, nαlσ, mσ, nβl0, 0)
-                        wW_μ_σ = get_anlmNLM_r(wWmix, wWmix_negm, nμlμ, mμ, nσlσ, mσ)
-                        wW_ν_σ = get_anlmNLM_r(wWmix, wWmix_negm, nνlμ, mμ, nσlσ, mσ)
+                    wW_λ00_ν = get_wmix(wWmix, wWmix_negm, nλl0, 0, nνlμ, mμ)
+                    wW_λ00_μ = get_wmix(wWmix, wWmix_negm, nλl0, 0, nμlμ, mμ)
 
-                        T23 += real(f0nβnλ * W_nαlσmσ_nβ00 * (wW_nλ00_nνlμmμ * wW_μ_σ + wW_nλ00_nμlμmμ * wW_ν_σ))
+                    for mρ=-lρ:lρ
+                        W̃ = get_wmix(W̃mix, W̃mix_negm, nκlρ, mρ, nλl0, 0)
+                        wW_μ_ρ = get_wmix(wWmix, wWmix_negm, nμlμ, mμ, nρlρ, mρ)
+                        wW_ν_ρ = get_wmix(wWmix, wWmix_negm, nνlμ, mμ, nρlρ, mρ)
+
+                        T23 += real(W̃ * (wW_μ_ρ * wW_λ00_ν + wW_ν_ρ * wW_λ00_μ))
+
+                        if nκ != nρ
+                            # We assume that whatever we are multiplying is
+                            # symmetric in nρ and nκ, and that the redundant
+                            # values are not stored. Hence, we need to
+                            # explicitly account for those terms.
+                            W̃ = get_wmix(W̃mix, W̃mix_negm, nρlρ, mρ, nλl0, 0)
+                            wW_μ_κ = get_wmix(wWmix, wWmix_negm, nμlμ, mμ, nκlρ, mρ)
+                            wW_κ_ν = get_wmix(wWmix, wWmix_negm, nκlρ, mρ, nνlμ, mμ)
+
+                            T23 += real(W̃ * (wW_μ_κ * wW_λ00_ν + wW_κ_ν * wW_λ00_μ))
+                        end
                     end
                 end
             end
-            if nσ != nα
-                # We assume that whatever we are multiplying is symmetric in nσ and
-                # nα, and that the redundant values are not stored. Hence, we need
-                # to explicitly account for those symmetric terms.
-                T23 *= 2
-            end
-            #T23mat[i,j] = T23 / (2*lμ + 1)
             out[k] = T23 / (2*lμ + 1)
         end
         next!(p, step=length(ii), showvalues=[(:batchsize, length(ii))])
