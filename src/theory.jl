@@ -233,9 +233,10 @@ function calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes, amodes_red, wW
 
     nmax0 = cmodes.amodes.nmax_l[1]
 
-    # N4
-    N234arr = fill(0.0, getlnnsize(cmodes))
-    for i=1:length(N234arr)
+    N23arr = fill(0.0, getlnnsize(cmodes))
+    N4arr = fill(0.0, getlnnsize(cmodes))
+
+    for i=1:length(N23arr)
         l, n1, n2 = getlnn(cmodes, i)
 
         if !isvalidnlm(amodes_red, n1, l, 0) || !isvalidnlm(amodes_red, n2, l, 0)
@@ -246,9 +247,11 @@ function calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes, amodes_red, wW
         nl_μμ = getidx(amodes_red, n1, l, 0)
         nl_νμ = getidx(amodes_red, n2, l, 0)
 
-        N234 = 0.0
+        N23 = 0.0
+        N4 = 0.0
         for nrho=1:nmaxl, nlambda=1:nmaxl
-            fNf = 0.0
+            fNf23 = 0.0
+            fNf4 = 0.0
 
             # add N4 term:
             if isvalidlnn_symmetric(cmodes, 0, nrho, nlambda)
@@ -257,8 +260,8 @@ function calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes, amodes_red, wW
                         j1 = getidx(cmodes, 0, nrho, nϵ)
                         j2 = getidx(cmodes, 0, nϵ, nα)
                         j3 = getidx(cmodes, 0, nα, nlambda)
-                        fNf += fskyinvlnn[j1] * NW_th[j2] * fskyinvlnn[j3]
-                        #@show fNf
+                        fNf4 += fskyinvlnn[j1] * NW_th[j2] * fskyinvlnn[j3]
+                        #@show fNf4
                     end
                 end
             end
@@ -266,41 +269,35 @@ function calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes, amodes_red, wW
             # add N2 term:
             if isvalidlnn_symmetric(cmodes, 0, nrho, nlambda)
                 j2 = getidx(cmodes, 0, nrho, nlambda)
-                fNf -= fskyinvlnn[j2] / nbar
+                fNf23 += fskyinvlnn[j2] / nbar
             end
-            #@show fNf
+            #@show fNf2
 
             # add N3 term:
             if isvalidlnn_symmetric(cmodes, 0, nlambda, nrho)
                 j3 = getidx(cmodes, 0, nlambda, nrho)
-                fNf -= fskyinvlnn[j3] / nbar
+                fNf23 += fskyinvlnn[j3] / nbar
             end
-            #@show fNf
+            #@show fNf3
 
-            #@show (l,n1,n2),nrho,nlambda,fNf
-
-            if fNf == 0
-                continue
-            end
+            #@show (l,n1,n2),nrho,nlambda,fNf23,fNf4
 
             nl_ρ = getidx(amodes_red, nrho, 0, 0)
             nl_λ = getidx(amodes_red, nlambda, 0, 0)
             for m=-l:l
                 wW_rhomu = get_wmix(wWmix, wWmix_negm, nl_μμ, m, nl_ρ, 0)
                 wW_lamnu = get_wmix(wWmix, wWmix_negm, nl_νμ, m, nl_λ, 0)
-                N234 += real(wW_rhomu * fNf * wW_lamnu)
+                N23 += real(wW_rhomu * fNf23 * wW_lamnu)
+                N4 += real(wW_rhomu * fNf4 * wW_lamnu)
             end
         end
-        N234arr[i] = 1 / (2*l + 1) * N234
+        N23arr[i] = 1 / (2*l + 1) * N23
+        N4arr[i] = 1 / (2*l + 1) * N4
     end
 
+    NwWA = NwW_th - N23arr + N4arr
 
-    @show NwW_th[1:5]
-    @show NW_th[1:5]
-    @show N234arr[1:5]
-
-    NwWA = NwW_th + N234arr
-    return NwWA
+    return NwWA, NwW_th, N23arr, N4arr
 end
 
 
