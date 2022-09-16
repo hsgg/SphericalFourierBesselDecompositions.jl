@@ -79,9 +79,12 @@ using Test
         win = SFB.make_window(wmodes, :fullsky)
         weights = 1
         wW = weights * win
-        cmix_wW = SFB.power_win_mix(wW, wmodes, cmodes)
         fskyz = ones(wmodes.nr)
         Veff = SFB.integrate_window(win, wmodes)
+
+        cmix_W = SFB.power_win_mix(win, wmodes, cmodes)
+        cmix_wW = SFB.power_win_mix(wW, wmodes, cmodes)
+        cmix_Wtilde = SFB.power_win_mix(win ./ fskyz, wmodes, cmodes)
 
         wWmix = SFB.calc_wmix(wW, wmodes, amodes_red)
         wWmix_negm = SFB.calc_wmix(wW, wmodes, amodes_red; neg_m=true)
@@ -100,6 +103,13 @@ using Test
         println("Calculate T23:")
         @time T23 = SFB.Theory.calc_T23(wWmix, wWmix_negm, wWnlm, Wnlm, amodes_red, cmodes, Veff)
         @time T23 = SFB.Theory.calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, wWtildemix, wWtildemix_negm)
+
+        pk(k) = 1e4 * (k/1e-2)^(-3.1)
+        C_th = SFB.gen_Clnn_theory(pk, cmodes)
+
+        println("Calculate C4:")
+        @time C4 = SFB.Theory.calc_C4(C_th, cmix_W, cmix_wW, Veff, cmodes)
+        @time C4 = SFB.Theory.calc_C4_z(C_th, cmix_Wtilde, cmix_wW, cmodes)
 
     end
 

@@ -336,14 +336,14 @@ end
 
 
 @doc raw"""
-    calc_CobsA_term4(C_th, cmix_W, cmix_wW, Veff, cmodes)
+    calc_C4(C_th, cmix_W, cmix_wW, Veff, cmodes)
 
 Calculate the observed power spectrum including the local average effect for a
 constant nbar.
 
 The `method` is by default an approximate formula.
 """
-function calc_CobsA_term4(C_th, cmix_W, cmix_wW, Veff, cmodes)
+function calc_C4(C_th, cmix_W, cmix_wW, Veff, cmodes)
     CwW_th = cmix_wW * C_th
     dn00 = calc_dn00(cmodes)
     DWlnn = calc_DWlnn(cmix_W, cmodes, dn00 / √Veff)
@@ -430,20 +430,21 @@ function calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, W̃mix, W̃m
 end
 
 
-function calc_C4lnn_z(C_th, cmix_W, cmix_wW, cmodes, fskyinvlnn)
+function calc_C4_z(C_th, cmix_Wtilde, cmix_wW, cmodes)
 
-    CW = cmix_W * C_th
-    CW0nn = get_0nn(CW, cmodes)
+    CWtilde = cmix_Wtilde * C_th
 
-    finv_n00_n00 = get_0nn(fskyinvlnn, cmodes)
+    lnnsize = getlnnsize(cmodes)
+    for i=1:lnnsize
+        l, n1, n2 = getlnn(cmodes, i)
+        if l != 0
+            CWtilde[i] = 0
+        end
+    end
 
-    fCWf = finv_n00_n00 * CW0nn * finv_n00_n00
+    C4 = cmix_wW * CWtilde
 
-    fCWf_lnn, _ = get_lnn_from_0nn(fCWf, cmodes)
-
-    C4lnn = cmix_wW * fCWf_lnn
-
-    return C4lnn
+    return C4
 end
 
 
