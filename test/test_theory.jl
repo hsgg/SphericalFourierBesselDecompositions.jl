@@ -70,41 +70,37 @@ using Test
         rmin = 500.0
         rmax = 1000.0
         nr = 250
+        nbar = 3e-4
         amodes = SFB.AnlmModes(0.02, rmin, rmax)
         cmodes = SFB.ClnnModes(amodes, Δnmax=Inf)
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
+        amodes_red = SFB.AnlmModes(0.015, rmin, rmax)
 
         win = SFB.make_window(wmodes, :fullsky)
-        cmix = SFB.power_win_mix(win, wmodes, cmodes)
+        weights = 1
+        wW = weights * win
+        cmix_wW = SFB.power_win_mix(wW, wmodes, cmodes)
         fskyz = ones(wmodes.nr)
-        wmix = SFB.calc_wmix(win ./ fskyz, wmodes, amodes)
-        wmix_negm = SFB.calc_wmix(win, wmodes, amodes; neg_m=true)
-        fskyinvlnn = SFB.win_lnn(win, wmodes, cmodes)
+        Veff = SFB.integrate_window(win, wmodes)
+
+        wWmix = SFB.calc_wmix(wW, wmodes, amodes_red)
+        wWmix_negm = SFB.calc_wmix(wW, wmodes, amodes_red; neg_m=true)
+        wWtildemix = SFB.calc_wmix(wW ./ fskyz, wmodes, amodes_red)
+        wWtildemix_negm = SFB.calc_wmix(wW ./ fskyz, wmodes, amodes_red; neg_m=true)
+
+        N1 = SFB.win_lnn(wW, wmodes, cmodes) ./ nbar
+        NW = SFB.win_lnn(win, wmodes, cmodes) ./ nbar
+        Wnlm = SFB.field2anlm(win, wmodes, amodes_red)
+        wWnlm = SFB.field2anlm(wW, wmodes, amodes_red)
+
+        println("Calculate N1, N23, N4:")
+        @time Nobs, N1, N23, N4 = SFB.calc_NobsA(N1, NW, cmix_wW, nbar, Veff, cmodes)
+        @time Nobs, N1, N23, N4 = SFB.calc_NobsA_z(N1, nbar, cmodes, amodes_red, wWmix, wWmix_negm, wWtildemix, wWtildemix_negm)
 
         println("Calculate T23:")
-        @time T23 = SFB.Theory.calc_T23_z(cmix, cmodes, amodes, wmix, wmix_negm, wmix, wmix_negm)
-        @time T23 = SFB.Theory.calc_T23_z(cmix, cmodes, amodes, wmix, wmix_negm, wmix, wmix_negm)
-        @time T23 = SFB.Theory.calc_T23_z(cmix, cmodes, amodes, wmix, wmix_negm, wmix, wmix_negm)
+        @time T23 = SFB.Theory.calc_T23(wWmix, wWmix_negm, wWnlm, Wnlm, amodes_red, cmodes, Veff)
+        @time T23 = SFB.Theory.calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, wWtildemix, wWtildemix_negm)
 
-        lnnsize = SFB.getlnnsize(cmodes)
-        for i=1:lnnsize, j=1:lnnsize
-            lμ, nμ, nν = SFB.getlnn(cmodes, i)
-            lσ, nσ, nα = SFB.getlnn(cmodes, j)
-
-            # calculate correct T23 for full-sky, constant unity weighting,
-            # constant unity radial selection
-            T23_correct = 0
-            isnonzero = (lμ == lσ == 0 && ((nα == nν && nσ == nμ) || (nα == nμ && nσ == nν)))
-            if isnonzero
-                T23_correct = 2
-            end
-
-            # compare
-            if abs(T23[i,j] - T23_correct) > 1e-4
-                @error "T23 incorrect" i,j lμ,nμ,nν lσ,nσ,nα T23[i,j] T23_correct
-            end
-            @test abs(T23[i,j] - T23_correct) < 1e-4
-        end
     end
 
 end

@@ -33,11 +33,9 @@ module Theory
 export gen_Clnn_theory
 export Clnn2CnlmNLM, sum_m_lmeqLM
 export add_local_average_effect_nowindow
-export calc_NobsA, calc_CobsA, calc_CNobsA
-export calc_NobsA_z, calc_C4lnn_z
+export calc_NobsA, calc_NobsA_z
+export calc_CobsA, calc_CobsA_z
 
-# deprecated:
-export add_local_average_effect, calc_CNAnlmNLM
 
 using ..Modes
 using ..Windows
@@ -166,6 +164,8 @@ function add_local_average_effect_nowindow(CNobs, cmodes, Veff)
 end
 
 
+############# shot noise
+
 function calc_dn00(cmodes)
     nmax = cmodes.amodes.nmax_l[1]
     dn00 = √(4*π) .* [quadgk(r->r^2 * cmodes.amodes.basisfunctions(n,0,r),
@@ -242,7 +242,7 @@ function calc_NobsA_z(NwW_th, nbar, cmodes, amodes_red, wWmix, wWmix_negm, wWtil
 
         lμ, nμ, nν = getlnn(cmodes, i)
 
-        if !isvalidnlm(amodes_red, nμ, lμ, 0)
+        if !isvalidnlm(amodes_red, nμ, lμ, 0) || !isvalidnlm(amodes_red, nν, lμ, 0)
             continue
         end
 
@@ -276,6 +276,7 @@ function calc_NobsA_z(NwW_th, nbar, cmodes, amodes_red, wWmix, wWmix_negm, wWtil
     return NobsA, N1, N23, N4
 end
 
+############# clustering terms
 
 function get_anlm_r(anlm, nl, m)
     if m >= 0
@@ -285,7 +286,7 @@ function get_anlm_r(anlm, nl, m)
 end
 
 
-function calc_terms23_transform(wW_nlm_NLM, wW_nlm_NLM_negm, wW_nlm, W_nlm, amodes_red::AnlmModes, cmodes::ClnnModes, Veff)
+function calc_T23(wW_nlm_NLM, wW_nlm_NLM_negm, wW_nlm, W_nlm, amodes_red::AnlmModes, cmodes::ClnnModes, Veff)
     T = Float64
     wWs_nlm = conj(wW_nlm)
     lnnsize = getlnnsize(cmodes)
@@ -366,7 +367,7 @@ end
 
 function calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, W̃mix, W̃mix_negm)
     lnnsize = getlnnsize(cmodes)
-    nmax0 = cmodes.amodes.nmax_l[1]
+    nmax0 = amodes_red.nmax
     p = Progress(lnnsize^2, 1.0, "T23: ")
     T23mat = mybroadcast(1:lnnsize, (1:lnnsize)') do ii,jj
         out = Array{Float64}(undef, length(ii))
@@ -444,191 +445,6 @@ function calc_C4lnn_z(C_th, cmix_W, cmix_wW, cmodes, fskyinvlnn)
 
     return C4lnn
 end
-
-
-@doc raw"""
-    calc_CNobsA(Clnn, Nobs_th, cmix, nbar, Veff, cmodes, wk_cache=nothing; kwargs...)
-
-Calculate the observed power spectrum including shot noise with the local
-average effect for a constant nbar.
-
-`kwargs` are passed to [calc_CobsA](@ref).
-"""
-function calc_CNobsA(Clnn, Nobs_th, cmix, nbar, Veff, cmodes, wk_cache=nothing; kwargs...)
-    error("outdated function")
-    NobsA = calc_NobsA(Nobs_th, cmix, nbar, Veff, cmodes)
-    CobsA = calc_CNobsA(Clnn, Nobs_th, cmix, nbar, Veff, cmodes, wk_cache=nothing; kwargs...)
-    return CobsA .+ NobsA
-end
-
-
-#################### obsolete local average effect functions ###################
-
-function add_local_average_effect(CNlnn, cmix, Wlnn, cmodes, Veff)
-    base.depwarn("'add_local_average_effect()' is deprecated. Use 'calc_NobsA()' and 'calc_CobsA()' instead.", :add_local_average_effect)
-    # Note 1: We only implement the δᴷₗ₀ terms, as the others are negligible
-    # when Veff is large.
-    #
-    # Note 2: We assume there is no bandwidth binning.
-
-    nmax = cmodes.amodes.nmax_l[1]
-
-    # dn00
-    dn00 = √(4*π) .* [quadgk(r->r^2 * cmodes.amodes.basisfunctions(n,0,r),
-                             cmodes.amodes.rmin, cmodes.amodes.rmax)[1]
-                      for n=1:nmax]
-
-    # dn00obs
-    dn00obs = fill(0.0, size(dn00))
-    for n=1:nmax
-        for N=1:nmax
-            if isvalidlnn(cmodes, 0, n, N)
-                idx = getidx(cmodes, 0, n, N)
-                dn00obs[n] += Wlnn[idx] * dn00[N]
-            end
-        end
-    end
-
-    # sum_dn00obs_C0nn
-    sum_dn00obs_C0nn = fill(0.0, nmax)
-    for n=1:nmax
-        for n′′=1:nmax
-            if isvalidlnn(cmodes, 0, n, n′′)
-                i′′ = getidx(cmodes, 0, n, n′′)
-                sum_dn00obs_C0nn[n] += dn00obs[n′′] * CNlnn[i′′]
-            end
-        end
-    end
-
-    # Dlnnobs
-    Dlnnobs = fill(0.0, size(CNlnn))
-    for i=1:length(Dlnnobs)
-        l1, n1, n2 = getlnn(cmodes, i)
-        for n1′=1:nmax, n2′=1:nmax
-            if isvalidlnn(cmodes, 0, n1′, n2′)
-                i′ = getidx(cmodes, 0, n1′, n2′)
-                Dlnnobs[i] += (2*l1 + 1) * cmix[i,i′] * dn00[n1′] * dn00[n2′]
-            end
-        end
-    end
-
-    # sum_Dobs_CN
-    sum_Dobs_CN = Dlnnobs' * CNlnn
-
-    # debug
-    C011 = CNlnn[getidx(cmodes, 0, 1, 1)]
-    A = sum_Dobs_CN / Veff / C011
-    #@show dn00 dn00obs Dlnnobs sum_dn00obs_C0nn sum_Dobs_CN Veff C011 A
-    @show "first" Dlnnobs[1:10] Dlnnobs[11:20] sum_Dobs_CN Veff C011 A
-    @show sum_dn00obs_C0nn[1]
-
-    # CNAlnn
-    CNAlnn = deepcopy(CNlnn)
-    for n=1:nmax, n′=1:nmax
-        if isvalidlnn(cmodes, 0, n, n′)
-            i = getidx(cmodes, 0, n, n′)
-            CNAlnn[i] -= dn00[n′] / Veff * sum_dn00obs_C0nn[n]
-            @show n′,dn00[n′],n,sum_dn00obs_C0nn[n]
-            CNAlnn[i] -= dn00[n] / Veff * sum_dn00obs_C0nn[n′]
-            CNAlnn[i] += dn00[n] * dn00[n′] / Veff^2 * sum_Dobs_CN
-        end
-    end
-    return CNAlnn
-end
-
-
-function calc_CNAnlmNLM(CNlnn::AbstractVector, wmix, cmodes, Veff)
-    base.depwarn("'calc_CNAnlmNLM()' is deprecated. Use 'calc_NobsA()' and 'calc_CobsA()' instead.", :calc_CNAnlmNLM)
-    # Note 1: We only implement the δᴷₗ₀ terms, as the others are negligible
-    # when Veff is large.
-    #
-    # Note 2: We assume there is no bandwidth binning.
-
-    amodes = cmodes.amodes
-    nmax = cmodes.amodes.nmax_l[1]
-
-    # dn00
-    dn00 = √(4*π) .* [quadgk(r->r^2 * cmodes.amodes.basisfunctions(n,0,r),
-                             cmodes.amodes.rmin, cmodes.amodes.rmax)[1]
-                      for n=1:nmax]
-
-    # dnlm
-    dnlm = fill(0.0, getnlmsize(amodes))
-    for i=1:length(dnlm)
-        n, l, m = getnlm(amodes, i)
-        if l == 0 && m == 0
-            dnlm[i] = dn00[n]
-        end
-    end
-
-    dnlmobs = wmix * dnlm
-
-    # sum_dnlmobs_Clnn
-    sum_dnlmobs_Clnn = fill(0.0im, getnlmsize(amodes))
-    for i=1:length(sum_dnlmobs_Clnn)
-        n, l, m = getnlm(amodes, i)
-        nmaxl = cmodes.amodes.nmax_l[l+1]
-        for n′′=1:nmaxl
-            if isvalidlnn(cmodes, l, n, n′′)
-                i′′ = getidx(amodes, n′′, l, m)
-                idx′′ = getidx(cmodes, l, n, n′′)
-                sum_dnlmobs_Clnn[i] += dnlmobs[i′′] * CNlnn[idx′′]
-            end
-        end
-    end
-
-    # Dlnnobs
-    Dlnnobs = fill(0.0, getlnnsize(cmodes))
-    for i=1:length(Dlnnobs)
-        l1, n1, n2 = getlnn(cmodes, i)
-        i1base = getidx(amodes, n1, l1, 0)
-        i2base = getidx(amodes, n2, l1, 0)
-        D = real(conj(dnlmobs[i1base]) * dnlmobs[i2base])
-        for m=1:l1
-            D += 2 * real(conj(dnlmobs[i1base+m]) * dnlmobs[i2base+m])
-        end
-        Dlnnobs[i] = D
-    end
-
-    # sum_Dobs_CN
-    sum_Dobs_CN = Dlnnobs' * CNlnn
-
-    # debug
-    C011 = CNlnn[getidx(cmodes, 0, 1, 1)]
-    A = sum_Dobs_CN / Veff / C011
-    #@show dnlm dnlmobs Dlnnobs sum_dnlmobs_Clnn sum_Dobs_CN Veff C011 A
-    @show "second" Dlnnobs[1:10] Dlnnobs[11:20] sum_Dobs_CN Veff C011 A
-    @show sum_dnlmobs_Clnn[getidx.(amodes, 1, 0, 0)]
-
-    # CWnlmNLM
-    CWnlmNLM = fill(im*NaN, getnlmsize(amodes), getnlmsize(amodes))
-    for i′=1:size(CWnlmNLM,2), i=1:size(CWnlmNLM,1)
-        n, l, m = getnlm(amodes, i)
-        n′, l′, m′ = getnlm(amodes, i′)
-        CW = 0.0im
-        if l==l′ && m==m′
-            if isvalidlnn(cmodes, l, n, n′)
-                idx = getidx(cmodes, l, n, n′)
-                CW += CNlnn[idx]
-            end
-        end
-        if l′==0 && m′==0
-            CW -= dn00[n′] / Veff * sum_dnlmobs_Clnn[i]
-            if l==l′ && m==m′
-                @show n′,l′,m′,dn00[n′],n,l,m,sum_dnlmobs_Clnn[i]
-            end
-        end
-        if l==0 && m==0
-            CW -= dn00[n] / Veff * conj(sum_dnlmobs_Clnn[i′])
-        end
-        if l′==0 && m′==0 && l==0 && m==0
-            CW += dn00[n] * dn00[n′] / Veff^2 * sum_Dobs_CN
-        end
-        CWnlmNLM[i,i′] = CW
-    end
-    return CWnlmNLM
-end
-
 
 
 end
