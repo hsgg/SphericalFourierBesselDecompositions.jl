@@ -214,90 +214,66 @@ function calc_NobsA(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes)
     trNWD = dn00'dn00obs / (Veff * nbar)
     DwWlnn = calc_DWlnn(cmix_wW, cmodes, dn00 / √Veff)
 
-    NwWA = NwW_th - (2/nbar - trNWD) * DwWlnn
-    return NwWA
+    N1 = NwW_th
+    N23 = 2/nbar * DwWlnn
+    N4 = trNWD * DwWlnn
+    Nobs = N1 - N23 + N4
+
+    return Nobs, N1, N23, N4
 end
 
 
 @doc raw"""
-    calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes)
+    calc_NobsA_z(NwW_th, nbar, cmodes, amodes_red, wWmix, wWmix_negm, wWtildemix, wWtildemix_negm)
 
 Calculate the observed shot noise including the local average effect for
 measured nbar(z).
 """
-function calc_NobsA_z(NwW_th, NW_th, cmix_wW, nbar, Veff, cmodes, amodes_red, wWmix, wWmix_negm, fskyinvlnn)
-    #dn00 = calc_dn00(cmodes)
-    #dn00obs = calc_dn00obs(dn00, nbar .* NW_th, cmodes)
-    #trNWD = dn00'dn00obs / (Veff * nbar)
-    #DwWlnn = calc_DWlnn(cmix_wW, cmodes, dn00 / √Veff)
+function calc_NobsA_z(NwW_th, nbar, cmodes, amodes_red, wWmix, wWmix_negm, wWtildemix, wWtildemix_negm)
 
-    nmax0 = cmodes.amodes.nmax_l[1]
+    # N1
+    N1 = NwW_th
 
-    N23arr = fill(0.0, getlnnsize(cmodes))
-    N4arr = fill(0.0, getlnnsize(cmodes))
+    # N23
+    lnnsize = getlnnsize(cmodes)
+    nmax = amodes_red.nmax
+    N23 = fill(0.0, lnnsize)
+    for i=1:lnnsize
 
-    for i=1:length(N23arr)
-        l, n1, n2 = getlnn(cmodes, i)
+        lμ, nμ, nν = getlnn(cmodes, i)
 
-        if !isvalidnlm(amodes_red, n1, l, 0) || !isvalidnlm(amodes_red, n2, l, 0)
+        if !isvalidnlm(amodes_red, nμ, lμ, 0)
             continue
         end
 
-        nmaxl = amodes_red.nmax_l[l+1]
-        nl_μμ = getidx(amodes_red, n1, l, 0)
-        nl_νμ = getidx(amodes_red, n2, l, 0)
+        nμlμ = getidx(amodes_red, nμ, lμ, 0)
+        nνlμ = getidx(amodes_red, nν, lμ, 0)
 
-        N23 = 0.0
-        N4 = 0.0
-        for nrho=1:nmaxl, nlambda=1:nmaxl
-            fNf23 = 0.0
-            fNf4 = 0.0
+        for nλ=1:nmax
+            nλl0 = getidx(amodes_red, nλ, 0, 0)
+            for mμ=-lμ:lμ
+                wWtilde2 = get_wmix(wWtildemix, wWtildemix_negm, nμlμ, mμ, nλl0, 0)
+                wW2 = get_wmix(wWmix, wWmix_negm, nλl0, 0, nνlμ, mμ)
 
-            # add N4 term:
-            if isvalidlnn_symmetric(cmodes, 0, nrho, nlambda)
-                for nϵ=1:nmax0, nα=1:nmax0
-                    if isvalidlnn_symmetric(cmodes, 0, nrho, nϵ) && isvalidlnn_symmetric(cmodes, 0, nϵ, nα) && isvalidlnn_symmetric(cmodes, 0, nα, nlambda)
-                        j1 = getidx(cmodes, 0, nrho, nϵ)
-                        j2 = getidx(cmodes, 0, nϵ, nα)
-                        j3 = getidx(cmodes, 0, nα, nlambda)
-                        fNf4 += fskyinvlnn[j1] * NW_th[j2] * fskyinvlnn[j3]
-                        #@show fNf4
-                    end
-                end
-            end
+                wWtilde3 = get_wmix(wWtildemix, wWtildemix_negm, nνlμ, mμ, nλl0, 0)
+                wW3 = get_wmix(wWmix, wWmix_negm, nλl0, 0, nμlμ, mμ)
 
-            # add N2 term:
-            if isvalidlnn_symmetric(cmodes, 0, nrho, nlambda)
-                j2 = getidx(cmodes, 0, nrho, nlambda)
-                fNf23 += fskyinvlnn[j2] / nbar
-            end
-            #@show fNf2
-
-            # add N3 term:
-            if isvalidlnn_symmetric(cmodes, 0, nlambda, nrho)
-                j3 = getidx(cmodes, 0, nlambda, nrho)
-                fNf23 += fskyinvlnn[j3] / nbar
-            end
-            #@show fNf3
-
-            #@show (l,n1,n2),nrho,nlambda,fNf23,fNf4
-
-            nl_ρ = getidx(amodes_red, nrho, 0, 0)
-            nl_λ = getidx(amodes_red, nlambda, 0, 0)
-            for m=-l:l
-                wW_rhomu = get_wmix(wWmix, wWmix_negm, nl_μμ, m, nl_ρ, 0)
-                wW_lamnu = get_wmix(wWmix, wWmix_negm, nl_νμ, m, nl_λ, 0)
-                N23 += real(wW_rhomu * fNf23 * wW_lamnu)
-                N4 += real(wW_rhomu * fNf4 * wW_lamnu)
+                N23[i] += real(wWtilde2 * wW2 + wWtilde3 * wW3)
             end
         end
-        N23arr[i] = 1 / (2*l + 1) * N23
-        N4arr[i] = 1 / (2*l + 1) * N4
+
+        N23[i] /= (2 * lμ + 1)
     end
+    N23 ./= nbar
 
-    NwWA = NwW_th - N23arr + N4arr
 
-    return NwWA, NwW_th, N23arr, N4arr
+    # N4
+    N4 = N23 / 2  # blissfull simplicity
+
+
+    NobsA = N1 - N23 + N4
+
+    return NobsA, N1, N23, N4
 end
 
 
