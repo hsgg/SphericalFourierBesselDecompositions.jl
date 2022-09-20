@@ -552,7 +552,7 @@ function bandpower_binning_weights(cmodes::ClnnModes; Δℓ=1, Δn=1)
     i = 1
     for llo=0:Δℓ:lmax
         lrange = llo:min(llo+Δℓ-1,lmax)
-        @show lrange
+        #@show lrange
         for Δnlo=0:ΔΔn:maximum(Δnmax_l[lrange.+1]), n̄lo=1:Δn̄:maximum(n̄max_l[lrange.+1])
             Δnrange = [Δnlo:min(Δnlo+ΔΔn-1,Δnmax_l[l+1]) for l in lrange]
             n̄range = [n̄lo:min(n̄lo+Δn̄-1,n̄max_l[l+1]) for l in lrange]
