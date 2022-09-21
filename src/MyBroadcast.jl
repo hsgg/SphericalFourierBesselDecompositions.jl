@@ -3,7 +3,7 @@
 
 This module defines the function `mybroadcast`. It behave similarly to a
 threaded broadcast, except that it tries to batch iterations such that each
-batch takes about 0.2 seconds to perform.
+batch takes about 0.5 seconds to perform.
 
 The idea is to automatically adjust the number of iterations per batch so that
 overhead per iteration is low and batch size is small so that the threads keep
@@ -12,7 +12,7 @@ getting scheduled.
 For example, imagine that the execution time per iteration increases. With a
 static scheduler, this would mean that the first threads finish long before the
 last thread. This avoids that by adjusting the number of iterations so that
-each batch should take approximately 0.2 seconds.
+each batch should take approximately 0.5 seconds.
 
 So why batch iterations? Imagine you need to allocate a buffer for each
 iteration, and this buffer can be shared for sequentially run iterations.
@@ -31,7 +31,7 @@ include("MeshedArrays.jl")
 using .MeshedArrays
 
 
-function calc_i_per_thread(time, i_per_thread_old; batch_avgtime=1.0, batch_maxadjust=2.0)
+function calc_i_per_thread(time, i_per_thread_old; batch_avgtime=0.5, batch_maxadjust=2.0)
     adjust = batch_avgtime / time  # if we have accurate measurement of time
     adjust = min(batch_maxadjust, adjust)  # limit upward adjustment
     adjust = max(1/batch_maxadjust, adjust)  # limit downward adjustment
@@ -41,9 +41,8 @@ function calc_i_per_thread(time, i_per_thread_old; batch_avgtime=1.0, batch_maxa
     else
         i_per_thread_new = ceil(Int, adjust * i_per_thread_old)
     end
-    i_per_thread_new = max(1, i_per_thread_new)  # must be at least 1
 
-    return i_per_thread_new
+    return max(1, i_per_thread_new)  # must be at least 1
 end
 
 
@@ -63,34 +62,12 @@ function calc_outsize(x...)
 end
 
 
-function calc_newbatchsize!(oldbatchsize, newbatchsizechannel)
-    batchsize = oldbatchsize
-    n = 1
-    while isready(newbatchsizechannel)
-        newbatchsize = take!(newbatchsizechannel)
-        batchsize += newbatchsize
-        n += 1
-        if newbatchsize < 1
-            return newbatchsize
-        end
-        #@show n,batchsize,newbatchsize
-    end
-    avgbatchsize = batchsize / n
-
-    if avgbatchsize < oldbatchsize
-        batchsize = floor(Int, avgbatchsize)
-    else
-        batchsize = ceil(Int, avgbatchsize)
-    end
-
-    return max(batchsize, 1)
-end
-
-
-function clear_channel!(channel)
-    while isready(channel)
-        take!(channel)
-    end
+function get_new_batch!(nextifirstchannel, ntasks, batchsize)
+    ifirst = take!(nextifirstchannel)
+    ilast = min(ntasks, ifirst + batchsize - 1)
+    put!(nextifirstchannel, ilast + 1)
+    iset = ifirst:ilast
+    return iset
 end
 
 
@@ -100,87 +77,48 @@ function mybroadcast!(out, fn, x...)
 
     num_threads = Threads.nthreads()
 
-    batchsize = 1
-    newbatchsizechannel = Channel{Int}(2 * num_threads)
-    batchchannel = Channel{UnitRange{Int}}(2 * num_threads)
-    errorchannel = Channel{Any}(2 * num_threads)
+    errorchannel = Channel{Any}(num_threads)
+
+    nextifirstchannel = Channel{Int}(1)  # this channel is used to synchronize all the threads
+    put!(nextifirstchannel, 1)
 
     all_indices = eachindex(out, x...)
 
     # worker threads process the data
-    tsk = Task[]
-    for _ in 1:num_threads
-        t = Threads.@spawn try
-            #println("Starting $(Threads.threadid())...")
-            iset = take!(batchchannel)
+    @threads for _ in 1:num_threads
+        try
+            batchsize = 1
+
+            # worker threads feed themselves
+            iset = get_new_batch!(nextifirstchannel, ntasks, batchsize)
+
             while length(iset) > 0
-                #println("Working on $iset ($(Threads.threadid()))...")
+
                 time = @elapsed begin
                     idxs = all_indices[iset]
-
-                    #xs = x[1][idxs]
-                    #ys = x[2][idxs]
-                    #outs = fn(xs, ys)
 
                     xs = (x[i][idxs] for i=1:length(x))
                     outs = fn(xs...)
 
                     out[idxs] .= outs
                 end
-                #println("Finished $iset ($(Threads.threadid())).")
 
-                newbatchsize = calc_i_per_thread(time, length(iset))
-                put!(newbatchsizechannel, newbatchsize)
-                #println("New batchsize advertized ($(Threads.threadid())).")
-                iset = take!(batchchannel)
+                batchsize = calc_i_per_thread(time, length(iset))
+
+                iset = get_new_batch!(nextifirstchannel, ntasks, batchsize)
             end
-            #println("Exiting $(Threads.threadid())...")
         catch e
             if e isa InvalidStateException
                 @info "Exiting thread $(Threads.threadid()) due to closed channel"
-            else  # we caused the exception
-                close(newbatchsizechannel)
-                close(batchchannel)
+            else
+                # we caused the exception
+                close(nextifirstchannel)  # notify other threads
                 bt = catch_backtrace()
                 @warn "Exception in thread $(Threads.threadid()):\n  $e"
                 put!(errorchannel, (Threads.threadid(), e, bt))
             end
         end
-        push!(tsk, t)
     end
-
-
-    try
-        # feed the workers
-        ifirst = 1
-        while ifirst <= ntasks
-            #@show ifirst
-            batchsize = calc_newbatchsize!(batchsize, newbatchsizechannel)
-
-            ilast = min(ntasks, ifirst + batchsize - 1)
-            #@show ifirst,ilast-ifirst+1
-
-            put!(batchchannel, ifirst:ilast)
-
-            ifirst = ilast + 1
-        end
-
-
-        # notify workers of the end
-        for _ in 1:num_threads
-            clear_channel!(newbatchsizechannel)
-            put!(batchchannel, 1:0)  # tell thread to exit
-        end
-        clear_channel!(newbatchsizechannel)
-
-    catch e
-        if !(e isa InvalidStateException)
-            rethrow(e)
-        end
-    end
-
-
-    wait.(tsk)  # all tasks should finish cleanly
 
 
     num_failed_tasks = 0
@@ -197,7 +135,6 @@ function mybroadcast!(out, fn, x...)
         @error "Exceptions in threads" num_failed_tasks num_threads
         error("Exceptions in threads")
     end
-
 
     return out
 end
