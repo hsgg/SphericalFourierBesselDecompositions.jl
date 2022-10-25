@@ -429,9 +429,22 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
                 end
             end
 
-        elseif feat == :+
+        elseif feat == :mult_01
+            if win isa SeparableArray
+                win.phi .*= 0.1
+            else
+                win .*= 0.1
+            end
+
+        elseif feat in [:+, :add]
             win2 = make_window(wmodes, features[ifeat+1:end]...)
             win = win .+ win2
+            if win isa SeparableArray
+                win.mask ./= maximum(win.mask)
+                win.phi ./= maximum(win.phi * win.mask')
+            else
+                win ./= maximum(win)
+            end
             break  # stop processing
 
         elseif feat == :separable
@@ -446,28 +459,29 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
             error("Unsupported feature $feat.")
         end
 
-        # always normalize
-        if win isa SeparableArray
-            win.mask ./= maximum(win.mask)
-            win.phi ./= maximum(win.phi * win.mask')
-        else
-            win ./= maximum(win)
+        if feat != :mult_01
+            # normalize
+            if win isa SeparableArray
+                win.mask ./= maximum(win.mask)
+                win.phi ./= maximum(win.phi * win.mask')
+            else
+                win ./= maximum(win)
+            end
         end
     end
 
-    # always normalize
     @show extrema(win)
-    if win isa SeparableArray
-        win.mask ./= maximum(win.mask)
-        win.phi ./= maximum(win.phi * win.mask')
-    else
-        win ./= maximum(win)
-    end
 
     if minimum(win) < 0
-        @warn "Window goes negative" size(win) nside extrema(win) features
+        @error "Window goes negative" size(win) nside extrema(win) features
     end
-    @assert prevfloat(1.0) <= maximum(win) <= nextfloat(1.0)
+
+    if maximum(win) > nextfloat(1)
+        @error "Window goes above 1" size(win) nside extrema(win) features
+    end
+    if maximum(win) < prevfloat(1)
+        @warn "Window goes above 1" size(win) nside extrema(win) features
+    end
 
     return win
 end
