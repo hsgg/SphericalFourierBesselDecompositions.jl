@@ -220,9 +220,9 @@ function gen_mask(nside, fsky)
     npix = nside2npix(nside)
     mask = fill(0.0, npix)
     θ, ϕ = pix2angRing(nside, 1:npix)
-    @show extrema(θ) extrema(ϕ)
+    #@show extrema(θ) extrema(ϕ)
     θₘₐₓ = acos(1 - 2*fsky)
-    @show θₘₐₓ
+    #@show θₘₐₓ
     for i=1:length(θ)
         if θ[i] <= θₘₐₓ
             mask[i] = 1.0
@@ -237,7 +237,7 @@ function gen_win_insep_cossin(mask, rmin, rmax, r, l, m)
     nside = npix2nside(length(mask))
     pix = (1:length(mask))[mask .!= 0]
     θ, ϕ = pix2angRing(nside, pix)
-    @show extrema(ϕ)
+    #@show extrema(ϕ)
     θmin, θmax = extrema(θ)
     dr = rmax - rmin
     dθ = θmax - θmin
@@ -283,11 +283,11 @@ end
 function rotate_euler!(win::SeparableArray, α, β, γ)
     hpmask = HealpixMap{eltype(win),Healpix.RingOrder}(win.mask)
     win.mask .= rotate_euler(hpmask, α, β, γ)
-    win.mask ./= maximum(win.mask)
     return win
 end
 
 function rotate_euler!(win, α, β, γ)
+    nr = size(win,1)
     for i=1:nr
         hpmask = HealpixMap{eltype(win),Healpix.RingOrder}(win[i,:])
         win[i,:] .= rotate_euler(hpmask, α, β, γ)
@@ -302,159 +302,172 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
     Δr = wmodes.Δr
     nr = wmodes.nr
     nside = wmodes.nside
-    @show rmin rmax nr Δr nside
+    #@show rmin rmax nr Δr nside
 
-    features = Set(features)
+    win = fill(1.0, nr, wmodes.npix)
 
-    phi = fill(1.0, nr)
-    mask = fill(1.0, wmodes.npix)
-    win = fill(1.0, nr, length(mask))
-    delete!(features, :fullsky)
-
-    if :ang_75 in features
-        mask = gen_mask(nside, 0.75)
-        delete!(features, :ang_75)
-    end
-
-    if :ang_half in features
-        mask = gen_mask(nside, 1/2)
-        delete!(features, :ang_half)
-    end
-
-    if :ang_quarter in features
-        mask = gen_mask(nside, 1/4)
-        delete!(features, :ang_quarter)
-    end
-
-    if :ang_eighth in features
-        mask = gen_mask(nside, 1/8)
-        delete!(features, :ang_eighth)
-    end
-
-    if :ang_sixteenth in features
-        mask = gen_mask(nside, 1/16)
-        delete!(features, :ang_sixteenth)
-    end
-
-    if :rotate in features
-        a = -0.0004052885
-        b = 1.05048844473
-        c = 1.68221794936
-        mask = HealpixMap{Float64,Healpix.RingOrder}(mask)
-        mask = rotate_euler(mask, a, b, c)
-        delete!(features, :rotate)
-    end
-
-    if :flip in features
-        maskflipped = deepcopy(mask)
-        maskflipped .= 0
-        reso = Resolution(nside)
-        for i=1:length(mask)
-            θ, ϕ = pix2angRing(reso, i)
-            θ = π - θ
-            p = ang2pixRing(reso, θ, ϕ)
-            maskflipped[p] = mask[i]
-        end
-        delete!(features, :flip)
-    end
-
-
-    if :radial in features
-        r0 = rmax * 0.55
-        for i=1:nr
-            phi[i] = exp(- (r[i] / r0)^2)
-        end
-        delete!(features, :radial)
-    end
-
-    if :step_rmin in features
-        r0 = rmin + 100.0
-        for i=1:nr
-            phi[i] = (r[i] < r0) ? 0.0 : phi[i]
-        end
-        delete!(features, :step_rmin)
-    end
-
-    if :step_rmax in features
-        r0 = rmax - 100.0
-        for i=1:nr
-            phi[i] = (r[i] > r0) ? 0.0 : phi[i]
-        end
-        delete!(features, :step_rmax)
-    end
-
-    if :radial_expmrr0 in features
-        r0 = (rmin + rmax) / 2 / 3
-        phi = @. exp(- r / r0)
-        delete!(features, :radial_expmrr0)
-    end
-
-    win = phi * mask'
-    maxwin = maximum(win)
-
-    if :separable in features
-        phi ./= maxwin
-        win = @SeparableArray phi mask
-        delete!(features, :separable)
-    else
-        win ./= maxwin
-    end
-
-    # Todo: The code structure below here makes more sense. To use, it
-    # successively incorporate features from above. However, the above assumes
-    # the order it is in, so start from the bottom!
-
-    for feat in features
+    for ifeat=1:length(features)
+        feat = features[ifeat]
         sfeat = string(feat)
         println("Processing feature $feat...")
-        @show extrema(win)
+        #@show extrema(win)
 
-        if occursin("radial_cossin_l", sfeat)
-            delete!(features, feat)
+        if feat == :fullsky
+            # do nothing, because fullsky is default.
+
+        elseif feat == :ang_75
+            mask = gen_mask(nside, 0.75)
+            if win isa SeparableArray
+                win.mask .*= mask
+            else
+                win .*= mask'
+            end
+
+        elseif feat == :ang_half
+            mask = gen_mask(nside, 1/2)
+            if win isa SeparableArray
+                win.mask .*= mask
+            else
+                win .*= mask'
+            end
+
+        elseif feat == :ang_quarter
+            mask = gen_mask(nside, 1/4)
+            if win isa SeparableArray
+                win.mask .*= mask
+            else
+                win .*= mask'
+            end
+
+        elseif feat == :ang_eighth
+            mask = gen_mask(nside, 1/8)
+            if win isa SeparableArray
+                win.mask .*= mask
+            else
+                win .*= mask'
+            end
+
+        elseif feat == :ang_sixteenth
+            mask = gen_mask(nside, 1/16)
+            if win isa SeparableArray
+                win.mask .*= mask
+            else
+                win .*= mask'
+            end
+
+        elseif startswith(sfeat, "radial_cossin_l")
             numform, l, m = @scanf(sfeat, "radial_cossin_l%f_m%f", Float64, Float64)
             @assert numform == 2
             l /= 10
             m /= 10
-            @show numform,l,m
-            win = gen_win_insep_cossin(mask, rmin, rmax, r, l, m)
-        end
+            #@show numform,l,m
+            mask = mean(win, dims=1)[:]
+            win = win .* gen_win_insep_cossin(mask, rmin, rmax, r, l, m)
 
-        if occursin("rotate_", sfeat)
-            delete!(features, feat)
+        elseif startswith(sfeat, "rotate_")
             numform, α, β, γ = @scanf(sfeat, "rotate_%f_%f_%f", Float64, Float64, Float64)
             @assert numform == 3
             α *= π/180
             β *= π/180
             γ *= π/180
-            @show α,β,γ
+            #@show α,β,γ
             rotate_euler!(win, α, β, γ)
-        end
 
-        if feat == :binary_mask
-            delete!(features, feat)
-            if typeof(win) <: SeparableArray
+        elseif feat == :rotate
+            α = -0.0004052885
+            β = 1.05048844473
+            γ = 1.68221794936
+            rotate_euler!(win, α, β, γ)
+
+        elseif feat == :flip
+            reso = Resolution(nside)
+            for i=1:size(win,2)
+                θ, ϕ = pix2angRing(reso, i)
+                θ = π - θ
+                p = ang2pixRing(reso, θ, ϕ)
+                win[:,p], win[:,i] = win[:,i], win[:,p]
+            end
+
+        elseif feat == :radial
+            r0 = rmax * 0.55
+            phi = @. exp(- (r / r0)^2)
+            if win isa SeparableArray
+                win.phi .*= phi
+            else
+                win .*= phi
+            end
+
+        elseif feat == :radial_expmrr0
+            r0 = (rmin + rmax) / 2 / 3
+            phi = @. exp(- r / r0)
+            if win isa SeparableArray
+                win.phi .*= phi
+            else
+                win .*= phi
+            end
+
+        elseif feat == :clip
+            if win isa SeparableArray
+                win.mask[win.mask .< 0] .= 0
+                win.mask[win.mask .> 1] .= 1
+            else
+                win[win .< 0] .= 0
+                win[win .> 1] .= 1
+            end
+
+        elseif feat == :binary_mask
+            if win isa SeparableArray
                 for i=1:length(win.mask)
                     win.mask[i] = (win.mask[i] > 0.5) ? 1 : 0
                 end
             else
                 for i=1:nr
+                    avg = mean(win[i,:])
                     for j=1:size(win,2)
-                        win[i,j] = (win[i,j] > 0.5) ? avg : 0
+                        win[i,j] = (win[i,j] > 0.5*avg) ? avg : 0
                     end
                 end
             end
+
+        elseif feat == :+
+            win2 = make_window(wmodes, features[ifeat+1:end]...)
+            win = win .+ win2
+            break  # stop processing
+
+        elseif feat == :separable
+            mask = mean(win, dims=1)[:]
+            phi = mean(win, dims=2)[:]
+            win = @SeparableArray phi mask
+
+        else
+            # Maybe it is a bit harsh to error on this. However, it is better to be
+            # strict here, because we want to avoid running, say, 1000 simulations
+            # with the wrong window.
+            error("Unsupported feature $feat.")
+        end
+
+        # always normalize
+        if win isa SeparableArray
+            win.mask ./= maximum(win.mask)
+            win.phi ./= maximum(win.phi * win.mask')
+        else
+            win ./= maximum(win)
         end
     end
 
+    # always normalize
     @show extrema(win)
-    @assert maximum(win) ≈ 1  rtol=eps(1.0)
-
-    if length(features) != 0
-        # Maybe it is a bit harsh to error on this. However, it is better to be
-        # strict here, because we want to avoid running, say, 1000 simulations
-        # with the wrong window.
-        error("Unsupported features $features")
+    if win isa SeparableArray
+        win.mask ./= maximum(win.mask)
+        win.phi ./= maximum(win.phi * win.mask')
+    else
+        win ./= maximum(win)
     end
+
+    if minimum(win) < 0
+        @warn "Window goes negative" size(win) nside extrema(win) features
+    end
+    @assert prevfloat(1.0) <= maximum(win) <= nextfloat(1.0)
 
     return win
 end
