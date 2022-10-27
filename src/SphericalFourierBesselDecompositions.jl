@@ -476,12 +476,14 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
         @error "Window goes negative" size(win) nside extrema(win) features
     end
 
-    if maximum(win) > nextfloat(1)
+    if maximum(win) > nextfloat(1.0)
         @error "Window goes above 1" size(win) nside extrema(win) features
     end
-    if maximum(win) < prevfloat(1)
-        @warn "Window goes above 1" size(win) nside extrema(win) features
-    end
+    #if maximum(win) < prevfloat(1)
+    #    # This is not a sing of badness if this is going to be added to
+    #    # another window.
+    #    @warn "Window goes above 1" size(win) nside extrema(win) features
+    #end
 
     return win
 end
