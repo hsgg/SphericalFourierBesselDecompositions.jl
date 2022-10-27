@@ -36,7 +36,7 @@
 module Windows
 
 export ConfigurationSpaceModes
-export window_r, apply_window, apodize_window
+export window_r, get_rbounds, apply_window, apodize_window
 export win_rhat_ln, integrate_window, calc_wmix, power_win_mix, win_lnn
 export get_wmix
 export check_nsamp
@@ -113,6 +113,15 @@ r, Δr = SFB.window_r(wmodes)
 ```
 """
 window_r(wmodes::ConfigurationSpaceModes) = wmodes.r, wmodes.Δr
+
+
+function get_rbounds(wmodes::ConfigurationSpaceModes)
+    rmin = wmodes.rmin
+    rmax = wmodes.rmax
+    nr = wmodes.nr
+    rbounds = range(rmin, rmax, length=nr+1)
+    return rbounds
+end
 
 
 # only a basic implementation, with lots of edge cases poorly handled

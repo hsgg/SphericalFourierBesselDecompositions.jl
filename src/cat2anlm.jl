@@ -218,9 +218,9 @@ function winweights2galweights(weights, wmodes, rθϕ)
     rmin = wmodes.rmin
     rmax = wmodes.rmax
     rmid = wmodes.r
+    rbounds = get_rbounds(wmodes)
     Δr = wmodes.Δr
     nside = wmodes.nside
-    rbounds = range(rmin, rmax, length=wmodes.nr+1)
     reso = Resolution(nside)
     Ngal = size(rθϕ,2)
     w = fill(1.0, Ngal)
@@ -259,7 +259,7 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weight=ones(eltype(rθϕ), s
     @show nbar length(r)
     sphbesg = amodes.basisfunctions
     knl = amodes.knl
-    pix = ang2pixRing.(Ref(Resolution(amodes.nside)), θ, ϕ) # .+ 1  # python is 0-indexed
+    pix = ang2pixRing.(Ref(Resolution(amodes.nside)), θ, ϕ)
     pmu, pmupix = make_pmu_pmupix(pix)
     #@time masked_pixels = get_masked_pixels(win_rhat_ln)  # doesn't seem to help
     @show typeof(pmu) typeof(pmupix)
