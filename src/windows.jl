@@ -768,14 +768,14 @@ function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, int
                 N, N′ = N′, N
             end
 
-            @turbo mixii′ = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes,
+            mixii′ = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes,
                                         Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
             #l, n, n′ = getlnn(cmodes, i)
             #@show i,i′,(l,n,n′),(L,N,N′),mixii′
 
             if (!interchange_NN′) && (N != N′)
                 # Since we only save the symmetric part where N′ >= N
-                @turbo mixii′ += calc_cmixii(i, L, N′, N, r, Δr, gnlr, cmodes,
+                mixii′ += calc_cmixii(i, L, N′, N, r, Δr, gnlr, cmodes,
                                              Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
                 #@show mixii′
             end
