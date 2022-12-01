@@ -436,7 +436,7 @@ end
 
 # evaluate gnl(r)
 
-function evaluate(sphbesg::SphericalBesselGnl{Nothing,Tyl}, n, l, r) where{Tyl}
+function evaluate(sphbesg::SphericalBesselGnl{Nothing,Tyl}, n, l, r) where {Tyl}
     k = sphbesg.knl[n,l+1]
     c = sphbesg.cnl[n,l+1]
     d = sphbesg.dnl[n,l+1]
@@ -448,6 +448,14 @@ function evaluate(sphbesg::SphericalBesselGnl{Array{Tspl,2},Tyl}, n, l, r) where
 end
 
 (sphbesg::SphericalBesselGnl)(n, l, r) = evaluate(sphbesg, n, l, r)
+
+
+# derivative gnl'(r)
+
+function Splines.derivative(sphbesg::SphericalBesselGnl{Array{Tspl,2},Tyl}, n, l, r) where {Tspl,Tyl}
+    return derivative(sphbesg.gnl[n,l+1], r)
+end
+
 
 
 end
