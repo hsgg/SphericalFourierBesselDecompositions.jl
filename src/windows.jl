@@ -365,7 +365,7 @@ function win_lnn(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes)
     @assert all(isfinite, Wr_00)
 
     r, Δr = window_r(wmodes)
-    Wlnn = calc_intr_gg_fn(Spline1D(r, Wr_00), wmodes, cmodes; derivative=0)
+    Wlnn = calc_intr_gg_fn(Spline1D(r, Wr_00 / √(4π)), wmodes, cmodes; derivative=0)
     return Wlnn
 end
 
@@ -388,7 +388,7 @@ function calc_intr_gg_fn(func, wmodes::ConfigurationSpaceModes, cmodes::ClnnMode
 
             @views sgg = gnlr[:,n,l+1]' * gnlr[:,n′,l+1]
 
-            out[i] = sgg / √(4π)
+            out[i] = sgg
         end
         return out
     end
