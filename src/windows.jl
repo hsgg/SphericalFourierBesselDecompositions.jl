@@ -39,7 +39,7 @@ export ConfigurationSpaceModes
 export window_r, get_rbounds, apply_window, apodize_window
 export win_rhat_ln, integrate_window, calc_wmix, power_win_mix, win_lnn
 export get_wmix
-export check_nsamp
+export check_nsamp, calc_intr_gg_fn
 export calc_fvol
 
 using ..Modes
@@ -48,6 +48,7 @@ using ..Splines
 using ..MyBroadcast
 using ..HealpixHelpers
 using ..LMcalcStructs
+using ..GNL
 using Healpix
 using LinearAlgebra
 using SpecialFunctions
@@ -550,9 +551,10 @@ function precompute_gnlr_nodes_weights(amodes, wmodes; derivative=0)
     #@. weights *= (rmax - rmin) / 2
     #@. nodes = (rmin + rmax) / 2 + (rmax - rmin) / 2 * nodes
 
-    gnl = (derivative == 1) ? x->derivative(amodes.basisfunctions,x) : amodes.basisfunctions
-    gnlr = fill(NaN, nr, size(gnl.knl)...)
-    Threads.@threads for l=0:amodes.lmax
+    gnl = (derivative == 1) ? (n,l,x)->GNL.Splines.derivative(amodes.basisfunctions,n,l,x) : amodes.basisfunctions
+    gnlr = fill(NaN, nr, size(amodes.basisfunctions.knl)...)
+    #Threads.@threads
+    for l=0:amodes.lmax
         for n=1:amodes.nmax_l[l+1]
             @views @. gnlr[:,n,l+1] = gnl(n,l,nodes)
         end
