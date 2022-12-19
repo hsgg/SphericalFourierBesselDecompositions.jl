@@ -109,7 +109,7 @@ using Test
 
         println("Calculate C4:")
         @time C4 = SFB.Theory.calc_C4(C_th, cmix_W, cmix_wW, Veff, cmodes)
-        @time C4 = SFB.Theory.calc_C4_z(C_th, cmix_Wtilde, cmix_wW, cmodes)
+        @time T4 = SFB.Theory.calc_T4mat_z(cmix_Wtilde, cmix_wW, cmodes)
 
     end
 

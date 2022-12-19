@@ -430,22 +430,26 @@ function calc_T23_z(cmix_wW, cmodes, amodes_red, wWmix, wWmix_negm, W̃mix, W̃m
 end
 
 
-function calc_C4_z(C_th, cmix_Wtilde, cmix_wW, cmodes)
-
-    CWtilde = cmix_Wtilde * C_th
+function calc_T4mat_z(cmix_Wtilde, cmix_wW, cmodes)
 
     lnnsize = getlnnsize(cmodes)
+
+    V = fill(0.0, lnnsize)
+
     for i=1:lnnsize
         l, n1, n2 = getlnn(cmodes, i)
-        if l != 0
-            CWtilde[i] = 0
+        if l == 0
+            V[i] = 1
         end
     end
 
-    C4 = cmix_wW * CWtilde
+    delta_K_lrho = Diagonal(V)
 
-    return C4
+    T4 = cmix_wW * delta_K_lrho * cmix_Wtilde
+
+    return T4
 end
+
 
 
 end
