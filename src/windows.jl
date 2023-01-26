@@ -717,7 +717,7 @@ end
 function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, interchange_NN′)
     println("cmix full:")
 
-    p = Progress(lnnsize, progressmeter_update_interval, "cmix full: ")
+    p = Progress(lnnsize^2, progressmeter_update_interval, "cmix full: ")
 
     #@time for i′=1:lnnsize
     #@time Threads.@threads for i′=1:lnnsize
@@ -750,7 +750,7 @@ function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, int
 
             mout[idx] = mixii′
         end
-        next!(p, step=length(ii′), showvalues=[(:batchsize, length(ii′))])
+        next!(p, step=length(ii′), showvalues=[(:batchsize, length(ii′)), (:counter, p.counter)])
         return mout
     end
 
