@@ -1,0 +1,974 @@
+\documentclass[aps,prd,reprint,floatfix,superscriptaddress,showkeys,nofootinbib]{revtex4-1}
+
+
+
+
+\bibliographystyle{apsrev4-2-truncate}
+\setcitestyle{authoryear,round}
+\setlength{\bibsep}{4pt}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+
+\usepackage{graphicx}
+
+\usepackage{savesym}
+\savesymbol{tablenum}
+\usepackage{siunitx}
+\sisetup{group-separator={,},group-digits=integer}
+\restoresymbol{SIX}{tablenum}
+
+\usepackage{mathtools}
+\savesymbol{corresponds}
+\usepackage{mathabx}  % for \widebar
+\restoresymbol{ABX}{corresponds}
+\usepackage{bm}
+
+\usepackage{verbatim}
+\usepackage{rotate}
+\usepackage{color}
+\usepackage{aas_macros}
+\usepackage{tikz}
+\usetikzlibrary{calc}
+\usepackage{ulem}
+\normalem  % https://tex.stackexchange.com/questions/104058/getting-emph-back-to-normal-after-loading-ulem
+
+
+\DeclareFontFamily{OT1}{pzc}{}
+\DeclareFontShape{OT1}{pzc}{m}{it}%
+            {<-> s * [1.10] pzcmi7t}{}
+\DeclareMathAlphabet{\mathscr}{OT1}{pzc}%
+                                {m}{it}
+
+\definecolor{RedWine}{rgb}{0.743,0,0}
+\definecolor{green(pigment)}{rgb}{0.0,0.65,0.31}
+\definecolor{RoyalBlue}{rgb}{0.25,0.41,0.88}
+\newcommand{\hg}[1]{\textcolor{green(pigment)}{\textbf{(HG: #1)}}}
+\newcommand{\Oli}[1]{\textcolor{RedWine}{\textbf{(Oli: #1)}}}
+
+\newcommand{\be}{\begin{equation}}
+\newcommand{\ee}{\end{equation}}
+\newcommand{\bea}{\begin{eqnarray}}
+\newcommand{\eea}{\end{eqnarray}}
+\def\ba#1\ea{\begin{align}#1\end{align}}
+
+\def\({\left(}
+\def\){\right)}
+\def\<{\left\langle}
+\def\>{\right\rangle}
+
+
+\newcommand{\vs}{\nonumber\\} 
+
+\def\vK{{\bm{K}}}
+\def\vR{{\bm{R}}}
+\def\vr{{\bm{r}}}
+\def\vx{{\bm{x}}}
+\def\vv{{\bm{v}}}
+\def\vp{{\bm{p}}}
+\def\vvs{{\bm{s}}}
+\def\vk{{\bm{k}}}
+\def\vY{{\bm{Y}}}
+\def\vy{{\bm{y}}}
+\def\vq{{\bm{q}}}
+\def\vu{{\bm{u}}}
+\def\vz{{\bm{z}}}
+\def\vgam{{\bm{\gamma}}}
+% Caught you peaking at the source code!
+\def\vPsi{{\bm{\Psi}}}
+
+\def\vecl{\vec{l}}
+\def\vecL{\vec{L}}
+\def\vecv{\vec{v}}
+\def\veck{\vec{k}}
+\def\vecp{\vec{p}}
+\def\vecx{\vec{x}}
+\def\vect{\vec{\theta}}
+
+\def\JM{{(\ell m)}}
+\def\lm{{(\ell m)}}
+\def\zt{\tilde{z}}
+\def\chit{{\tilde\chi}}
+\def\bt{b_e}
+\def\H{\mathcal{H}}
+\def\Gaunt#1#2#3#4#5#6{\mathcal{G}^{#1}_{#4}{}^{#2}_{#5}{}^{#3}_{#6}}
+\def\PA{\mathrm{PA}}
+
+\def\ehat{{\hat{\bm{e}}}}
+\def\nhat{{\hat{\bm{n}}}}
+\def\khat{{\hat{\bm{k}}}}
+\def\Khat{{\hat{\bm{K}}}}
+\def\xhat{{\hat{\bm{x}}}}
+\def\vhat{{\hat{\bm{v}}}}
+\def\phat{{\hat{\bm{p}}}}
+\def\qhat{{\hat{\bm{q}}}}
+\def\rhat{{\hat{\bm{r}}}}
+\def\Rhat{{\hat{\bm{R}}}}
+\def\shat{{\hat{\bm{s}}}}
+\def\yhat{{\hat{\bm{y}}}}
+\def\zhat{{\hat{\bm{z}}}}
+\def\Nbar{{\bar{N}}}
+\def\nbar{{\bar{n}}}
+
+\def\fnl{f_\mathrm{NL}}
+\def\erfc{\mathrm{erfc}}
+\def\Pp{P_\Phi}
+\DeclareMathOperator{\erf}{erf}
+
+\def\orderof{\mathcal{O}}
+\newcommand{\half}[1][1]{\ensuremath{\frac{#1}{2}}}
+\newcommand{\quarter}[1][1]{\ensuremath{\frac{#1}{4}}}
+
+\DeclareSIUnit \parsec {pc}
+\DeclareSIUnit \h {\text{$h$}}
+\DeclareSIUnit \year {yr}
+\DeclareSIUnit \solarmass {M_\odot}
+\DeclareSIUnit \Mpc {\mega\parsec}
+\newcommand{\hMpc}{\ensuremath{\mega\parsec\per\h}}
+
+\def\tot{\rm total}
+\def\oii{\mathrm{OII}}
+\def\oiii{\mathrm{OIII}}
+\def\lae{\mathrm{LAE}}
+\def\lin{\mathrm{lin}}
+\def\hae{\mathrm{HAE}}
+
+\def\th{\mathrm{th}}
+\def\obs{\mathrm{obs}}
+\def\proj{\mathrm{proj}}
+\def\true{\mathrm{true}}
+\def\inferred{\mathrm{inferred}}
+\def\est{\mathrm{est}}  % current estimate (in an iterative setting)
+\def\min{\mathrm{min}}
+\def\max{\mathrm{max}}
+\def\mid{\mathrm{mid}}
+\def\sky{\mathrm{sky}}
+\def\fill{\mathrm{fill}}
+
+\def\xlae{x_\lae}
+\def\xoii{x_\oii}
+\def\Plin{P_{\rm Lin}}
+
+\def\tr{\mathrm{tr}}
+\def\atanh{\mathrm{atanh}}
+
+\def\Like{\mathfrak{L}}
+\def\f{\mathfrak{f}}
+\def\g{\mathfrak{g}}
+\def\ffid{\f_\mathrm{true}}
+\def\gfid{\g_\mathrm{true}}
+\def\Q{{\cal Q}}
+
+\def\dd{\mathrm{d}}
+\def\deriv#1{\mathrm{\romannumeral #1}}
+
+\def\myapp#1#2{%
+  \mathrel{%
+    \setbox0=\hbox{$#1\sim$}%
+    \setbox2=\hbox{%
+      \rlap{\hbox{$#1\propto$}}%
+      \lower1.1\ht0\box0%
+    }%
+    \raise0.25\ht2\box2%
+  }%
+}
+\def\approxpropto{\mathpalette\myapp\relax}
+
+
+\newcommand{\incgraph}[2][0.49]{\includegraphics[width=#1\textwidth]{#2}}
+
+\newcommand{\changed}[1]{\textcolor{red}{#1}}
+\newcommand{\changedd}[1]{#1}%\textcolor{black}{#1}}
+
+\usepackage[colorlinks]{hyperref}
+\usepackage[capitalise]{cleveref}
+\newcommand{\crefrangeconjunction}{--}
+
+\hypersetup{
+colorlinks=true,
+citecolor=cyan,
+pagebackref=true,}
+
+
+\begin{document}
+
+\title{SuperFaB: a fabulous code for Spherical Fourier-Bessel decomposition}
+
+\author{Henry S. \surname{Grasshorn Gebhardt}}
+\email{henry.s.gebhardt@jpl.nasa.gov}
+\thanks{NASA Postdoctoral Program Fellow}
+\affiliation{Jet Propulsion Laboratory, California Institute of Technology, Pasadena, CA 91109, USA}
+\affiliation{California Institute of Technology, Pasadena, CA 91125, USA}
+
+\author{Olivier \surname{Dor\'e}}
+\affiliation{Jet Propulsion Laboratory, California Institute of Technology, Pasadena, CA 91109, USA}
+\affiliation{California Institute of Technology, Pasadena, CA 91125, USA}
+
+
+
+
+\begin{abstract}
+	Here we derive supplemental things for the code.
+\end{abstract}
+
+\keywords{cosmology; large-scale structure}
+
+
+\maketitle
+
+\newcommand{\codename}{\emph{SuperFaB}}
+
+
+
+
+
+\section{Window and selection function}
+The observed number density $n(\vr)$ of galaxies is subject to the window and
+selection function $W(\vr)$ of the survey, which we define as the fraction of
+galaxies observed at position $\vr$. For a random catalogue subject to the same
+window function, with density $n_r(\vr)$, and with $1/\alpha$ as many galaxies
+as the survey, we then have
+\ba
+\label{eq:window_definition}
+\alpha\<n_r(\vr)\> = W(\vr) \, \bar n\,,
+\ea
+where $\<n_r(\vr)\>=\alpha^{-1}\bar n(\vr)$ is the average number density of
+the ensemble of random catalogs, and $\bar n$ is the average number density in
+the survey. Note that \cref{eq:window_definition} can equivalently be expressed
+in terms of the limit $\lim_{\alpha\to0}\alpha\,n_r(\vr)=\bar
+n(\vr)=W(\vr)\,\bar n$. With this definition of the window function, we define
+the effective volume as
+\ba
+\label{eq:Veff}
+  V_\mathrm{eff} &= \int\dd^3\vr\,W(\vr)\,,
+\ea
+so that the average number density $\bar n$ becomes
+\ba
+\label{eq:nbar}
+  \bar n &= \frac{N_\mathrm{gal}^\obs}{V_\mathrm{eff}}\,,
+\ea
+and $N_\mathrm{gal}^\obs$ is the observed number of galaxies in the survey. Any
+variation across the survey in the actual average number density, e.g., due to
+an evolving luminosity function, is absorbed into $W(\vr)$.
+Our treatment is in line with \citet{Taruya+:2021PhRvD.103b3501T}, and our
+$W(\vr)$ takes the role of the function $G(\vr)$ in
+\citet{Feldman+:1994ApJ...426...23F}, except that we do not at present include
+a weighting scheme.
+
+In a sense, there are two window functions here: first, the one defined by the
+SFB procedure and limited by $r_\min \leq r \leq r_\max$, and second, $W(\vr)$,
+which defines the geometry and selection of the survey. However, the first one
+should be irrelevant as long as the survey volume is entirely inside $r_\min
+\leq r \leq r_\max$ and as along as sufficient number of modes are included in
+the SFB analysis.
+
+The observed density fluctuation field is, then,
+\ba
+  \delta^\obs(\vr)
+    &= \frac{n(\vr) - \alpha\,n_r(\vr)}{\nbar}
+    = \frac{n(\vr)}{\nbar} - W(\vr)\,,
+  \label{eq:density_constrast_discrete_points}
+\ea
+where \cref{eq:window_definition} was used in the limit that the random
+catalogue has an infinite number of galaxies, or $\alpha\to0$. Because the
+observed density $n(\vr)$ is also subject to the window function $W(\vr)$, the
+observed and true density contrasts are related by
+\ba
+\delta^\obs(\vr) &= W(\vr)\, \delta^A(\vr)\,,
+\ea
+where we attach the superscript `A' to refer to the local average effect (see
+\cref{sec:sfb_local_average_effect} below).
+Transforming to SFB-space and expressing $\delta^A(\vr)$ in terms of its SFB
+decomposition
+\cref{eq:sfb_discrete_fourier_pair_a,eq:sfb_discrete_fourier_pair_b}, we get
+\ba
+\delta^\obs_{n \ell m}
+&=
+\sum_{n'\ell'm'}
+W_{n \ell m}^{n'\ell'm'}
+\,\delta^A_{n'\ell'm'}\,,
+\label{eq:delta_mixing}
+\ea
+where
+\ba
+\label{eq:delta_mixing_matrix_discrete}
+W_{n \ell m}^{n'\ell'm'}
+&=
+\int\dd r\,r^2
+\,g_{n\ell}(r)
+\,g_{n'\ell'}(r)
+\vs&\quad\times
+\int\dd^2\rhat
+\,Y^*_{\ell m}(\rhat)
+\,Y_{\ell'm'}(\rhat)
+\,W(r,\rhat)\,.
+\ea
+
+\subsubsection{Properties and implementation}
+From \cref{eq:delta_mixing_matrix_discrete} follows the symmetry
+\ba
+\label{eq:sfb_window_parity}
+W_{n,\ell,m}^{n',\ell',-m'}
+&=
+(-1)^{m+m'}
+W_{n,\ell,-m}^{n',\ell',m',*}
+\,,
+\ea
+and the Hermitian property
+\ba
+\label{eq:sfb_window_symmetry}
+W_{n\ell m}^{n' \ell' m'}
+&=
+W^{n\ell m,*}_{n' \ell' m'}\,.
+\ea
+In the special case that $W(\vr)=1$ everywhere,
+\ba
+W_{n \ell m}^{n'\ell'm'}
+&=
+\delta^K_{nn'}
+\delta^K_{\ell\ell'}
+\delta^K_{mm'}\,,
+\ea
+which follows from \cref{eq:gnl_orthonormality} and \cref{eq:YlmYlmDelta}.
+
+In all generality, \cref{eq:delta_mixing_matrix_discrete} can be simplified for computational
+convenience by expressing the window function in terms of an angular
+transform. That is, introduce
+\ba
+\label{eq:win_r_lm}
+W_{LM}(r)
+&=
+\int\dd^2\rhat\,Y^*_{LM}(\rhat)\,W(r,\rhat)\,.
+\ea
+Then,
+\ba
+W_{n \ell m}^{n'\ell'm'}
+&=
+(-1)^m
+\sum_{L}
+\mathcal{G}^{\ell\ell'L}_{-m,m',m-m'}
+\vs&\quad\times
+\int\dd r\,r^2
+\,g_{n\ell}(r)
+\,g_{n'\ell'}(r)
+\,W_{L,m-m'}(r)
+\label{eq:delta_mixing_matrix_discrete_sht}
+\,, 
+\ea
+where we used \cref{eq:Ylm_conjugate} and introduced the Gaunt
+factor \cref{eq:gaunt_factor}.
+In writing \cref{eq:delta_mixing_matrix_discrete_sht} we performed the angular
+transform of the window function only as that leads to a computationally
+suitable form. Had we performed a full SFB transform, we would have been left
+with an infinite sum over $n$ that converges slowly, in addition to the need of
+computing integrals over three spherical Bessel functions.
+
+
+
+\begin{widetext}
+\section{Power spectrum estimation}
+\citet{Wandelt+:2001PhRvD..64h3003W,Hivon+:2002ApJ...567....2H} use a
+\emph{pseudo-$C_\ell$} method to estimate the power spectrum. Translating to
+the SFB decomposition, the pseudo-$C_\ell$ method assumes that much of the
+information about the power spectrum is contained in the pseudo-power spectrum
+\ba
+\label{eq:sfb_clnnobs}
+\hat C^{XY,\obs}_{\ell nn'}
+   &= \frac{1}{2\ell+1}\sum_m \delta^{X,\obs}_{n\ell m} \delta^{Y,\obs,*}_{n'\ell m}\,.
+\ea
+That is, we ignore off-diagonal terms $L\neq\ell$ and $M\neq m$, and average
+over $m$. The effect of the window is then described by a mixing matrix between
+the $\hat C^\obs_{\ell nn'}$ and $\hat C^A_{\ell nn'}$,
+\ba
+\label{eq:cell_mixing_matrix}
+C^{XY,\obs}_{\ell nn'}
+   &=
+   \frac{1}{2\ell+1}\sum_m
+   \sum_{NLM} \sum_{N'L'M'}
+   W_{n\ell m}^{X,NLM}
+   W_{n'\ell m}^{Y,N'L'M',*}
+   \<\delta^{X}_{NLM} \delta^{Y,*}_{N'L'M'}\>
+   \\
+   &= \sum_{LNN'} \frac{1}{2\ell+1}\sum_{mM}
+   W_{n\ell m}^{X,NLM}
+   W_{n'\ell m}^{Y,N'LM,*}
+   C^{XY,A}_{LNN'}
+   \\
+   &= \sum_{LNN'} \mathcal{M}_{\ell nn'}^{XY,LNN'}\,C^{XY,A}_{LNN'}
+   \,,
+\ea
+where we used \cref{eq:delta_mixing} and defined
+\ba
+\label{eq:sfb_cmix}
+\mathcal{M}_{\ell nn'}^{XY,LNN'}
+&=
+\frac{1}{2\ell+1}\sum_{mM}
+W_{n\ell m}^{X,NLM}
+W_{n'\ell m}^{Y,N'LM,*}
+\,,
+\ea
+and the index `A' on $C^A_{\ell nn'}$ indicates the local average effect, see
+\cref{sec:sfb_local_average_effect}. Next, with
+\cref{eq:win_r_lm,eq:delta_mixing_matrix_discrete_sht} we get
+\ba
+\mathcal{M}_{\ell nn'}^{XY,LNN'}
+&=
+\frac{1}{2\ell+1}\sum_{mM}
+\vs&\quad\times
+(-1)^m
+\sum_{L_1 M_1}
+\mathcal{G}^{\ell L L_1}_{-m,M,M_1}
+\int\dd r\,r^2
+\,g_{n\ell}(r)
+\,g_{NL}(r)
+\,W^X_{L_1M_1}(r)
+\vs&\quad\times
+(-1)^m
+\sum_{L_2 M_2}
+\mathcal{G}^{\ell L L_2}_{-m,M,M_2}
+\int\dd r\,r^2
+\,g_{n'\ell}(r)
+\,g_{N'L}(r)
+\,W^{Y,*}_{L_2M_2}(r)
+\\
+&=
+\sum_{L_1 M_1}
+\sum_{L_2 M_2}
+\frac{1}{2\ell+1}\sum_{mM}
+\mathcal{G}^{\ell L L_1}_{-m,M,M_1}
+\mathcal{G}^{\ell L L_2}_{-m,M,M_2}
+\vs&\quad\times
+\int\dd r\,r^2 \,g_{n\ell}(r) \,g_{NL}(r) \,W^X_{L_1M_1}(r)
+\int\dd r\,r^2 \,g_{n'\ell}(r) \,g_{N'L}(r) \,W^{Y,*}_{L_2M_2}(r)
+\,.
+\ea
+\end{widetext}
+Using the orthogonality of the Gaunt factor \cref{eq:gaunt_orthogonality},
+\ba
+\mathcal{M}_{\ell nn'}^{XY,LNN'}
+&=
+\frac{2L+1}{4\pi}
+\sum_{L_1}
+\begin{pmatrix}
+  \ell & L & L_1 \\
+  0 & 0 & 0
+\end{pmatrix}^2
+\sum_{M_1}
+\vs&\quad\times
+\int\dd r\,r^2 \,g_{n\ell}(r) \,g_{NL}(r) \,W^X_{L_1M_1}(r)
+\vs&\quad\times
+\int\dd r\,r^2 \,g_{n'\ell}(r) \,g_{N'L}(r) \,W^{Y,*}_{L_1M_1}(r)
+\label{eq:cell_mixing_matrix_explicit}
+\,.
+\ea
+
+
+
+
+\ba
+\mathcal{M}_{\ell nn'}^{LNN'}
+&=
+\frac{2L+1}{4\pi}
+\sum_{L_1}
+\begin{pmatrix}
+  \ell & L & L_1 \\
+  0 & 0 & 0
+\end{pmatrix}^2
+\sum_{M_1}
+\vs&\quad\times
+\int\dd r\,r^2
+\,g_{n\ell}(r)
+\,g_{NL}(r)
+\,W_{L_1M_1}(r)
+\vs&\quad\times
+\int\dd r'\,r'^2
+\,g_{n'\ell}(r')
+\,g_{N'L}(r')
+\,W^*_{L_1M_1}(r')
+\label{eq:cell_mixing_matrix_explicit}
+\,,
+\ea
+and we used the orthogonality of the Gaunt factor
+\cref{eq:gaunt_3j,eq:3j_orthogonality}. (The sum over $M_1$ could be
+performed first. However, that approach is much more memory intensive, so that
+computing the integrals first ends up being faster. We have also avoided
+expressing the result in terms of a full SFB transform, as that would require a
+slowly-converging sum over $n$.)
+Note that the matrix $(2L+1)^{-1}\mathcal{M}_{\ell nn'}^{LNN'}$ is symmetric under exchange of the set of indices $(LNN')$ and $(\ell nn')$,
+but $\mathcal{M}$ by itself is not.
+
+
+\subsection{Separable mask and radial selection}
+It is quite common that the window function is separable into a radial and an
+angular term,
+\ba
+W(\vr) &= \phi(r) \, M(\rhat)\,.
+\ea
+If the flux limit in a blind
+survey is near $L^*$, then the selection could change dramatically as a
+function of angular depth variations that are due to, e.g., atmospheric
+variations, and the separation of angular and radial selection would be a poor
+approximation.
+However, eBOSS, for example, had more targets selected in regions where two or
+more plates overlapped \citep[e.g.][]{deMattia+:2021MNRAS.501.5616D}.
+Similarly, PFS will have higher target numbers where pointings overlap
+\citep{Sunayama+:2020JCAP...06..057S}.
+
+When the window function is separable, then \cref{eq:win_r_lm} is separable as
+well,
+\ba
+W_{LM}(r)
+&=
+\phi(r) \, W_{LM}\,,
+\ea
+where
+\ba
+\label{eq:sfb_Wlm}
+W_{LM} &= \int\dd^2\rhat\,Y^*_{LM}(\rhat)\,M(\rhat)\,,
+\ea
+and \cref{eq:cell_mixing_matrix_explicit} becomes
+\ba
+\mathcal{M}_{\ell nn'}^{LNN'}
+&=
+\frac{2L+1}{4\pi}
+\sum_{L_1}
+\begin{pmatrix}
+  \ell & L & L_1 \\
+  0 & 0 & 0
+\end{pmatrix}^2
+\sum_{M_1}
+\left|W_{L_1M_1}\right|^2
+\vs&\quad\times
+\int\dd r\,r^2
+\,g_{n\ell}(r)
+\,g_{NL}(r)
+\,\phi(r)
+\vs&\quad\times
+\int\dd r'\,r'^2
+\,g_{n'\ell}(r')
+\,g_{N'L}(r')
+\,\phi(r')
+\,,
+\ea
+which is also separable, and therefore significantly reduces computation cost.
+\cref{eq:delta_mixing_matrix_discrete_sht} simplifies in a similar manner.
+
+In the special case that $W(\vr)=1$ everywhere, we recover the unit matrix
+\ba
+\mathcal{M}_{\ell nn'}^{LNN'}
+&=
+\delta^K_{\ell L}
+\delta^K_{nN}
+\delta^K_{n'N'}
+\,,
+\ea
+as expected.
+
+We give two further examples in \cref{fig:bcmix}. In the left panel, we show
+the mixing matrix for a mask covering half the sky, and this leads to coupling
+of neighboring $\ell$-modes. On the right, we add a radial selection decreasing
+with redshift, and this additionally leads to the coupling of neighboring
+$n$-modes.
+
+
+
+
+\section{Shot noise}
+The sampling of the density field by a limited number of points leads to a shot
+noise component in the power spectrum. To estimate the shot noise, we start
+with \citep{Peebles:1973ApJ...185..413P,Feldman+:1994ApJ...426...23F}
+\ba
+\<n(\vr)\,n(\vr')\>
+&=
+\bar n(\vr) \, \bar n(\vr') \left[1 + \xi(\vr,\vr')\right]
+\vs&\quad
++ \bar n(\vr)\,\delta^D(\vr - \vr')\,,
+\\
+\<n(\vr)\,n_r(\vr')\>
+&=
+\alpha^{-1}\,\bar n(\vr) \, \bar n(\vr')\,,
+\\
+\<n_r(\vr)\,n_r(\vr')\>
+&=
+\alpha^{-2}\,\bar n(\vr) \, \bar n(\vr')
++ \alpha^{-1}\,\bar n(\vr)\,\delta^D(\vr - \vr')\,.
+\ea
+The density contrast is given by \cref{eq:density_constrast_discrete_points},
+and the ensemble average becomes
+\ba
+\<\delta^\obs(\vr)\,\delta^\obs(\vr')\>
+&=
+W(\vr)\,W(\vr')\,\xi(\vr,\vr')
+\vs&\quad
++ (1+\alpha)\,\frac{W(\vr)\,\delta^D(\vr'-\vr)}{\bar n}\,,
+\ea
+where we used \cref{eq:window_definition}.
+Therefore, the SFB transform of the shot noise term becomes (see
+\cref{eq:sfb_discrete_fourier_pair_b})
+\ba
+N^\obs
+&= 
+\frac{1}{\bar n}\,\mathrm{SFB}^2[W(\vr)\delta^D(\vr'-\vr)]
+\\
+&= \frac{1}{\bar n}\,W_{n\ell m}^{n'\ell'm'}\,,
+\label{eq:shotnoise}
+\ea
+in the limit $\alpha\to0$, and the $W$ matrix is defined in
+\cref{eq:delta_mixing_matrix_discrete}. The window-corrected shot noise,
+therefore, is, in matrix form, $W^{-1}/\bar n$.
+
+For the pseudo-SFB-power-spectrum estimator the shot noise simplifies significantly.
+Averaging over the modes $m=m'$ and assuming $\ell=\ell'$, \cref{eq:shotnoise}
+becomes
+\ba
+\label{eq:Nshot_lnn}
+N_{\ell nn'}^{\obs}
+&=
+\frac{1}{\nbar}
+\,\frac{1}{\sqrt{4\pi}}\,
+\int\dd r\,r^2
+\,g_{n\ell}(r)
+\,g_{n'\ell}(r)
+\,W_{00}(r)
+\,,
+\ea
+where we used \cref{eq:delta_mixing_matrix_discrete_sht}. \cref{eq:Nshot_lnn}
+can be implemented very efficiently.
+
+
+\section{Pixel window}
+The pixel window refers to a distortion of the power spectrum due to binning
+galaxies into pixels. In the radial direction, we do not bin the galaxies, see
+\cref{eq:delta_nl_theta_phi_exact}, and, therefore, we do not have a radial
+pixel window \citep{Leistedt+:2012A&A...540A..60L}.
+
+However, the signal in \cref{eq:sfb_clnnobs} is still affected by the pixel
+window from the spherical harmonic transform. We correct this by subtracting
+the shot noise from the observed power spectrum, then using the \texttt{pixwin}
+function of \texttt{HealPy} to correct for the pixel window. We confirm the
+accuracy of this procedure with simulations in \cref{sec:sfb_applications}.
+
+
+
+
+
+
+
+\section{Covariance matrix of power spectrum}
+\label{sec:sfb_covariance}
+In this section we provide a covariance matrix for the SFB power spectrum.
+Several approaches have been used previously.
+\citet{Percival+:2004MNRAS.353.1201P,Wang+:2020JCAP...10..022W} trace the
+likelihood function either on a grid or using Markov Chain Monte Carlo
+techniques. \citet{Wang+:2020JCAP...10..022W}, e.g., use simulations to measure
+the covariance matrix from suites of mock catalogues. An analytical approach
+for the 3D power spectrum multipoles is presented in
+\citet{Wadekar+:2020PhRvD.102l3517W}. In this paper, we get an analytical
+estimate for the SFB power spectrum assuming that the density contrast is
+Gaussian, and we compare to 100 log-normal simulations. Non-Gaussian terms in
+the form of the disconnected trispectrum could be included similarly to
+\citet{Taruya+:2021PhRvD.103b3501T,Sugiyama+:2020MNRAS.497.1684S}.
+
+Super-sample variance \citep[e.g.,][]{dePutter+:2012JCAP...04..019D,
+Lacasa+:2019A&A...624A..61L, Li+:2018JCAP...02..022L} can have a significant
+impact on the covariance matrix. \emph{Beat coupling} is mode mixing due to the
+window function with correlation between pairs of non-linear modes and one
+large mode. The \emph{local average effect} is due to the large-scale mode
+modulating the average number density inside the survey volume. Both these
+effects can be treated in the manner of
+\cref{sec:sfb_local_average_effect,eq:delta_estimated}.
+
+The covariance matrix on the observed SFB power spectrum is
+\ba
+\label{eq:Clnnobs_covariance_raw}
+&V_{\ell nn'}^{LNN',\obs}
+\equiv
+\<\hat C^\obs_{\ell nn'} \, \hat C^\obs_{LNN'}\> - C^\obs_{\ell nn'} \, C^\obs_{LNN'}
+\vs
+&=
+\frac{1}{(2\ell+1)(2L+1)}\sum_{mM}\Big[
+  \<\delta^{W,A}_{n\ell m}\delta^{W,A}_{NLM}\> \<\delta^{{W,A},*}_{n'\ell m}\delta^{{W,A},*}_{N'LM}\>
+\vs&\quad
++\<\delta^{W,A}_{n\ell m}\delta^{{W,A},*}_{N'LM}\> \<\delta^{W,A}_{NLM}\delta^{{W,A},*}_{n'\ell m}\>
+\Big],
+\ea
+where we used Wick's theorem for a Gaussian density contrast. We simplify
+\cref{eq:Clnnobs_covariance_raw} in \cref{sec:sfb_covariance_simplification}.
+However, an analytical calculation remains computationally expensive.
+
+To get the covariance matrix for the window-corrected power spectrum,
+we write the matrix equation
+\ba
+\label{eq:covariance_matrix_window_deconvolution}
+V
+&=
+\mathcal{N}^{-1}\,V^{\obs}\,\mathcal{N}^{-1,T}\,.
+\ea
+where $\mathcal{N}$ is the bandpower-binned window coupling matrix given in
+\cref{eq:sfb_N_mixing}, and the binning of the covariance matrix is implied.
+
+A reasonably precise estimate can be obtained by counting modes and assuming
+the covariance matrix is diagonal. That is,
+\ba
+\label{eq:sfb_covariance_modecounting}
+V_{\ell nn'}^{LNN'}
+&\simeq
+\frac{\delta^K_{\ell L}}{N_\mathrm{modes}}
+\left[
+  C_{\ell nN}^\mathrm{binned}
+  C_{L n'N'}^\mathrm{binned}
+  +
+  C_{\ell nN'}^\mathrm{binned}
+  C_{L n'N}^\mathrm{binned}
+\right],
+\ea
+where the power spectrum includes the shot noise, $C_{\ell nn'}^\mathrm{binned} =
+C^\mathrm{signal}_{\ell nn'}+N^\mathrm{shot}_{\ell nn'}$, and
+\ba
+\label{eq:sfb_Nmodes}
+N_\mathrm{modes} &= f_\mathrm{vol} \,(2\ell+1)\,\Delta\ell\,\Delta n
+\,,
+\ea
+where $\Delta\ell$ and $\Delta n$ are the bin widths for modes $k_{n\ell}$, and
+$f_\mathrm{vol}$ is the fraction of the SFB transform-volume that is occupied
+by the survey, defined by
+\ba
+f_\mathrm{vol}
+&\equiv
+\frac{1}{V_\mathrm{SFB}}\int\dd^3\vr\,\tau\!\left[W(\vr) - W_\mathrm{threshold}\right],
+\ea
+where $\tau(x)$ is a step function and $W_\mathrm{threshold}$ is a threshold of
+the window function.
+
+The shot noise takes into account the variation of the number density across
+the survey, and it enters in \cref{eq:sfb_covariance_modecounting} as part of
+the power spectrum. The incomplete volume coverage enters as a reduction in the
+number of modes, and it is needed for the stability of the window-deconvolution
+when there are large unobserved regions in the SFB volume.
+
+In \cref{fig:covariance_matrix} we show the covariance matrices for a set of
+simulations that contain only shot noise (top left) as well as for a set of
+simulations with a physical galaxy power spectrum with bias $b=1.5$ at
+effective redshift $z_\mathrm{eff}=2$ (top right). In the figure we also show
+the analytical result from \cref{eq:Clnnobs_covariance_raw} (bottom panels).
+
+The colorbar in the figure is nonlinear. As a result, small elements appear
+amplified. To provide a more useful comparison, we introduce the difference
+between two covariance matrices, scaled to the center diagonal. That is, we
+introduce the relative difference
+\ba
+\label{eq:drho}
+\Delta\rho_{ij} &= \frac{C^A_{ij} - C^B_{ij}}{\sqrt{C^B_{ii}\,C^B_{jj}}}\,,
+\ea
+and we choose $C^B$ to refer to the analytic result. $\Delta\rho$ does not
+suffer from amplification of small differences far from the diagonal.
+
+Therefore, in \cref{fig:covariance_matrix_drho} we show the relative difference
+between the covariance matrix as obtained from simulations and the analytical
+result. However, in the figure we remove the largest mode, since we have not
+included the local average effect in the analytical calculation. All other
+modes are statistically essentially equal between simulation result and
+analytics.
+
+To show this more clearly, we present \cref{fig:covariance_matrix_diagonals},
+where we compare the main diagonal and the $\ell=L+1$ diagonal of the
+covariance matrices using the same statistic \cref{eq:drho}. Within the
+noise, we find good agreement between simulations and analytical result.
+
+
+
+
+
+
+
+
+
+%\acknowledgments
+
+
+\bibliography{../references}
+
+
+\appendix
+
+
+\section{Useful formulae}
+\label{app:sfb_useful_formulae}
+For any function $f(\vk)$
+\ba
+&\int k^2\dd{k}\,\dd^2\khat\,\delta^D(\vk-\vk')\,f(\vk)
+\vs
+&= \int\dd{k}\,\delta^D(k-k')\int\dd^2\khat\,\delta^D(\khat-\khat')\,f(\vk)\,.
+\ea
+Therefore,
+\ba
+\label{eq:dirac3D}
+\delta^D(\vk-\vk')
+&= k^{-2} \, \delta^D(k-k')\,\delta^D(\khat-\khat')\,.
+\ea
+Furthermore,
+\ba
+\frac{1}{r}\,\delta^D\!\(\frac{1}{r} - \frac{1}{r_0}\)
+&= r\,\delta^D\!\(r - r_0\)\,.
+\ea
+
+
+
+
+Spherical Bessel functions and spherical harmonics satisfy orthogonality
+relations
+\ba
+\label{eq:jljlDelta}
+\delta^D(k-k')
+&= \frac{2kk'}{\pi}\int_0^\infty\dd{r}\,r^2\,j_\ell(kr)\,j_\ell(k'r)\,, \\
+\label{eq:YlmYlmDelta}
+\delta^K_{\ell\ell'}\delta^K_{mm'}
+&= \int\dd{\Omega}_{\rhat}\,Y_{\ell m}(\rhat)\,Y^*_{\ell'm'}(\rhat)\,.
+\ea
+Spherical harmonics can be expressed in terms of a complex exponential and real
+associated Legendre functions $\mathrm{P}_\ell^m(x)$ as
+\ba
+\label{eq:spherical_harmonics}
+Y_{\ell m}(\rhat)
+&=
+e^{im\phi}
+\(\frac{(\ell - m)! (2\ell+1)}{4\pi\(\ell+m\)!}\)^\frac12
+\mathrm{P}_\ell^m\!\(\cos\theta\).
+\ea
+The completeness relation is
+\ba
+\label{eq:Ylm_completeness}
+\sum_{\ell m} Y_{\ell m}(\rhat)\,Y^*_{\ell m}(\rhat')
+&= \delta^D(\rhat - \rhat')\,.
+\ea
+Rayleigh's formula decomposes the plane waves into spherical Bessels and
+spherical harmonics,
+\ba
+\label{eq:rayleigh}
+e^{i\vq\cdot\vr} &=
+4\pi\sum_{\ell',m'} i^{\ell'} j_{\ell'}(qr)\,
+Y^*_{\ell'm'}(\qhat)\,Y_{\ell'm'}(\rhat)\,.
+\ea
+Legendre polynomials can be expressed as a sum over spherical harmonics as
+\ba
+\label{eq:legendre_spherical_harmonics}
+\mathcal{P}_\ell(\khat\cdot\rhat)
+&= \frac{4\pi}{2\ell+1}\sum_m Y_{\ell m}(\khat)\,Y_{\ell m}^*(\rhat)\,.
+\ea
+Flipping the sign of the component angular momentum or the direction of the
+argument to spherical harmonics gives
+\ba
+\label{eq:Ylm_conjugate}
+Y^*_{\ell m}(\rhat)
+&= (-1)^m Y_{\ell,-m}(\rhat)
+\,,\\
+\label{eq:Ylm_parity}
+Y_{\ell m}(-\rhat)
+&= (-1)^\ell Y_{\ell,m}(\rhat)\,.
+\ea
+The Gaunt factor is
+\ba
+\label{eq:gaunt_factor}
+\mathcal{G}^{\ell L L_1}_{mMM_1}
+&=
+\int\dd^2\rhat
+\,Y_{\ell m}(\rhat)
+\,Y_{LM}(\rhat)
+\,Y_{L_1M_1}(\rhat)\,,
+\ea
+and it can be expressed in terms of Wigner-$3j$ symbols,
+\ba
+\mathcal{G}^{\ell L L_1}_{mMM_1}
+&=
+\(\frac{(2\ell+1)(2L+1)(2L_1+1)}{4\pi}\)^\frac12
+\begin{pmatrix}
+  \ell & L & L_1 \\
+  0 & 0 & 0
+\end{pmatrix}
+\vs&\quad\times
+\begin{pmatrix}
+  \ell & L & L_1 \\
+  m & M & M_1
+\end{pmatrix}\,.
+\label{eq:gaunt_3j}
+\ea
+The Wigner $3j$ symbols obey an orthogonality relation
+\ba
+\sum_{mM}
+\begin{pmatrix}
+  \ell & L & L_1 \\
+  m & M & M_1
+\end{pmatrix}
+\begin{pmatrix}
+  \ell & L & L_2 \\
+  m & M & M_2
+\end{pmatrix}
+&=
+\frac{\delta^K_{L_1L_2}
+\delta^K_{M_1M_2}
+\delta^T(\ell,L,L_1)}
+{2L_1+1}\,,
+\label{eq:3j_orthogonality}
+\ea
+where $\delta^T(\ell,L,L_1)$ enforces the triangle relation that is also obeyed
+by the 3$j$-symbols.
+For the Gaunt factor that implies
+\begin{widetext}
+\ba
+\frac{1}{(2\ell+1)(2L+1)}
+\sum_{mM}
+\mathcal{G}^{\ell L L_1}_{mMM_1}
+\mathcal{G}^{\ell L L_2}_{mMM_2}
+&=
+\frac{
+	\delta^K_{L_1L_2}
+	\delta^K_{M_1M_2}
+	\delta^T(\ell,L,L_1)
+}{4\pi}
+\,\begin{pmatrix}
+  \ell & L & L_1 \\
+  0 & 0 & 0
+\end{pmatrix}^2
+\,,
+\label{eq:gaunt_orthogonality}
+\ea
+\end{widetext}
+That is, the Gaunt factor is only nonzero when
+\ba
+\label{eq:triangle_mmm}
+m + M + M_1 = 0\,,
+\\
+\label{eq:triangle_lll}
+|\ell - L| \leq L_1 \leq \ell + L\,.
+\ea
+Assuming the triangle condition is satisfied, for even $J=\ell+L+L_1$ we have
+\ba
+\begin{pmatrix}
+  \ell & L & L_1 \\
+  0 & 0 & 0
+\end{pmatrix}
+&=
+(-1)^{\frac12 J}
+\(\frac{(J-2\ell)!(J-2L)!(J-2L_1)!}{(J+1)!}\)^\frac12
+\vs&\quad\times
+\frac{\(\frac12J\)!}{\(\frac12J-\ell\)!\(\frac12J-L\)!\(\frac12J-L_1\)!}
+\,,
+\ea
+for odd $J=\ell+L+L_1$, those $3j$'s vanish when $m=M=M_1=0$.
+
+
+
+
+
+
+
+
+
+
+
+
+\end{document}
+
+
+
