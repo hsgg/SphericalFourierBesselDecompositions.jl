@@ -589,9 +589,8 @@ function optimize_Wr_lm_layout(Wr_lm::SeparableArray, LMAX)
 end
 
 
-function cmix_kernel(gg1, gg2, wr)
-    #@show size(gg1) size(gg2) size(wr)
-    real(dot(gg1, wr) * conj(dot(gg2, wr)))
+function cmix_kernel(gg1, gg2, w1r, w2r)
+    real(dot(gg1, w1r) * conj(dot(gg2, w2r)))
 end
 
 
@@ -599,7 +598,8 @@ function test_cmix_kernel()
     nr = 100
     gg1 = rand(nr)
     gg2 = rand(nr)
-    wr = rand(Complex{Float64}, nr)
+    w1r = rand(Complex{Float64}, nr)
+    w2r = rand(Complex{Float64}, nr)
     l = 20
     L = 20
     LMAX = l + L
@@ -610,32 +610,32 @@ function test_cmix_kernel()
     @show typeof(Wr_lm)
 
     # compile
-    cmix_kernel(gg1, gg2, wr)
-    calc_cmix_ang(l, L, L1M1cache, gg1, gg2, Wr_lm)
+    cmix_kernel(gg1, gg2, w1r, w2r)
+    calc_cmix_ang(l, L, L1M1cache, gg1, gg2, Wr_lm, Wr_lm)
 
     s = 0.0
-    @time cmix_kernel(gg1, gg2, wr)
-    @time cmix_kernel(gg1, gg2, Wr_lm[:,1])
+    @time cmix_kernel(gg1, gg2, wr, wr)
+    @time cmix_kernel(gg1, gg2, Wr_lm[:,1], Wr_lm[:,1])
 
     @show typeof(l) typeof(L) typeof(L1M1cache) typeof(gg1) typeof(gg2) typeof(Wr_lm)
 
-    @time calc_cmix_ang(l, L, L1M1cache, gg1, gg2, Wr_lm)
-    @time m_ang = calc_cmix_ang(l, L, L1M1cache, gg1, gg2, Wr_lm)
+    @time calc_cmix_ang(l, L, L1M1cache, gg1, gg2, Wr_lm, Wr_lm)
+    @time m_ang = calc_cmix_ang(l, L, L1M1cache, gg1, gg2, Wr_lm, Wr_lm)
     @show typeof(m_ang)
 end
 
 
-function calc_cmix_ang(l, L, L1M1cache, gg1, gg2, Wr_lm)
+function calc_cmix_ang(l, L, L1M1cache, gg1, gg2, W1r_lm, W2r_lm)
     #@debug "calc_cmix_ang" l L size(gg1) size(gg2) size(Wr_lm) size(L1M1cache) size(Wr_lm[1])
     m_ang = 0.0
     @views for L1=abs(l-L):2:(l+L)
         L1M1 = L1M1cache[L1+1,1]
         #@show L1,L1M1
-        s = cmix_kernel(gg1, gg2, Wr_lm[:,L1M1])
+        s = cmix_kernel(gg1, gg2, W1r_lm[:,L1M1], W2r_lm[:,L1M1])
         for M1=1:L1
             #@debug "" L1 M1
             L1M1 = L1M1cache[L1+1,M1+1]
-            s += 2 * cmix_kernel(gg1, gg2, Wr_lm[:,L1M1])
+            s += 2 * cmix_kernel(gg1, gg2, W1r_lm[:,L1M1], W2r_lm[:,L1M1])
         end
         m_ang += s * wigner3j000(l, L, L1)^2
     end
@@ -643,7 +643,7 @@ function calc_cmix_ang(l, L, L1M1cache, gg1, gg2, Wr_lm)
 end
 
 
-function calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes::ClnnModes, Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
+function calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes::ClnnModes, W1r_lm, W2r_lm, L1M1cache, div2Lp1, gg1, gg2)
     l, n, n′ = getlnn(cmodes, i)
     #L, N, N′ = getlnn(cmodes, i′)
 
@@ -654,7 +654,7 @@ function calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes::ClnnModes, Wr_lm, L1M1
     @views @. gg1 = r^2 * gnlr[:,n,l+1] * gnlr[:,N,L+1]
     @views @. gg2 = r^2 * gnlr[:,n′,l+1] * gnlr[:,N′,L+1]
 
-    mix = calc_cmix_ang(l, L, L1M1cache, gg1, gg2, Wr_lm)
+    mix = calc_cmix_ang(l, L, L1M1cache, gg1, gg2, W1r_lm, W2r_lm)
 
     mix = 1 / (4*π) * mix * Δr^2
     if !div2Lp1
@@ -666,16 +666,16 @@ end
 
 
 # for backward compatiblity
-function calc_cmixii(i, i′, cmodes::ClnnModes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, interchange_NN′, gg1, gg2)
+function calc_cmixii(i, i′, cmodes::ClnnModes, r, Δr, gnlr, W1r_lm, W2r_lm, L1M1cache, div2Lp1, interchange_NN′, gg1, gg2)
     L, N, N′ = getlnn(cmodes, i′)
     if interchange_NN′
         N, N′ = N′, N
     end
 
-    mix = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes, Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
+    mix = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes, W1r_lm, W2r_lm, L1M1cache, div2Lp1, gg1, gg2)
 
     if !interchange_NN′ && N != N′
-        mix += calc_cmixii(i, L, N′, N, r, Δr, gnlr, cmodes, Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
+        mix += calc_cmixii(i, L, N′, N, r, Δr, gnlr, cmodes, W1r_lm, W2r_lm, L1M1cache, div2Lp1, gg1, gg2)
     end
 
     return mix
@@ -683,7 +683,7 @@ end
 
 
 # specialize separable window
-function calc_cmixii(i, i′, cmodes, r, Δr, gnlgNLϕ, ang_mix::AbstractMatrix,
+function calc_cmixii(i, i′, cmodes, r, Δr, gnlgNLϕ1, gnlgNLϕ2, ang_mix::AbstractMatrix,
                      div2Lp1, interchange_NN′)
     l, n, n′ = getlnn(cmodes, i)
     L, N, N′ = getlnn(cmodes, i′)
@@ -693,16 +693,16 @@ function calc_cmixii(i, i′, cmodes, r, Δr, gnlgNLϕ, ang_mix::AbstractMatrix,
     #@show i,i′, n,n′, N,N′, l,l′
 
     #@show typeof(r) typeof(phi)
-    gg1 = gnlgNLϕ[n,l+1,N,L+1]
-    gg2 = gnlgNLϕ[n′,l+1,N′,L+1]
+    gg1 = gnlgNLϕ1[n,l+1,N,L+1]
+    gg2 = gnlgNLϕ2[n′,l+1,N′,L+1]
 
     m_ang = ang_mix[l+1,L+1]
 
     mix = m_ang * gg1 * gg2
 
     if !interchange_NN′ && N != N′
-        gg1 = gnlgNLϕ[n,l+1,N′,L+1]
-        gg2 = gnlgNLϕ[n′,l+1,N,L+1]
+        gg1 = gnlgNLϕ1[n,l+1,N′,L+1]
+        gg2 = gnlgNLϕ2[n′,l+1,N,L+1]
         mix += m_ang * gg1 * gg2
     end
 
@@ -714,7 +714,7 @@ function calc_cmixii(i, i′, cmodes, r, Δr, gnlgNLϕ, ang_mix::AbstractMatrix,
 end
 
 
-function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, interchange_NN′)
+function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, W1r_lm, W2r_lm, L1M1cache, div2Lp1, interchange_NN′)
     println("cmix full:")
 
     p = Progress(lnnsize^2, progressmeter_update_interval, "cmix full: ")
@@ -737,14 +737,14 @@ function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, int
             end
 
             mixii′ = calc_cmixii(i, L, N, N′, r, Δr, gnlr, cmodes,
-                                        Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
+                                        W1r_lm, W2r_lm, L1M1cache, div2Lp1, gg1, gg2)
             #l, n, n′ = getlnn(cmodes, i)
             #@show i,i′,(l,n,n′),(L,N,N′),mixii′
 
             if (!interchange_NN′) && (N != N′)
                 # Since we only save the symmetric part where N′ >= N
                 mixii′ += calc_cmixii(i, L, N′, N, r, Δr, gnlr, cmodes,
-                                             Wr_lm, L1M1cache, div2Lp1, gg1, gg2)
+                                             W1r_lm, W2r_lm, L1M1cache, div2Lp1, gg1, gg2)
                 #@show mixii′
             end
 
@@ -758,9 +758,14 @@ function calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, int
 end
 
 
+# Should probably remove these, because they are unique more by chance than by design
+power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes; kwargs...) = power_win_mix(win, win, wmodes, cmodes; kwargs...)
+power_win_mix(win, w̃, v, wmodes::ConfigurationSpaceModes, bcmodes::ClnnBinnedModes; kwargs...) = power_win_mix(win, win, w̃, v, wmodes, bcmodes; kwargs...)
+
+
 @doc raw"""
-    power_win_mix(win, wmodes, cmodes; div2Lp1=false, interchange_NN′=false)
-    power_win_mix(win, w̃mat, vmat, wmodes, bcmodes; div2Lp1=false, interchange_NN′=false)
+    power_win_mix(win1, win2, wmodes, cmodes; div2Lp1=false, interchange_NN′=false)
+    power_win_mix(win1, win2, w̃mat, vmat, wmodes, bcmodes; div2Lp1=false, interchange_NN′=false)
     power_win_mix(wmix, wmix_negm, cmodes)
 
 This function is used to calculate the coupling matrix $\mathcal{M}_{\ell nn'}^{LNN'}$
@@ -785,7 +790,7 @@ assuption is that there is symmetry in the exchange of `k_n` and `k_n′`. (Note
 that this assumed symmetry, however, destroyes the symmetry in the coupling
 matrix.)
 """
-function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
+function power_win_mix(win1, win2, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
                        div2Lp1=false, interchange_NN′=false)
     amodes = cmodes.amodes
     lnnsize = getlnnsize(cmodes)
@@ -797,24 +802,28 @@ function power_win_mix(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
     r, Δr = window_r(wmodes)
 
     LMAX = 2 * amodes.lmax
-    Wr_lm, L1M1cache = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, amodes.nside), LMAX)
+    W1r_lm, L1M1cache = optimize_Wr_lm_layout(calc_Wr_lm(win1, LMAX, amodes.nside), LMAX)
+    W2r_lm, L1M1cache = W1r_lm, L1M1cache
+    if !(win2 === win1)
+        W2r_lm, L1M1cache = optimize_Wr_lm_layout(calc_Wr_lm(win2, LMAX, amodes.nside), LMAX)
+    end
 
     println("Calculate gnlr:")
     @time gnlr = precompute_gnlr(amodes, wmodes)
 
-    mix = calc_cmix(lnnsize, cmodes, r, Δr, gnlr, Wr_lm, L1M1cache, div2Lp1, interchange_NN′)
+    mix = calc_cmix(lnnsize, cmodes, r, Δr, gnlr, W1r_lm, W2r_lm, L1M1cache, div2Lp1, interchange_NN′)
 
     @assert all(isfinite.(mix))
     return mix
 end
 
+
 # specialize to Separable window
-function power_win_mix(win::SeparableArray, wmodes::ConfigurationSpaceModes,
-        cmodes::ClnnModes; div2Lp1=false, interchange_NN′=false)
+function power_win_mix(win1::SeparableArray, win2::SeparableArray, wmodes::ConfigurationSpaceModes,
+        cmodes::ClnnModes; kwargs...)
     # Rather than writing a new specialized method, re-use what we already have:
     bcmodes = ClnnBinnedModes(I, I, cmodes)
-    return power_win_mix(win, I, I, wmodes, bcmodes;
-        div2Lp1=div2Lp1, interchange_NN′=interchange_NN′)
+    return power_win_mix(win1, win2, I, I, wmodes, bcmodes; kwargs...)
 end
 
 
@@ -826,7 +835,7 @@ Base.getindex(::UniformScaling{T}, m::Integer, ::Colon) where {T} = sparsevec([m
 
 
 # binned cmix
-function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes;
+function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, W1r_lm, W2r_lm, L1M1cache, bcmodes;
                        div2Lp1=false, interchange_NN′=false)
     cmodes = bcmodes.cmodes
     lnnsize = getlnnsize(cmodes)
@@ -851,7 +860,7 @@ function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes;
                 v==0 && continue
                 w̃ = w̃mat_n[i]
                 w̃==0 && continue
-                c += w̃ * v * calc_cmixii(i, i′, cmodes, r, Δr, gnlr, Wr_lm,
+                c += w̃ * v * calc_cmixii(i, i′, cmodes, r, Δr, gnlr, W1r_lm, W2r_lm,
                                          L1M1cache, div2Lp1, interchange_NN′, gg1, gg2)
             end
             return c
@@ -866,8 +875,8 @@ end
 
 
 
-function calc_angular_mixing_matrix(lmax, wlm)
-    Wℓ = alm2cl(wlm)
+function calc_angular_mixing_matrix(lmax, w1lm, w2lm)
+    Wℓ = alm2cl(w1lm, w2lm)
     ang_mix = fill(NaN, lmax+1, lmax+1)
     for L=0:lmax, l=0:lmax
         s = 0.0
@@ -942,7 +951,7 @@ end
 
 
 # specialized for separable window
-function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm::SeparableArray, L1M1cache, bcmodes;
+function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, W1r_lm::SeparableArray, W2r_lm::SeparableArray, L1M1cache, bcmodes;
                        div2Lp1=false, interchange_NN′=false)
     cmodes = bcmodes.cmodes
     lnnsize = getlnnsize(cmodes)
@@ -955,8 +964,9 @@ function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm::SeparableArray, L1M1c
     check_nsamp(cmodes.amodes, length(gnlr[:,1,1]))
     lmax = bcmodes.cmodes.amodes.lmax
     nmax_l = bcmodes.cmodes.amodes.nmax_l
-    @time ang_mix = calc_angular_mixing_matrix(lmax, Wr_lm.wlm)
-    @time gnlgNLϕ = calc_radial_mixing(lmax, nmax_l, gnlr, Wr_lm.phi, r, Δr)
+    @time ang_mix = calc_angular_mixing_matrix(lmax, W1r_lm.wlm, W2r_lm.wlm)
+    @time gnlgNLϕ1 = calc_radial_mixing(lmax, nmax_l, gnlr, W1r_lm.phi, r, Δr)
+    @time gnlgNLϕ2 = calc_radial_mixing(lmax, nmax_l, gnlr, W2r_lm.phi, r, Δr)
 
     println("Calculate binned mixing matrix:")
     #@time @sync @distributed for m=1:LNNsize
@@ -975,7 +985,7 @@ function _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm::SeparableArray, L1M1c
                 v==0 && continue
                 w̃ = w̃mat_n[i]
                 w̃==0 && continue
-                c += w̃ * v * calc_cmixii(i, i′, cmodes, r, Δr, gnlgNLϕ,
+                c += w̃ * v * calc_cmixii(i, i′, cmodes, r, Δr, gnlgNLϕ1, gnlgNLϕ2,
                                          ang_mix, div2Lp1, interchange_NN′)
             end
             mix[n,m] = c
@@ -986,7 +996,7 @@ end
 
 
 # calculate binned power spectrum mode-coupling matrix
-function power_win_mix(win, w̃mat, vmat, wmodes::ConfigurationSpaceModes, bcmodes::ClnnBinnedModes; div2Lp1=false, interchange_NN′=false)
+function power_win_mix(win1, win2, w̃mat, vmat, wmodes::ConfigurationSpaceModes, bcmodes::ClnnBinnedModes; kwargs...)
     cmodes = bcmodes.cmodes
     amodes = cmodes.amodes
     lnnsize = getlnnsize(cmodes)
@@ -997,12 +1007,13 @@ function power_win_mix(win, w̃mat, vmat, wmodes::ConfigurationSpaceModes, bcmod
 
     println("Calculate Wr_lm:")
     LMAX = 2 * amodes.lmax
-    @time Wr_lm, L1M1cache = optimize_Wr_lm_layout(calc_Wr_lm(win, LMAX, amodes.nside), LMAX)
+    @time W1r_lm, L1M1cache = optimize_Wr_lm_layout(calc_Wr_lm(win1, LMAX, amodes.nside), LMAX)
+    @time W2r_lm, L1M1cache = optimize_Wr_lm_layout(calc_Wr_lm(win1, LMAX, amodes.nside), LMAX)
 
     println("Calculate gnlr:")
     @time gnlr = precompute_gnlr(amodes, wmodes)
 
-    mix = _power_win_mix(w̃mat, vmat, r, Δr, gnlr, Wr_lm, L1M1cache, bcmodes; div2Lp1=div2Lp1, interchange_NN′=interchange_NN′)
+    mix = _power_win_mix(w̃mat, vmat, r, Δr, gnlr, W1r_lm, W2r_lm, L1M1cache, bcmodes; kwargs...)
 
     @assert all(isfinite.(mix))
     return mix
