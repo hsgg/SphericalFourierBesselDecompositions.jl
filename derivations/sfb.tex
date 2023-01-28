@@ -221,6 +221,27 @@ pagebackref=true,}
 
 
 
+\section{SFB Transform}
+The SFB Fourier pair with the discrete $k_{n\ell}$-spectrum is
+\ba
+\delta(\vr) &= \sum_{n \ell m}
+\Big[g_{n\ell}(r)\,Y_{\ell m}(\rhat)\Big]
+\delta_{n \ell m}\,,
+\label{eq:sfb_discrete_fourier_pair_a}
+\\
+\delta_{n \ell m} &=
+\int\dd^3\vr
+\Big[g_{n\ell}(r)\,Y^*_{\ell m}(\rhat)\Big]
+\delta(\vr)\,,
+\label{eq:sfb_discrete_fourier_pair_b}
+\ea
+where the integral goes over the volume within $r_\min\leq r\leq r_\max$. Note
+that our choice to normalize $g_{n\ell}(r)$ as in \cref{eq:gnl_orthonormality}
+changes the units of $\delta_{n\ell m}$ compared to
+\cref{eq:sfb_fourier_pair_a,eq:sfb_fourier_pair_b}. In effect, this choice of
+units takes into account the survey volume at this stage rather than at the
+stage of forming the correlation function.
+
 
 
 \section{Window and selection function}
@@ -462,10 +483,7 @@ Using the orthogonality of the Gaunt factor \cref{eq:gaunt_orthogonality},
 \label{eq:cell_mixing_matrix_explicit}
 \,.
 \ea
-
-
-
-
+Thus, we need only minimal changes to the mixing matrix for auto-correlation:
 \ba
 \mathcal{M}_{\ell nn'}^{LNN'}
 &=
@@ -497,6 +515,98 @@ expressing the result in terms of a full SFB transform, as that would require a
 slowly-converging sum over $n$.)
 Note that the matrix $(2L+1)^{-1}\mathcal{M}_{\ell nn'}^{LNN'}$ is symmetric under exchange of the set of indices $(LNN')$ and $(\ell nn')$,
 but $\mathcal{M}$ by itself is not.
+
+\begin{widetext}
+We can further express $W_{LM}(r)$ as a full SFB transform. We get
+\ba
+\mathcal{M}_{\ell nn'}^{XY,LNN'}
+&=
+\frac{2L+1}{4\pi}
+\sum_{L_1}
+\begin{pmatrix}
+  \ell & L & L_1 \\
+  0 & 0 & 0
+\end{pmatrix}^2
+\sum_{M_1}
+\vs&\quad\times
+\int\dd r\,r^2 \,g_{n\ell}(r) \,g_{NL}(r) \sum_{N_1} g_{N_1L_1}(r)\, W^X_{N_1 L_1 M_1}
+\vs&\quad\times
+\int\dd r'\,r'^2 \,g_{n'\ell}(r') \,g_{N'L}(r') \sum_{N_2} g_{N_2 L_1}(r')\,W^{Y,*}_{N_2 L_1 M_1}
+\\
+&=
+\frac{2L+1}{4\pi}
+\sum_{L_1}
+\(2L_1+1\)
+\begin{pmatrix}
+  \ell & L & L_1 \\
+  0 & 0 & 0
+\end{pmatrix}^2
+\sum_{N_1}
+\int\dd r\,r^2 \,g_{n\ell}(r) \,g_{NL}(r)\, g_{N_1L_1}(r)
+\vs&\quad\times
+\sum_{N_2}
+\int\dd r'\,r'^2 \,g_{n'\ell}(r') \,g_{N'L}(r')\, g_{N_2 L_1}(r')
+\,\frac{1}{2L_1 + 1}
+\sum_{M_1} W^X_{N_1 L_1 M_1} \, W^{Y,*}_{N_2 L_1 M_1}
+\\
+&=
+\frac{2L+1}{4\pi}
+\sum_{L_1}
+\(2L_1+1\)
+\begin{pmatrix}
+  \ell & L & L_1 \\
+  0 & 0 & 0
+\end{pmatrix}^2
+\sum_{N_1}
+\left[\int\dd r\,r^2 \,g_{n\ell}(r) \,g_{NL}(r)\, g_{N_1L_1}(r)\right]
+\vs&\quad\times
+\sum_{N_2}
+\left[\int\dd r'\,r'^2 \,g_{n'\ell}(r') \,g_{N'L}(r')\, g_{N_2 L_1}(r')\right]
+\,C^{W^XW^Y}_{L_1 N_1 N_2}
+\,.
+\ea
+The integrals in brackets will be very expensive to calculate.
+\end{widetext}
+
+
+\begin{widetext}
+Next, we discretize to get
+\ba
+\mathcal{M}_{\ell nn'}^{XY,LNN'}
+&=
+\frac{2L+1}{4\pi}
+\sum_{L_1}
+\begin{pmatrix}
+  \ell & L & L_1 \\
+  0 & 0 & 0
+\end{pmatrix}^2
+\sum_{M_1}
+\vs&\quad\times
+\sum_i\Delta r\,r_i^2 \,g_{n\ell}(r_i) \,g_{NL}(r_i) \,W^X_{L_1M_1}(r_i)
+\vs&\quad\times
+\sum_j\Delta r\,r_j^2 \,g_{n'\ell}(r_j) \,g_{N'L}(r_j) \,W^{Y,*}_{L_1M_1}(r_j)
+\\
+&=
+\frac{2L+1}{4\pi}
+\sum_{L_1}
+\begin{pmatrix}
+  \ell & L & L_1 \\
+  0 & 0 & 0
+\end{pmatrix}^2
+\sum_{M_1}
+\sum_i
+G_{n\ell}(r_i)\,G_{NL}(r_i) \,W^X_{L_1M_1}(r_i)
+\sum_j
+G_{n'\ell}(r_j)\,G_{N'L}(r_j) \,W^{Y,*}_{L_1M_1}(r_j)
+\,,
+\ea
+where we defined
+\ba
+G_{n\ell}(r_i)
+&=
+\sqrt{\Delta r}\,r_i \,g_{n\ell}(r_i)
+\ea
+\end{widetext}
 
 
 \subsection{Separable mask and radial selection}
