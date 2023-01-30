@@ -35,3 +35,4 @@ rr = range(500.0, 1000.0, length=100)
 gnl_r = amodes.basisfunctions.gnl[n,l+1](r)
 gnlr = @. amodes.basisfunctions.gnl[n,l+1](rr)
 ```
+Note that `n` ranges from 1 to `amodes.nmax_l[l+1]`, and `l` ranges from 0 to`amodes.lmax`.
