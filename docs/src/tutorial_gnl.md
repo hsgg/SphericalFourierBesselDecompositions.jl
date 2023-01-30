@@ -1,4 +1,4 @@
-# Tutorial: Catalogue and Window
+# Tutorial: Radial Basis Functions
 
 In this tutorial we will show how to obtain the radial basis functions
 $g_{n\ell}(r)$, for given $k_{\rm max}$, $r_{\rm min}$, and $r_{\rm max}$.
