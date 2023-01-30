@@ -23,6 +23,7 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Tutorial: Catalogue and Window" => "tutorial_catalog.md",
+        "Tutorial: Radial basis functions" => "tutorial_gnl.md",
         "Reference" => "reference.md",
         "Index" => "myindex.md",
     ],
