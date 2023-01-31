@@ -42,7 +42,9 @@ function calc_i_per_thread(time, i_per_thread_old; batch_avgtime=0.5, batch_maxa
         i_per_thread_new = ceil(Int, adjust * i_per_thread_old)
     end
 
-    return max(1, i_per_thread_new)  # must be at least 1
+    i_per_thread_new = max(1, i_per_thread_new)  # must be at least 1
+
+    return i_per_thread_new
 end
 
 
@@ -62,25 +64,23 @@ function calc_outsize(x...)
 end
 
 
-function get_new_batch!(nextifirstchannel, ntasks, batchsize)
-    ifirst = take!(nextifirstchannel)
+function get_new_batch!(next_ifirst_channel, ntasks, batchsize)
+    ifirst = take!(next_ifirst_channel)
     ilast = min(ntasks, ifirst + batchsize - 1)
-    put!(nextifirstchannel, ilast + 1)
+    put!(next_ifirst_channel, ilast + 1)
     iset = ifirst:ilast
     return iset
 end
 
 
-function mybroadcast!(out, fn, x...)
+function mybroadcast!(out, fn, x...; num_threads=Threads.nthreads())
     ntasks = prod(calc_outsize(x...))
     @assert size(out) == calc_outsize(x...)
 
-    num_threads = Threads.nthreads()
-
     errorchannel = Channel{Any}(num_threads)
 
-    nextifirstchannel = Channel{Int}(1)  # this channel is used to synchronize all the threads
-    put!(nextifirstchannel, 1)
+    next_ifirst_channel = Channel{Int}(1)  # this channel is used to synchronize all the threads
+    put!(next_ifirst_channel, 1)  # first task starts at iteration 1, threads update this as they take work
 
     all_indices = eachindex(out, x...)
 
@@ -90,7 +90,7 @@ function mybroadcast!(out, fn, x...)
             batchsize = 1
 
             # worker threads feed themselves
-            iset = get_new_batch!(nextifirstchannel, ntasks, batchsize)
+            iset = get_new_batch!(next_ifirst_channel, ntasks, batchsize)
 
             while length(iset) > 0
 
@@ -105,14 +105,14 @@ function mybroadcast!(out, fn, x...)
 
                 batchsize = calc_i_per_thread(time, length(iset))
 
-                iset = get_new_batch!(nextifirstchannel, ntasks, batchsize)
+                iset = get_new_batch!(next_ifirst_channel, ntasks, batchsize)
             end
         catch e
             if e isa InvalidStateException
                 @info "Exiting thread $(Threads.threadid()) due to closed channel"
             else
                 # we caused the exception
-                close(nextifirstchannel)  # notify other threads
+                close(next_ifirst_channel)  # notify other threads
                 bt = catch_backtrace()
                 @warn "Exception in thread $(Threads.threadid()):\n  $e"
                 put!(errorchannel, (Threads.threadid(), e, bt))
@@ -140,7 +140,7 @@ function mybroadcast!(out, fn, x...)
 end
 
 
-function mybroadcast(fn, x...)
+function mybroadcast(fn, x...; kwargs...)
     Treturn = eltype(Base.return_types(fn, (eltype.(x)...,))[1])
 
     outsize = calc_outsize(x...)
@@ -155,7 +155,7 @@ function mybroadcast(fn, x...)
 
     out = Array{Treturn}(undef, outsize...)
 
-    mybroadcast!(out, fn, xs...)
+    mybroadcast!(out, fn, xs...; kwargs...)
 
     return out
 end
