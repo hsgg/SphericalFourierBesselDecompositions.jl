@@ -737,6 +737,8 @@ function calc_cmix(cmodes, rsdrgnlr, W1r_lm, W2r_lm, L1M1cache, div2Lp1, interch
     #@time for i′=lnn_min:lnnsize
     #@time Threads.@threads for i′=lnn_min:lnnsize
     #@time @tturbo for i′=lnn_min:lnnsize
+    blas_nthreads = BLAS.get_num_threads()
+    BLAS.set_num_threads(1)
     mix = @time mybroadcast(lnn_min:lnnsize, (lnn_min:lnnsize)') do ii,ii′
         gg1 = Array{Float64}(undef, size(rsdrgnlr,1))
         gg2 = Array{Float64}(undef, size(rsdrgnlr,1))
@@ -788,6 +790,7 @@ function calc_cmix(cmodes, rsdrgnlr, W1r_lm, W2r_lm, L1M1cache, div2Lp1, interch
         next!(p, step=length(ii′), showvalues=[(:batchsize, length(ii′)), (:counter, p.counter)])
         return mout
     end
+    BLAS.set_num_threads(blas_nthreads)
 
     return mix
 end
