@@ -508,7 +508,7 @@ end
 function calc_Wr_lm(win, LMAX, Wnside)
     nr = size(win,1)
     Wr_lm = fill(NaN*im, nr, getlmsize(LMAX))
-    @time for i=1:nr
+    @time @views for i=1:nr
         W = udgrade(win[i,:], Wnside)
         Wr_lm[i,:] .= mymap2alm(W, lmax=LMAX)
     end
@@ -714,16 +714,30 @@ function calc_cmixii_separable(i, i′, cmodes, gnlgNLϕ1, gnlgNLϕ2, ang_mix::A
 end
 
 
-function calc_cmix(cmodes, rsdrgnlr, W1r_lm, W2r_lm, L1M1cache, div2Lp1, interchange_NN′)
+function calc_cmix(cmodes, rsdrgnlr, W1r_lm, W2r_lm, L1M1cache, div2Lp1, interchange_NN′; lnn_min=1)
     println("cmix full:")
     lnnsize = getlnnsize(cmodes)
 
-    p = Progress(lnnsize^2, progressmeter_update_interval, "cmix full: ")
+    println("Calculate W1rl_W2rl...")
+    nr = size(W1r_lm,1)
+    LMAX = 2 * cmodes.amodes.lmax
+    W1rl_W2rl = fill(NaN, nr, nr, LMAX+1)
+    @time for L1=0:LMAX, j=1:nr, i=1:nr
+        L1M1 = L1M1cache[L1+1,1]
+        s = real(W1r_lm[i,L1M1] * conj(W2r_lm[j,L1M1]))
+        for M1=1:L1
+            L1M1 = L1M1cache[L1+1,M1+1]
+            s += 2 * real(W1r_lm[i,L1M1] * conj(W2r_lm[j,L1M1]))
+        end
+        W1rl_W2rl[i,j,L1+1] = s
+    end
 
-    #@time for i′=1:lnnsize
-    #@time Threads.@threads for i′=1:lnnsize
-    #@time @tturbo for i′=1:lnnsize
-    mix = @time mybroadcast(1:lnnsize, (1:lnnsize)') do ii,ii′
+    p = Progress((lnnsize-lnn_min+1)^2, progressmeter_update_interval, "cmix full: ")
+
+    #@time for i′=lnn_min:lnnsize
+    #@time Threads.@threads for i′=lnn_min:lnnsize
+    #@time @tturbo for i′=lnn_min:lnnsize
+    mix = @time mybroadcast(lnn_min:lnnsize, (lnn_min:lnnsize)') do ii,ii′
         gg1 = Array{Float64}(undef, size(rsdrgnlr,1))
         gg2 = Array{Float64}(undef, size(rsdrgnlr,1))
         mout = Array{Float64}(undef, length(ii′))
@@ -732,24 +746,44 @@ function calc_cmix(cmodes, rsdrgnlr, W1r_lm, W2r_lm, L1M1cache, div2Lp1, interch
             i = ii[idx]
             i′ = ii′[idx]
 
+            l, n, n′ = getlnn(cmodes, i)
             L, N, N′ = getlnn(cmodes, i′)
             if interchange_NN′
                 N, N′ = N′, N
             end
 
-            mixii′ = calc_cmixii(i, L, N, N′, rsdrgnlr, cmodes,
-                                        W1r_lm, W2r_lm, L1M1cache, div2Lp1, gg1, gg2)
+            @views @. gg1 = rsdrgnlr[:,n,l+1] * rsdrgnlr[:,N,L+1]
+            @views @. gg2 = rsdrgnlr[:,n′,l+1] * rsdrgnlr[:,N′,L+1]
+
+
+            mixii′ = 0.0
+            for L1 in abs(l-L):2:(l+L)
+                w3j = wigner3j000(l, L, L1)
+                @views mixii′ += w3j^2 * (gg1' * W1rl_W2rl[:,:,L1+1] * gg2)
+            end
+            mixii′ *= (2*L + 1) / (4 * π)
+
+            #mixii′ = calc_cmixii(i, L, N, N′, rsdrgnlr, cmodes,
+            #                            W1r_lm, W2r_lm, L1M1cache, div2Lp1, gg1, gg2)
             #l, n, n′ = getlnn(cmodes, i)
             #@show i,i′,(l,n,n′),(L,N,N′),mixii′
 
+            mixii′2 = 0.0
             if (!interchange_NN′) && (N != N′)
                 # Since we only save the symmetric part where N′ >= N
-                mixii′ += calc_cmixii(i, L, N′, N, rsdrgnlr, cmodes,
-                                             W1r_lm, W2r_lm, L1M1cache, div2Lp1, gg1, gg2)
+                #mixii′2 = calc_cmixii(i, L, N′, N, rsdrgnlr, cmodes,
+                #                             W1r_lm, W2r_lm, L1M1cache, div2Lp1, gg1, gg2)
+                @views @. gg1 = rsdrgnlr[:,n,l+1] * rsdrgnlr[:,N′,L+1]
+                @views @. gg2 = rsdrgnlr[:,n′,l+1] * rsdrgnlr[:,N,L+1]
+                for L1 in abs(l-L):2:(l+L)
+                    w3j = wigner3j000(l, L, L1)
+                    @views mixii′2 += w3j^2 * (gg1' * W1rl_W2rl[:,:,L1+1] * gg2)
+                end
+                mixii′2 *= (2*L + 1) / (4 * π)
                 #@show mixii′
             end
 
-            mout[idx] = mixii′
+            mout[idx] = mixii′ + mixii′2
         end
         next!(p, step=length(ii′), showvalues=[(:batchsize, length(ii′)), (:counter, p.counter)])
         return mout
@@ -802,6 +836,7 @@ function power_win_mix(win1, win2, wmodes::ConfigurationSpaceModes, cmodes::Clnn
 
     r, Δr = window_r(wmodes)
 
+    println("Calculate W_lm(r):")
     LMAX = 2 * amodes.lmax
     W1r_lm, L1M1cache = optimize_Wr_lm_layout(calc_Wr_lm(win1, LMAX, amodes.nside), LMAX)
     W2r_lm, L1M1cache = W1r_lm, L1M1cache
