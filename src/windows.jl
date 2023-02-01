@@ -509,8 +509,9 @@ function calc_Wr_lm(win, LMAX, Wnside)
     nr = size(win,1)
     Wr_lm = fill(NaN*im, nr, getlmsize(LMAX))
     @time for i=1:nr
+        #@show i,nr
         W = udgrade(win[i,:], Wnside)
-        Wr_lm[i,:] .= mymap2alm(W, lmax=LMAX)
+        Wr_lm[i,:] .= mymap2alm(W, lmax=LMAX).alm
     end
     return Wr_lm
 end

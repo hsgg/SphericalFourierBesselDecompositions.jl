@@ -455,6 +455,9 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
             phi = mean(win, dims=2)[:]
             win = @SeparableArray phi mask
 
+        elseif feat == :dense
+            win = collect(win[:,:])
+
         else
             # Maybe it is a bit harsh to error on this. However, it is better to be
             # strict here, because we want to avoid running, say, 1000 simulations
