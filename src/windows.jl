@@ -715,15 +715,11 @@ function calc_cmixii_separable(i, i′, cmodes, gnlgNLϕ1, gnlgNLϕ2, ang_mix::A
 end
 
 
-function calc_cmix(cmodes, rsdrgnlr, W1r_lm, W2r_lm, L1M1cache, div2Lp1, interchange_NN′; lnn_min=1)
-    println("cmix full:")
-    lnnsize = getlnnsize(cmodes)
-
-    println("Calculate W1rl_W2rl...")
+function calc_Wrl_Wrl(W1r_lm, W2r_lm, L1M1cache, cmodes)
     nr = size(W1r_lm,1)
     LMAX = 2 * cmodes.amodes.lmax
     W1rl_W2rl = fill(NaN, nr, nr, LMAX+1)
-    @time for L1=0:LMAX, j=1:nr, i=1:nr
+    for L1=0:LMAX, j=1:nr, i=1:nr
         L1M1 = L1M1cache[L1+1,1]
         s = real(W1r_lm[i,L1M1] * conj(W2r_lm[j,L1M1]))
         for M1=1:L1
@@ -732,6 +728,14 @@ function calc_cmix(cmodes, rsdrgnlr, W1r_lm, W2r_lm, L1M1cache, div2Lp1, interch
         end
         W1rl_W2rl[i,j,L1+1] = s
     end
+    return W1rl_W2rl
+end
+
+
+function calc_cmix(cmodes, rsdrgnlr, W1rl_W2rl, div2Lp1, interchange_NN′; lnn_min=1)
+    println("cmix full:")
+    lnnsize = getlnnsize(cmodes)
+    @show lnnsize^2, lnnsize
 
     p = Progress((lnnsize-lnn_min+1)^2, desc="cmix full: ", dt=progressmeter_update_interval, showspeed=true)
 
@@ -832,11 +836,6 @@ matrix.)
 function power_win_mix(win1, win2, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
                        div2Lp1=false, interchange_NN′=false)
     amodes = cmodes.amodes
-    lnnsize = getlnnsize(cmodes)
-    mix = fill(NaN, lnnsize, lnnsize)
-    #mix = SharedArray{Float64}(lnnsize, lnnsize)
-    @show length(mix), size(mix)
-    @show lnnsize^2, lnnsize
 
     r, Δr = window_r(wmodes)
 
@@ -848,10 +847,13 @@ function power_win_mix(win1, win2, wmodes::ConfigurationSpaceModes, cmodes::Clnn
         W2r_lm, L1M1cache = optimize_Wr_lm_layout(calc_Wr_lm(win2, LMAX, amodes.nside), LMAX)
     end
 
+    println("Calculate W1rl_W2rl...")
+    W1rl_W2rl = @time calc_Wrl_Wrl(W1r_lm, W2r_lm, L1M1cache, cmodes)
+
     println("Calculate r*√dr*gnlr:")
     @time rsdrgnlr = r .* .√Δr .* precompute_gnlr(amodes, wmodes)
 
-    mix = calc_cmix(cmodes, rsdrgnlr, W1r_lm, W2r_lm, L1M1cache, div2Lp1, interchange_NN′)
+    mix = calc_cmix(cmodes, rsdrgnlr, W1rl_W2rl, div2Lp1, interchange_NN′)
 
     @assert all(isfinite.(mix))
     return mix
