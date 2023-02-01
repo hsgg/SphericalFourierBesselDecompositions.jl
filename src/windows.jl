@@ -304,7 +304,7 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
 
 
     println("Starting wmix calculation:")
-    p = Progress(nlsize^2, progressmeter_update_interval, "wmix full: ")
+    p = Progress(nlsize^2, desc="wmix full: ", dt=progressmeter_update_interval, showspeed=true)
     @time mybroadcast(1:nlsize, (1:nlsize)') do nlarr, n′l′arr
         gg1 = Vector{real(T)}(undef, nr)
         wtmp = Vector{T}(undef, (lmax+1)^2)
@@ -733,7 +733,7 @@ function calc_cmix(cmodes, rsdrgnlr, W1r_lm, W2r_lm, L1M1cache, div2Lp1, interch
         W1rl_W2rl[i,j,L1+1] = s
     end
 
-    p = Progress((lnnsize-lnn_min+1)^2, progressmeter_update_interval, "cmix full: ")
+    p = Progress((lnnsize-lnn_min+1)^2, desc="cmix full: ", dt=progressmeter_update_interval, showspeed=true)
 
     #@time for i′=lnn_min:lnnsize
     #@time Threads.@threads for i′=lnn_min:lnnsize
