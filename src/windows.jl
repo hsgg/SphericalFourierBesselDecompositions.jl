@@ -732,6 +732,25 @@ function calc_Wrl_Wrl(W1r_lm, W2r_lm, L1M1cache, cmodes)
 end
 
 
+function calc_cmixii!(l,n,n′, L,N,N′, W1rl_W2rl, rsdrgnlr, gg1, gg2)
+    #l, n, n′ = lnn
+    #L, N, N′ = LNN
+
+    @views @. gg1 = rsdrgnlr[:,n,l+1] * rsdrgnlr[:,N,L+1]
+    @views @. gg2 = rsdrgnlr[:,n′,l+1] * rsdrgnlr[:,N′,L+1]
+
+    mixii′ = 0.0
+    for L1 in abs(l-L):2:(l+L)
+        w3j = wigner3j000(l, L, L1)
+        @views mixii′ += w3j^2 * (gg1' * W1rl_W2rl[:,:,L1+1] * gg2)
+    end
+
+    mixii′ *= (2*L + 1) / (4 * π)
+
+    return mixii′
+end
+
+
 function calc_cmix(cmodes, rsdrgnlr, W1rl_W2rl, div2Lp1, interchange_NN′; lnn_min=1)
     println("cmix full:")
     lnnsize = getlnnsize(cmodes)
@@ -759,38 +778,17 @@ function calc_cmix(cmodes, rsdrgnlr, W1rl_W2rl, div2Lp1, interchange_NN′; lnn_
                 N, N′ = N′, N
             end
 
-            @views @. gg1 = rsdrgnlr[:,n,l+1] * rsdrgnlr[:,N,L+1]
-            @views @. gg2 = rsdrgnlr[:,n′,l+1] * rsdrgnlr[:,N′,L+1]
+            mixii′ = calc_cmixii!(l,n,n′, L,N,N′, W1rl_W2rl, rsdrgnlr, gg1, gg2)
 
-
-            mixii′ = 0.0
-            for L1 in abs(l-L):2:(l+L)
-                w3j = wigner3j000(l, L, L1)
-                @views mixii′ += w3j^2 * (gg1' * W1rl_W2rl[:,:,L1+1] * gg2)
-            end
-            mixii′ *= (2*L + 1) / (4 * π)
-
-            #mixii′ = calc_cmixii(i, L, N, N′, rsdrgnlr, cmodes,
-            #                            W1r_lm, W2r_lm, L1M1cache, div2Lp1, gg1, gg2)
-            #l, n, n′ = getlnn(cmodes, i)
-            #@show i,i′,(l,n,n′),(L,N,N′),mixii′
-
-            mixii′2 = 0.0
             if (!interchange_NN′) && (N != N′)
                 # Since we only save the symmetric part where N′ >= N
-                #mixii′2 = calc_cmixii(i, L, N′, N, rsdrgnlr, cmodes,
-                #                             W1r_lm, W2r_lm, L1M1cache, div2Lp1, gg1, gg2)
-                @views @. gg1 = rsdrgnlr[:,n,l+1] * rsdrgnlr[:,N′,L+1]
-                @views @. gg2 = rsdrgnlr[:,n′,l+1] * rsdrgnlr[:,N,L+1]
-                for L1 in abs(l-L):2:(l+L)
-                    w3j = wigner3j000(l, L, L1)
-                    @views mixii′2 += w3j^2 * (gg1' * W1rl_W2rl[:,:,L1+1] * gg2)
-                end
-                mixii′2 *= (2*L + 1) / (4 * π)
-                #@show mixii′
+                mixii′ += calc_cmixii!(l,n,n′, L,N′,N, W1rl_W2rl, rsdrgnlr, gg1, gg2)
             end
 
-            mout[idx] = mixii′ + mixii′2
+            if div2Lp1
+                mixii′ /= (2 * L + 1)
+            end
+            mout[idx] = mixii′
         end
         next!(p, step=length(ii′), showvalues=[(:batchsize, length(ii′)), (:counter, p.counter)])
         return mout
