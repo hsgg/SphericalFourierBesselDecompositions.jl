@@ -666,19 +666,46 @@ function calc_cmixii(i, L, N, N′, rsdrgnlr, cmodes::ClnnModes, W1r_lm, W2r_lm,
 end
 
 
+function calc_cmixlnnLNN!(l,n,n′, L,N,N′, W1rl_W2rl, rsdrgnlr, gg1, gg2)
+
+    @views @. gg1 = rsdrgnlr[:,n,l+1] * rsdrgnlr[:,N,L+1]
+    @views @. gg2 = rsdrgnlr[:,n′,l+1] * rsdrgnlr[:,N′,L+1]
+
+    mixii′ = 0.0
+    for L1 in abs(l-L):2:(l+L)
+        w3j = wigner3j000(l, L, L1)
+        @views mixii′ += w3j^2 * (gg1' * W1rl_W2rl[:,:,L1+1] * gg2)
+    end
+
+    mixii′ *= (2*L + 1) / (4 * π)
+
+    return mixii′
+end
+
+
 # for backward compatiblity
-function calc_cmixii_old(i, i′, cmodes::ClnnModes, rsdrgnlr, W1r_lm, W2r_lm, L1M1cache, div2Lp1, interchange_NN′, gg1, gg2)
+function calc_cmixii_old(i, i′, cmodes::ClnnModes, rsdrgnlr, W1rl_W2rl, W1r_lm, W2r_lm, L1M1cache, div2Lp1, interchange_NN′, gg1, gg2)
+    l, n, n′ = getlnn(cmodes, i)
     L, N, N′ = getlnn(cmodes, i′)
     if interchange_NN′
         N, N′ = N′, N
     end
 
-    mix = calc_cmixii(i, L, N, N′, rsdrgnlr, cmodes, W1r_lm, W2r_lm, L1M1cache, div2Lp1, gg1, gg2)
+    #mix = calc_cmixii(i, L, N, N′, rsdrgnlr, cmodes, W1r_lm, W2r_lm, L1M1cache, false, gg1, gg2)
+    #if !interchange_NN′ && N != N′
+    #    mix += calc_cmixii(i, L, N′, N, rsdrgnlr, cmodes, W1r_lm, W2r_lm, L1M1cache, false, gg1, gg2)
+    #end
 
-    if !interchange_NN′ && N != N′
-        mix += calc_cmixii(i, L, N′, N, rsdrgnlr, cmodes, W1r_lm, W2r_lm, L1M1cache, div2Lp1, gg1, gg2)
+
+    mix = calc_cmixlnnLNN!(l,n,n′, L,N,N′, W1rl_W2rl, rsdrgnlr, gg1, gg2)
+    if (!interchange_NN′) && (N != N′)
+        mix += calc_cmixlnnLNN!(l,n,n′, L,N′,N, W1rl_W2rl, rsdrgnlr, gg1, gg2)
     end
 
+
+    if div2Lp1
+        mix /= (2 * L + 1)
+    end
     return mix
 end
 
@@ -715,7 +742,7 @@ function calc_cmixii_separable(i, i′, cmodes, gnlgNLϕ1, gnlgNLϕ2, ang_mix::A
 end
 
 
-function calc_Wrl_Wrl(W1r_lm, W2r_lm, L1M1cache, cmodes)
+function calc_Wrl_Wrl(W1r_lm, W2r_lm, L1M1cache, cmodes::ClnnModes)
     nr = size(W1r_lm,1)
     LMAX = 2 * cmodes.amodes.lmax
     W1rl_W2rl = fill(NaN, nr, nr, LMAX+1)
@@ -730,25 +757,7 @@ function calc_Wrl_Wrl(W1r_lm, W2r_lm, L1M1cache, cmodes)
     end
     return W1rl_W2rl
 end
-
-
-function calc_cmixii!(l,n,n′, L,N,N′, W1rl_W2rl, rsdrgnlr, gg1, gg2)
-    #l, n, n′ = lnn
-    #L, N, N′ = LNN
-
-    @views @. gg1 = rsdrgnlr[:,n,l+1] * rsdrgnlr[:,N,L+1]
-    @views @. gg2 = rsdrgnlr[:,n′,l+1] * rsdrgnlr[:,N′,L+1]
-
-    mixii′ = 0.0
-    for L1 in abs(l-L):2:(l+L)
-        w3j = wigner3j000(l, L, L1)
-        @views mixii′ += w3j^2 * (gg1' * W1rl_W2rl[:,:,L1+1] * gg2)
-    end
-
-    mixii′ *= (2*L + 1) / (4 * π)
-
-    return mixii′
-end
+calc_Wrl_Wrl(W1r_lm, W2r_lm, L1M1cache, bcmodes::ClnnBinnedModes) = calc_Wrl_Wrl(W1r_lm, W2r_lm, L1M1cache, bcmodes.cmodes)
 
 
 function calc_cmix(cmodes, rsdrgnlr, W1rl_W2rl, div2Lp1, interchange_NN′; lnn_min=1)
@@ -778,11 +787,11 @@ function calc_cmix(cmodes, rsdrgnlr, W1rl_W2rl, div2Lp1, interchange_NN′; lnn_
                 N, N′ = N′, N
             end
 
-            mixii′ = calc_cmixii!(l,n,n′, L,N,N′, W1rl_W2rl, rsdrgnlr, gg1, gg2)
+            mixii′ = calc_cmixlnnLNN!(l,n,n′, L,N,N′, W1rl_W2rl, rsdrgnlr, gg1, gg2)
 
             if (!interchange_NN′) && (N != N′)
                 # Since we only save the symmetric part where N′ >= N
-                mixii′ += calc_cmixii!(l,n,n′, L,N′,N, W1rl_W2rl, rsdrgnlr, gg1, gg2)
+                mixii′ += calc_cmixlnnLNN!(l,n,n′, L,N′,N, W1rl_W2rl, rsdrgnlr, gg1, gg2)
             end
 
             if div2Lp1
@@ -882,6 +891,8 @@ function _power_win_mix(w̃mat, vmat, rsdrgnlr, W1r_lm, W2r_lm, L1M1cache, bcmod
     LNNsize1 = (typeof(w̃mat) <: UniformScaling) ? lnnsize : size(w̃mat,1)
     LNNsize2 = (typeof(vmat) <: UniformScaling) ? lnnsize : size(vmat,2)
 
+    W1rl_W2rl = calc_Wrl_Wrl(W1r_lm, W2r_lm, L1M1cache, bcmodes)
+
     # Use pmap() to allow distributed parallel computing:
     n_idxs = SeparableArray(LNNsize1:-1:1, ones(Int, LNNsize2))
     m_idxs = SeparableArray(ones(Int, LNNsize1), LNNsize2:-1:1)
@@ -900,7 +911,7 @@ function _power_win_mix(w̃mat, vmat, rsdrgnlr, W1r_lm, W2r_lm, L1M1cache, bcmod
                 v==0 && continue
                 w̃ = w̃mat_n[i]
                 w̃==0 && continue
-                c += w̃ * v * calc_cmixii_old(i, i′, cmodes, rsdrgnlr, W1r_lm, W2r_lm,
+                c += w̃ * v * calc_cmixii_old(i, i′, cmodes, rsdrgnlr, W1rl_W2rl, W1r_lm, W2r_lm,
                                          L1M1cache, div2Lp1, interchange_NN′, gg1, gg2)
             end
             return c
