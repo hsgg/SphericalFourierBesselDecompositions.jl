@@ -684,24 +684,17 @@ end
 
 
 # for backward compatiblity
-function calc_cmixii_old(i, i′, cmodes::ClnnModes, rsdrgnlr, W1rl_W2rl, W1r_lm, W2r_lm, L1M1cache, div2Lp1, interchange_NN′, gg1, gg2)
+function calc_cmixii!(i, i′, cmodes::ClnnModes, rsdrgnlr, W1rl_W2rl, div2Lp1, interchange_NN′, gg1, gg2)
     l, n, n′ = getlnn(cmodes, i)
     L, N, N′ = getlnn(cmodes, i′)
     if interchange_NN′
         N, N′ = N′, N
     end
 
-    #mix = calc_cmixii(i, L, N, N′, rsdrgnlr, cmodes, W1r_lm, W2r_lm, L1M1cache, false, gg1, gg2)
-    #if !interchange_NN′ && N != N′
-    #    mix += calc_cmixii(i, L, N′, N, rsdrgnlr, cmodes, W1r_lm, W2r_lm, L1M1cache, false, gg1, gg2)
-    #end
-
-
     mix = calc_cmixlnnLNN!(l,n,n′, L,N,N′, W1rl_W2rl, rsdrgnlr, gg1, gg2)
     if (!interchange_NN′) && (N != N′)
         mix += calc_cmixlnnLNN!(l,n,n′, L,N′,N, W1rl_W2rl, rsdrgnlr, gg1, gg2)
     end
-
 
     if div2Lp1
         mix /= (2 * L + 1)
@@ -911,8 +904,7 @@ function _power_win_mix(w̃mat, vmat, rsdrgnlr, W1r_lm, W2r_lm, L1M1cache, bcmod
                 v==0 && continue
                 w̃ = w̃mat_n[i]
                 w̃==0 && continue
-                c += w̃ * v * calc_cmixii_old(i, i′, cmodes, rsdrgnlr, W1rl_W2rl, W1r_lm, W2r_lm,
-                                         L1M1cache, div2Lp1, interchange_NN′, gg1, gg2)
+                c += w̃ * v * calc_cmixii!(i, i′, cmodes, rsdrgnlr, W1rl_W2rl, div2Lp1, interchange_NN′, gg1, gg2)
             end
             return c
         end,
