@@ -20,6 +20,9 @@ Base.iterate(alm::Alm) = iterate(alm.alm)
 Base.iterate(alm::Alm, i) = iterate(alm.alm, i)
 Base.getindex(alm::Alm, i) = alm.alm[i]
 
+#Base.BroadcastStyle(::Type{Alm}) = SrcStyle()
+#Base.similar(bc::Broadcasted{DestStyle}, ::Type{ElType})
+
 
 ######## Healpix.jl piracy
 
@@ -58,8 +61,8 @@ end
 #    return Alm(lmax, lmax, Vector(alm))
 #end
 
-mymap2alm = mymap2alm_healpixjl
-#mymap2alm = mymap2alm_healpy
+const mymap2alm = mymap2alm_healpixjl
+#const mymap2alm = mymap2alm_healpy
 
 
 end

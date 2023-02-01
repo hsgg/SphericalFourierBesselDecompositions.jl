@@ -15,7 +15,6 @@ Random.seed!(randseed)
 
 using LinearAlgebra
 
-long_tests = true
 
 
 ## runtests:
@@ -32,6 +31,7 @@ long_tests = true
     include("test_window_chains.jl")
     include("test_covariance.jl")
     include("test_sfb.jl")
+    #@test false
 end
 
 
