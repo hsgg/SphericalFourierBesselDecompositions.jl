@@ -758,7 +758,7 @@ that this assumed symmetry, however, destroyes the symmetry in the coupling
 matrix.)
 """
 function power_win_mix(win1, win2, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes;
-                       div2Lp1=false, interchange_NN′=false)
+                       div2Lp1=false, interchange_NN′=false, lnn_min=1)
     amodes = cmodes.amodes
 
     r, Δr = window_r(wmodes)
@@ -777,7 +777,7 @@ function power_win_mix(win1, win2, wmodes::ConfigurationSpaceModes, cmodes::Clnn
     println("Calculate r*√dr*gnlr:")
     @time rsdrgnlr = r .* .√Δr .* precompute_gnlr(amodes, wmodes)
 
-    mix = calc_cmix(cmodes, rsdrgnlr, W1rl_W2rl, div2Lp1, interchange_NN′)
+    mix = calc_cmix(cmodes, rsdrgnlr, W1rl_W2rl, div2Lp1, interchange_NN′; lnn_min)
 
     @assert all(isfinite.(mix))
     return mix
