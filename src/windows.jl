@@ -305,6 +305,8 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
 
     println("Starting wmix calculation:")
     p = Progress(nlsize^2, desc="wmix full: ", dt=progressmeter_update_interval, showspeed=true)
+    blas_nthreads = BLAS.get_num_threads()
+    BLAS.set_num_threads(1)
     @time mybroadcast(1:nlsize, (1:nlsize)') do nlarr, n′l′arr
         gg1 = Vector{real(T)}(undef, nr)
         wtmp = Vector{T}(undef, (lmax+1)^2)
@@ -338,6 +340,7 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
         next!(p, step=length(nlarr), showvalues=[(:batchsize, length(nlarr))])
         return zero(real(T))  # must return something broadcastable for mybroadcast()
     end
+    BLAS.set_num_threads(blas_nthreads)
     #@assert all(isfinite, wmix)
     return wmix
 end
