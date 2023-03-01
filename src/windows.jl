@@ -927,8 +927,8 @@ function _power_win_mix(w̃mat, vmat, rsdrgnlr, W1r_lm::SeparableArray, W2r_lm::
     lnnsize = getlnnsize(cmodes)
     LNNsize1 = (typeof(w̃mat) <: UniformScaling) ? lnnsize : size(w̃mat,1)
     LNNsize2 = (typeof(vmat) <: UniformScaling) ? lnnsize : size(vmat,2)
-    mix = fill(NaN, LNNsize1, LNNsize2)
-    @show length(mix), size(mix)
+    #mix = fill(NaN, LNNsize1, LNNsize2)
+    @show LNNsize1 LNNsize2 LNNsize1*LNNsize2
 
     println("Calculate angular and radial mixing:")
     check_nsamp(cmodes.amodes, length(rsdrgnlr[:,1,1]))
@@ -939,16 +939,19 @@ function _power_win_mix(w̃mat, vmat, rsdrgnlr, W1r_lm::SeparableArray, W2r_lm::
     @time gnlgNLϕ2 = calc_radial_mixing(lmax, nmax_l, rsdrgnlr, W2r_lm.phi, 1, 1)
 
     println("Calculate binned mixing matrix:")
+    p = Progress(LNNsize1*LNNsize2, desc="cmix sep: ", dt=progressmeter_update_interval, showspeed=true)
     #@time @sync @distributed for m=1:LNNsize
-    @time for m=1:LNNsize2
-        #@show m, LNNsize
-        vmat_m = vmat[:,m]
-        vnzrange = nzind(vmat_m)
-        #@show typeof(vmat_m) typeof(vnzrange) size(vmat) vnzrange length(vnzrange) vmat_m[vnzrange]
-        for n=1:LNNsize1
-            #@show m,n,LNNsize
+    @time mix = mybroadcast(1:LNNsize1, (1:LNNsize2)') do nn,mm
+        out = Array{Float64}(undef, length(nn))
+        for idx = 1:length(nn)
+            n = nn[idx]
+            m = mm[idx]
+
             w̃mat_n = w̃mat[n,:]
             w̃nzrange = nzind(w̃mat_n)
+            vmat_m = vmat[:,m]
+            vnzrange = nzind(vmat_m)
+
             c = 0.0
             for i in w̃nzrange, i′ in vnzrange
                 v = vmat_m[i′]
@@ -958,9 +961,12 @@ function _power_win_mix(w̃mat, vmat, rsdrgnlr, W1r_lm::SeparableArray, W2r_lm::
                 c += w̃ * v * calc_cmixii_separable(i, i′, cmodes, gnlgNLϕ1, gnlgNLϕ2,
                                          ang_mix, div2Lp1, interchange_NN′)
             end
-            mix[n,m] = c
+            out[idx] = c
         end
+        next!(p, step=length(nn), showvalues=[(:batchsize, length(nn))])
+        return out
     end
+    @show typeof(mix)
     return mix
 end
 
