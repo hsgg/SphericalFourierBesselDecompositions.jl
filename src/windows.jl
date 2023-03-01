@@ -910,7 +910,7 @@ function calc_radial_mixing(lmax, nmax_l, gnlr, phi, r, Δr)
     for L=0:lmax, N=1:nmax_l[L+1]
         for l=0:lmax, n=1:nmax_l[l+1]
             !isnan(gnlgNLϕ[n,l+1,N,L+1]) && continue
-            @. ggϕint = r^2 * gnlr[:,n,l+1] * gnlr[:,N,L+1] * phi
+            @views @. ggϕint = r^2 * gnlr[:,n,l+1] * gnlr[:,N,L+1] * phi
             gg = Δr * sum(ggϕint)
             gnlgNLϕ[n,l+1,N,L+1] = gg
             gnlgNLϕ[N,L+1,n,l+1] = gg
