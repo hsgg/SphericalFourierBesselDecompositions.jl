@@ -48,7 +48,8 @@ end
 
 function mymap2alm_healpixjl(map::HealpixMap; lmax=3*map.resolution.nside-1)
     if lmax > 4 * map.resolution.nside
-        @warn "lmax > 4*nside is a poor choice" lmax 4*map.resolution.nside map.resolution
+        @error "lmax > 4*nside is a poor choice" lmax 4*map.resolution.nside map.resolution
+        error("exiting")
     end
     #if map.resolution.nside >= 32
     #    # Note: This makes the field2anlm() test fail:

@@ -365,7 +365,10 @@ end
 # This should be very performant
 function win_lnn(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes)
     println("Calculate Wr_00:")
-    @time Wr_00 = √(4*π) * mean(win, dims=2)[:]
+    nside = cmodes.amodes.nside
+    lmax = cmodes.amodes.lmax
+    #@time Wr_00 = √(4*π) * mean(win, dims=2)[:]
+    @time Wr_00 = Vector{Float64}(calc_Wr_lm(win, 2 * lmax, nside)[:,1])  # need to be consistent
     r, Δr = window_r(wmodes)
     Wlnn = calc_intr_gg_fn(Spline1D(r, Wr_00 / √(4π)), wmodes, cmodes; derivative=0)
     return Wlnn
