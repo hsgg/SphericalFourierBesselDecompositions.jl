@@ -18,6 +18,27 @@ using Healpix
     #run_tests = false
 
 
+    run_tests && @testset "calc_Wr_lm()" begin
+        nside = 64
+        nr = 240
+        lmax = 256
+        rmin = 500.0
+        rmax = 1000.0
+        @show 4 * nside - 1
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, nside)
+        win = SFB.make_window(wmodes, :ang_quarter, :radial, :separable)
+
+        Wr_lm = SFB.Windows.calc_Wr_lm(win, lmax, nside)
+
+        Wr_00 = √(4 * π) * mean(win, dims=2)[:]
+
+        @show extrema(Vector{Float64}(Wr_lm[:,1]))
+        @show extrema(Wr_00)
+
+        @test Wr_00 ≈ Wr_lm[:,1]  atol=1e-3
+    end
+
+
     run_tests && @testset "Single-pixel masks" begin
         rmin = 900.0
         rmax = 1000.0
@@ -231,7 +252,7 @@ using Healpix
         @test wmix[123,121] ≈ -0.025087015337107783 - 1.0170304578086492e-5im  # nr=250
         wlnn2 = SFB.sum_m_lmeqLM(wmix, cmodes)
 
-        @test wlnn ≈ wlnn2
+        @test wlnn ≈ wlnn2  rtol=1e-3
     end
 
 
@@ -270,7 +291,7 @@ using Healpix
         @show norm(w0nn0-w0nn2)/norm(w0nn0)
         @test w0nn0 ≈ w0nn1  rtol=1e-6
         @test w0nn0 ≈ w0nn2  rtol=1e-6
-        @test w0nn1 ≈ w0nn2
+        @test w0nn1 ≈ w0nn2  rtol=1e-6
 
         # compare with cmix
         cmix0 = SFB.set_T1_ell0_expmrr0!(deepcopy(cmix), wmodes, cmodes)

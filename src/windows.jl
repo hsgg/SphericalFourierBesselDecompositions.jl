@@ -59,6 +59,8 @@ using Random
 using LoopVectorization
 #using FastGaussQuadrature
 
+using Statistics
+
 using Distributed
 using SharedArrays
 using ProgressMeter
@@ -363,11 +365,7 @@ end
 # This should be very performant
 function win_lnn(win, wmodes::ConfigurationSpaceModes, cmodes::ClnnModes)
     println("Calculate Wr_00:")
-    # Note: the maximum ℓ we need here is 0. However, healpy changes precision,
-    # and for comparison we use the same lmax as elsewhere.
-    @time Wr_00 = Vector{Float64}(calc_Wr_lm(win, 2*cmodes.amodes.lmax, cmodes.amodes.nside)[:,1])
-    @assert all(isfinite, Wr_00)
-
+    @time Wr_00 = √(4*π) * mean(win, dims=2)[:]
     r, Δr = window_r(wmodes)
     Wlnn = calc_intr_gg_fn(Spline1D(r, Wr_00 / √(4π)), wmodes, cmodes; derivative=0)
     return Wlnn
