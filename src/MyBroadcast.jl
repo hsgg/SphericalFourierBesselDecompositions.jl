@@ -120,6 +120,13 @@ function mybroadcast!(out, fn, x...; num_threads=Threads.nthreads())
         end
     end
 
+    try
+        # maybe we caught an exception and need to notify the workers
+        close(next_ifirst_channel)
+    catch e
+        @info "Could not close next_ifirst_channel" e
+    end
+
 
     num_failed_tasks = 0
     while isready(errorchannel)

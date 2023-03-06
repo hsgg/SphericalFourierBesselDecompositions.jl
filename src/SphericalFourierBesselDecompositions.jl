@@ -30,13 +30,13 @@
 
 module SphericalFourierBesselDecompositions
 
+include("MyBroadcast.jl")
 include("healpix_helpers.jl")
 include("Splines.jl")
 include("gnl.jl")  # SphericalBesselGnls
 include("modes.jl")  # AnlmModes, ClnnModes, ClnnBinnedModes
 include("utils.jl")  # mostly theory, may be split at some point
 include("SeparableArrays.jl")
-include("MyBroadcast.jl")
 include("LMcalcStructs.jl")
 include("windows.jl")  # window function related
 include("NDIterators.jl")
