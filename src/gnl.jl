@@ -368,7 +368,7 @@ function gen_gnl_cache(knl, rmin, rmax, sphbesg)
     #T = typeof(Spline1D(0.1:0.1:1.0, Float64.(sphbesg.(1, 0, 0.1:0.1:1.0))))
     gnl = fill(Spline1D(), size(knl))
     #gnl = SharedArray{T}(size(knl)...)
-    for n=1:nmax
+    @time Threads.@threads for n=1:nmax
         for l=0:lmax
             k = knl[n,l+1]
             isfinite(k) || continue
