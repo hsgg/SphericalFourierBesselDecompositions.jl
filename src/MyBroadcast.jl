@@ -89,7 +89,7 @@ function mybroadcast!(out, fn, x...; num_threads=Threads.nthreads())
         try
             batchsize = 1
 
-            # worker threads feed themselves
+            # worker threads feed themselves with a set of iterations
             iset = get_new_batch!(next_ifirst_channel, ntasks, batchsize)
 
             while length(iset) > 0
@@ -147,6 +147,9 @@ function mybroadcast!(out, fn, x...; num_threads=Threads.nthreads())
 end
 
 
+@doc raw"""
+    mybroadcast(fn, x...; num_threads=Threads.nthreads())
+"""
 function mybroadcast(fn, x...; kwargs...)
     Treturn = eltype(Base.return_types(fn, (eltype.(x)...,))[1])
 
