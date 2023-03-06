@@ -72,6 +72,7 @@ using ..WignerChains
 using ..Modes
 using ..LMcalcStructs
 using ProgressMeter
+using ..MyBroadcast
 
 
 
@@ -582,7 +583,7 @@ end
 # specialize to SeparableArray
 function calc_wmix_all(win::SeparableArray, wmodes::ConfigurationSpaceModes, amodes::AnlmModes)
     cache = WindowChainsCacheSeparableWmix(win, wmodes, amodes)
-    wmix, wmix_negm = wkcache2wmix(cache)
+    wmix, wmix_negm = wkcache2wmix_v2(cache)
     return wmix, wmix_negm
 end
 
@@ -601,6 +602,48 @@ function wkcache2wmix(cache::WindowChainsCacheSeparableWmix)
         wmix[i,j] = wlmlm * Ilnln
         wmix_negm[i,j] = wlmlm_negm * Ilnln
     end
+    return wmix, wmix_negm
+end
+
+
+function wkcache2wmix_v2(cache::WindowChainsCacheSeparableWmix)
+    amodes = cache.amodes
+    nlmsize = getnlmsize(amodes)
+    wmix = fill(NaN*im, nlmsize, nlmsize)
+    wmix_negm = fill(NaN*im, nlmsize, nlmsize)
+
+    p = Progress(nlmsize^2, desc="wmix sep: ", dt=Windows.progressmeter_update_interval, showspeed=true)
+    wmix = mybroadcast(1:nlmsize, (1:nlmsize)') do ii,jj
+        out = Array{ComplexF64}(undef, length(ii))
+        for idx in 1:length(out)
+            i = ii[idx]
+            j = jj[idx]
+            n, l, m = getnlm(amodes, i)
+            N, L, M = getnlm(amodes, j)
+            wlmlm = get_wlmlm(cache, l, m, L, M)
+            Ilnln = cache.Ilnln[l+1,n,L+1,N]
+            out[idx] = wlmlm * Ilnln
+        end
+        next!(p, step=length(out), showvalues=[(:batchsize, length(out))])
+        return out
+    end
+
+    p = Progress(nlmsize^2, desc="wmix_negm sep: ", dt=Windows.progressmeter_update_interval, showspeed=true)
+    wmix_negm = mybroadcast(1:nlmsize, (1:nlmsize)') do ii,jj
+        out = Array{ComplexF64}(undef, length(ii))
+        for idx in 1:length(out)
+            i = ii[idx]
+            j = jj[idx]
+            n, l, m = getnlm(amodes, i)
+            N, L, M = getnlm(amodes, j)
+            wlmlm_negm = get_wlmlm(cache, l, -m, L, M)
+            Ilnln = cache.Ilnln[l+1,n,L+1,N]
+            out[idx] = wlmlm_negm * Ilnln
+        end
+        next!(p, step=length(out), showvalues=[(:batchsize, length(out))])
+        return out
+    end
+
     return wmix, wmix_negm
 end
 
