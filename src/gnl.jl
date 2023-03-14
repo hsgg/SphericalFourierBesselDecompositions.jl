@@ -281,12 +281,21 @@ function calc_knl(args...; boundary=potential, kwargs...)
 end
 
 
+function get_kmin_l_add(boundary)
+    if boundary == potential
+        return 3//2
+    elseif boundary == velocity
+        return 1//2
+    end
+end
+
+
 function calc_knl_zeros(nmax, lmax, rmin, rmax; boundary=potential)
     knl = fill(NaN, nmax, lmax+1)
     knl_zero_function = get_knl_zero_func(boundary)
     for l=0:lmax
         δ = π/rmax/4
-        xmin = (l + 1//2) / rmax
+        xmin = (l + get_kmin_l_add(boundary)) / rmax
 
         func0(k) = knl_zero_function(k, l, rmin, rmax)
         knl[:,l+1] = calc_first_n_zeros(func0, nmax, δ=δ, xmin=xmin)
@@ -306,7 +315,7 @@ function calc_knl_zeros(kmax, rmin, rmax; nmax=typemax(Int64), lmax=typemax(Int6
     knl_zero_function = get_knl_zero_func(boundary)
     for l=0:lmax
         δ = π/rmax/4
-        kmin = (l + 1//2) / rmax
+        kmin = (l + get_kmin_l_add(boundary)) / rmax
 
         func0(k) = knl_zero_function(k, l, rmin, rmax)
         kn = calc_zeros(func0, kmin, kmax, δ=δ)
