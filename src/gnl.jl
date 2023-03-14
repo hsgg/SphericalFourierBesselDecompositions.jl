@@ -73,6 +73,9 @@ using SharedArrays
 const HighprecisionFloat = ArbFloat{1024}
 
 
+@enum BoundaryConditions potential velocity #density
+
+
 ############## calculate zeros ##################3
 
 function doublesecant_method(fn, a, b; maxevals=1000, xrtol=eps(1.0))
@@ -234,19 +237,58 @@ function knl_zero_function_potential(k, l, rmin, rmax)
 end
 
 
-@doc raw"""
-    calc_knl_potential(nmax, lmax, rmin, rmax)
-    calc_knl_potential(kmax, rmin, rmax; nmax=typemax(Int64), lmax=typemax(Int64))
+function knl_zero_function_velocity(k, l, rmin, rmax)
+    #@show k,l,rmin,rmax
+    scale = k^3 / (1 + abs(k)^3)
+    jlmax_d = -k*rmax * besselj(l+3//2, k*rmax) + l * besselj(l+1//2, k*rmax)
+    (k*rmin == 0) && return jlmax_d
+    ylmax_d = -k*rmax * bessely(l+3//2, k*rmax) + l * bessely(l+1//2, k*rmax)
+    jlmin_d = -k*rmin * besselj(l+3//2, k*rmin) + l * besselj(l+1//2, k*rmin)
+    ylmin_d = -k*rmin * bessely(l+3//2, k*rmin) + l * bessely(l+1//2, k*rmin)
+    ylmax_d *= scale
+    ylmin_d *= scale
+    return jlmax_d * ylmin_d - jlmin_d * ylmax_d
+end
 
-Calculate the `knl` for potential boundary conditions.
+
+function get_knl_zero_func(boundary)
+    if boundary == potential
+        return knl_zero_function_potential
+    elseif boundary == velocity
+        return knl_zero_function_velocity
+    end
+end
+
+
+
+@doc raw"""
+    calc_knl(nmax, lmax, rmin, rmax; boundary=potential)
+    calc_knl(kmax, rmin, rmax; nmax=typemax(Int64), lmax=typemax(Int64), boundary=potential)
+
+Calculate the `knl` for boundary conditions.
 """
-function calc_knl_potential(nmax, lmax, rmin, rmax)
+function calc_knl(args...; boundary=potential, kwargs...)
+
+    knl = calc_knl_zeros(args...; boundary, kwargs...)
+
+    if boundary == velocity
+        @assert isnan(knl[end,1])
+        knl[2:end,1] .= knl[1:end-1,1]
+        knl[1,1] = 0.0  # for l=0, k=0 is a solution
+    end
+
+    return knl
+end
+
+
+function calc_knl_zeros(nmax, lmax, rmin, rmax; boundary=potential)
     knl = fill(NaN, nmax, lmax+1)
+    knl_zero_function = get_knl_zero_func(boundary)
     for l=0:lmax
         δ = π/rmax/4
-        xmin = (l + 3//2) / rmax
+        xmin = (l + 1//2) / rmax
 
-        func0(k) = knl_zero_function_potential(k, l, rmin, rmax)
+        func0(k) = knl_zero_function(k, l, rmin, rmax)
         knl[:,l+1] = calc_first_n_zeros(func0, nmax, δ=δ, xmin=xmin)
     end
     @assert all(knl .> 0)
@@ -254,18 +296,19 @@ function calc_knl_potential(nmax, lmax, rmin, rmax)
 end
 
 
-function calc_knl_potential(kmax, rmin, rmax; nmax=typemax(Int64), lmax=typemax(Int64))
+function calc_knl_zeros(kmax, rmin, rmax; nmax=typemax(Int64), lmax=typemax(Int64), boundary=potential)
     nmax_calc = ceil(Int64, kmax * rmax / π) + 1
     lmax_calc = ceil(Int64, kmax * rmax)
     kmax_lim = (lmax > lmax_calc && nmax > nmax_calc)
     nmax = min(nmax, nmax_calc)
     lmax = min(lmax, lmax_calc)
     knl = fill(NaN, nmax, lmax+1)
+    knl_zero_function = get_knl_zero_func(boundary)
     for l=0:lmax
         δ = π/rmax/4
-        kmin = (l + 3//2) / rmax
+        kmin = (l + 1//2) / rmax
 
-        func0(k) = knl_zero_function_potential(k, l, rmin, rmax)
+        func0(k) = knl_zero_function(k, l, rmin, rmax)
         kn = calc_zeros(func0, kmin, kmax, δ=δ)
 
         if nmax < length(kn)
@@ -316,7 +359,7 @@ bes_yl(l, x) = begin
 end
 
 
-function calc_cnl_dnl(knl, n, l, rmin, rmax)
+function calc_cnl_dnl_potential(knl, n, l, rmin, rmax)
     #dc1 = - besselj(l-1+1//2, knl*rmax) / bessely(l-1+1//2, knl*rmax)
     #@show dc1
     dc2 = - besselj(l+1+1//2, knl*rmin) / bes_yl(l+1+1//2, knl*rmin)
@@ -336,23 +379,68 @@ function calc_cnl_dnl(knl, n, l, rmin, rmax)
 end
 
 
-function calc_cnl_dnl(knl, rmin, rmax, Tyl=Float64)
+function calc_cnl_dnl_velocity(knl, n, l, rmin, rmax)
+    @debug n,l,knl rmin,rmax
+    kR = knl * rmin
+    dc_numerator = - kR * besselj(l+1+1//2, kR) + l * besselj(l+1//2, kR)
+    dc_denominator = - kR * bes_yl(l+1+1//2, kR) + l * bes_yl(l+1//2, kR)
+    if kR == 0
+        dc_denominator = Inf
+    end
+    dc = dc_numerator / dc_denominator
+    @debug dc_numerator dc_denominator dc
+
+    gnl_rmin = calc_sphbes_gnl(knl*rmin, l, one(dc), dc)
+    gnl_rmax = calc_sphbes_gnl(knl*rmax, l, one(dc), dc)
+    gnlp1_rmin = calc_sphbes_gnl(knl*rmin, l+1, one(dc), dc)
+    gnlp1_rmax = calc_sphbes_gnl(knl*rmax, l+1, one(dc), dc)
+    gnlpp_rmin3 = ((l*(l+1) - (knl*rmin)^2) * gnl_rmin + 2 * knl*rmin * gnlp1_rmin) * rmin / knl^2
+    gnlpp_rmax3 = ((l*(l+1) - (knl*rmax)^2) * gnl_rmax + 2 * knl*rmax * gnlp1_rmax) * rmax / knl^2
+    @debug gnl_rmin gnl_rmax gnlp1_rmin gnlp1_rmax gnlpp_rmin3 gnlpp_rmax3
+
+    number_one = - (gnl_rmax * gnlpp_rmax3 - gnl_rmin * gnlpp_rmin3) / 2
+
+    if knl == 0 && l == 0
+        number_one = (rmax^3 - rmin^3) / 3
+    end
+
+    @debug number_one
+    @assert number_one > 0
+
+    # Note: the sign doesn't really matter
+    cnl = (-1)^(n + (1-floor(Int, 1/(l+1))) * (1-floor(Int,1/n))) / √number_one
+    dnl = dc * cnl
+    return cnl, dnl
+end
+
+
+function get_calc_cnl_dnl_func(boundary)
+    if boundary == potential
+        return calc_cnl_dnl_potential
+    elseif boundary == velocity
+        return calc_cnl_dnl_velocity
+    end
+end
+
+
+function calc_cnl_dnl(knl, rmin, rmax, Tyl=Float64; boundary=potential)
     nmax, lmax = size(knl) .- (0,1)
     cnl = fill(Tyl(NaN), size(knl))
     dnl = fill(Tyl(NaN), size(knl))
     n_float64 = 0
     n_arbfloat = 0
+    calc_cnl_dnl_fn = get_calc_cnl_dnl_func(boundary)
     for n=1:nmax, l=0:lmax
         !isfinite(knl[n,l+1]) && continue
         c, d = try
             n_float64 += 1
-            c1, d1 = calc_cnl_dnl(knl[n,l+1], n, l, rmin, rmax)
+            c1, d1 = calc_cnl_dnl_fn(knl[n,l+1], n, l, rmin, rmax)
             Tyl(c1), Tyl(d1)
         catch e
             isa(e, SpecialFunctions.AmosException) || rethrow(e)
             T = HighprecisionFloat
             n_arbfloat += 1
-            c1, d1 = calc_cnl_dnl(T(knl[n,l+1]), n, l, T(rmin), T(rmax))
+            c1, d1 = calc_cnl_dnl_fn(T(knl[n,l+1]), n, l, T(rmin), T(rmax))
             Tyl(c1), Tyl(d1)
         end
         cnl[n,l+1] = c
@@ -393,15 +481,16 @@ struct SphericalBesselGnl{Tcache,Tyl}
     knl::Array{Float64,2}
     cnl::Array{Tyl,2}
     dnl::Array{Tyl,2}
+    boundary::BoundaryConditions
     gnl::Tcache
 end
 
 
-function SphericalBesselGnl(nmax, lmax, rmin, rmax, knl, cnl, dnl)
-    sphbesg = SphericalBesselGnl(nmax, lmax, rmin, rmax, knl, cnl, dnl, nothing)
+function SphericalBesselGnl(nmax, lmax, rmin, rmax, knl, cnl, dnl, boundary)
+    sphbesg = SphericalBesselGnl(nmax, lmax, rmin, rmax, knl, cnl, dnl, boundary, nothing)
     #return sphbesg  # Don't commit
     gnl = gen_gnl_cache(knl, rmin, rmax, sphbesg)
-    return SphericalBesselGnl(nmax, lmax, rmin, rmax, knl, cnl, dnl, gnl)
+    return SphericalBesselGnl(nmax, lmax, rmin, rmax, knl, cnl, dnl, boundary, gnl)
 end
 
 
@@ -412,25 +501,25 @@ end
 Generate `gnl(n,l,r)`. Returns a struct that can be called for calculating
 `gnl`. Note that the last argument is `r`, *not* `kr`.
 """
-function SphericalBesselGnl(nmax, lmax, rmin, rmax; cache=true)
+function SphericalBesselGnl(nmax, lmax, rmin, rmax; cache=true, boundary=potential)
     (rmin < rmax) || @error "rmin >= rmax" rmin rmax
-    knl = calc_knl_potential(nmax, lmax, rmin, rmax)
-    cnl, dnl = calc_cnl_dnl(knl, rmin, rmax)
+    knl = calc_knl(nmax, lmax, rmin, rmax; boundary)
+    cnl, dnl = calc_cnl_dnl(knl, rmin, rmax; boundary)
     if !cache
-        return SphericalBesselGnl(nmax, lmax, rmin, rmax, knl, cnl, dnl, nothing)
+        return SphericalBesselGnl(nmax, lmax, rmin, rmax, knl, cnl, dnl, boundary, nothing)
     end
-    return SphericalBesselGnl(nmax, lmax, rmin, rmax, knl, cnl, dnl)
+    return SphericalBesselGnl(nmax, lmax, rmin, rmax, knl, cnl, dnl, boundary)
 end
 
-function SphericalBesselGnl(kmax, rmin, rmax; cache=true, nmax=typemax(Int64), lmax=typemax(Int64))
+function SphericalBesselGnl(kmax, rmin, rmax; cache=true, nmax=typemax(Int64), lmax=typemax(Int64), boundary=potential)
     (rmin < rmax) || @error "rmin >= rmax" rmin rmax
-    knl = calc_knl_potential(kmax, rmin, rmax; nmax, lmax)
-    cnl, dnl = calc_cnl_dnl(knl, rmin, rmax)
+    knl = calc_knl(kmax, rmin, rmax; nmax, lmax, boundary)
+    cnl, dnl = calc_cnl_dnl(knl, rmin, rmax; boundary)
     nmax, lmax = size(knl) .- (0,1)
     if !cache
-        return SphericalBesselGnl(nmax, lmax, rmin, rmax, knl, cnl, dnl, nothing)
+        return SphericalBesselGnl(nmax, lmax, rmin, rmax, knl, cnl, dnl, boundary, nothing)
     end
-    return SphericalBesselGnl(nmax, lmax, rmin, rmax, knl, cnl, dnl)
+    return SphericalBesselGnl(nmax, lmax, rmin, rmax, knl, cnl, dnl, boundary)
 end
 
 
