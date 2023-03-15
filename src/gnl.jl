@@ -403,8 +403,8 @@ function calc_cnl_dnl_velocity(knl, n, l, rmin, rmax)
     gnl_rmax = calc_sphbes_gnl(knl*rmax, l, one(dc), dc)
     gnlp1_rmin = calc_sphbes_gnl(knl*rmin, l+1, one(dc), dc)
     gnlp1_rmax = calc_sphbes_gnl(knl*rmax, l+1, one(dc), dc)
-    gnlpp_rmin3 = ((l*(l+1) - (knl*rmin)^2) * gnl_rmin + 2 * knl*rmin * gnlp1_rmin) * rmin / knl^2
-    gnlpp_rmax3 = ((l*(l+1) - (knl*rmax)^2) * gnl_rmax + 2 * knl*rmax * gnlp1_rmax) * rmax / knl^2
+    gnlpp_rmin3 = ((l*(l-1) - (knl*rmin)^2) * gnl_rmin + 2 * knl*rmin * gnlp1_rmin) * rmin / knl^2
+    gnlpp_rmax3 = ((l*(l-1) - (knl*rmax)^2) * gnl_rmax + 2 * knl*rmax * gnlp1_rmax) * rmax / knl^2
     @debug gnl_rmin gnl_rmax gnlp1_rmin gnlp1_rmax gnlpp_rmin3 gnlpp_rmax3
 
     number_one = - (gnl_rmax * gnlpp_rmax3 - gnl_rmin * gnlpp_rmin3) / 2
