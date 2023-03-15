@@ -628,7 +628,7 @@ G_{n\ell}(r_i)
 It is quite common that the window function is separable into a radial and an
 angular term,
 \ba
-W(\vr) &= \phi(r) \, M(\rhat)\,.
+W^X(\vr) &= \phi^X(r) \, M^X(\rhat)\,.
 \ea
 If the flux limit in a blind
 survey is near $L^*$, then the selection could change dramatically as a
@@ -643,18 +643,18 @@ Similarly, PFS will have higher target numbers where pointings overlap
 When the window function is separable, then \cref{eq:win_r_lm} is separable as
 well,
 \ba
-W_{LM}(r)
+W^X_{LM}(r)
 &=
-\phi(r) \, W_{LM}\,,
+\phi^X(r) \, W^X_{LM}\,,
 \ea
 where
 \ba
 \label{eq:sfb_Wlm}
-W_{LM} &= \int\dd^2\rhat\,Y^*_{LM}(\rhat)\,M(\rhat)\,,
+W^X_{LM} &= \int\dd^2\rhat\,Y^*_{LM}(\rhat)\,M^X(\rhat)\,,
 \ea
 and \cref{eq:cell_mixing_matrix_explicit} becomes
 \ba
-\mathcal{M}_{\ell nn'}^{LNN'}
+\mathcal{M}_{\ell nn'}^{XY,LNN'}
 &=
 \frac{2L+1}{4\pi}
 \sum_{L_1}
@@ -663,40 +663,104 @@ and \cref{eq:cell_mixing_matrix_explicit} becomes
   0 & 0 & 0
 \end{pmatrix}^2
 \sum_{M_1}
-\left|W_{L_1M_1}\right|^2
+W^X_{L_1M_1} W^{Y,*}_{L_1M_1}
 \vs&\quad\times
 \int\dd r\,r^2
 \,g_{n\ell}(r)
 \,g_{NL}(r)
-\,\phi(r)
+\,\phi^X(r)
 \vs&\quad\times
 \int\dd r'\,r'^2
 \,g_{n'\ell}(r')
 \,g_{N'L}(r')
-\,\phi(r')
+\,\phi^Y(r')
 \,,
 \ea
 which is also separable, and therefore significantly reduces computation cost.
 \cref{eq:delta_mixing_matrix_discrete_sht} simplifies in a similar manner.
 
-In the special case that $W(\vr)=1$ everywhere, we recover the unit matrix
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Semi-separable window function}
+It would be incredibly convenient to approximate the full window function as
+a sum of separable terms, i.e.,
 \ba
-\mathcal{M}_{\ell nn'}^{LNN'}
-&=
-\delta^K_{\ell L}
-\delta^K_{nN}
-\delta^K_{n'N'}
-\,,
+W^X(r, \rhat) &= \sum_i \phi^X_i(r)\,M^X_i(\rhat)\,.
+\label{eq:semi_separable_window}
 \ea
-as expected.
+This decomposition is not unique. We should choose carefully. An obvious way
+would be to split the sky into sections, each section being separable.
 
-We give two further examples in \cref{fig:bcmix}. In the left panel, we show
-the mixing matrix for a mask covering half the sky, and this leads to coupling
-of neighboring $\ell$-modes. On the right, we add a radial selection decreasing
-with redshift, and this additionally leads to the coupling of neighboring
-$n$-modes.
+Defining the window for each section,
+\ba
+\label{eq:win_r_lm}
+W^{Xi}_{LM}(r)
+&=
+\phi^{Xi}(r)
+\int\dd^2\rhat\,Y^*_{LM}(\rhat)
+\,M^{Xi}(\rhat)\,,
+\ea
+we have
+\ba
+W^X_{LM}(r)
+&=
+\sum_i
+W^{Xi}_{LM}(r)\,.
+\ea
+Thus, \cref{eq:cell_mixing_matrix_explicit} becomes
+\ba
+\mathcal{M}_{\ell nn'}^{XY,LNN'}
+&=
+\sum_{ij}
+\frac{2L+1}{4\pi}
+\sum_{L_1}
+\begin{pmatrix}
+  \ell & L & L_1 \\
+  0 & 0 & 0
+\end{pmatrix}^2
+\sum_{M_1}
+\vs&\quad\times
+\int\dd r\,r^2
+\,g_{n\ell}(r)
+\,g_{NL}(r)
+\,W^{Xi}_{L_1M_1}(r)
+\vs&\quad\times
+\int\dd r'\,r'^2
+\,g_{n'\ell}(r')
+\,g_{N'L}(r')
+\,W^{Yj,*}_{L_1M_1}(r')
+\\
+&=
+\sum_{ij}
+\mathcal{M}_{\ell nn'}^{XY,ij,LNN'}
+\,,
+\label{eq:Mij_same_gnl}
+\ea
+where $\mathcal{M}^{XY,ij}$ is the coupling matrix calculated from
+the window terms $i$ and $j$. In this derivation, we assumed that the basis
+functions $g_{n\ell}(r)$ are the same for all parts of the window.
 
-
+What remains is to construct the decomposition \cref{eq:semi_separable_window}.
+We do this recursively. First, we determine $\bar\phi(r)$ as an effective sky fraction. That is,
+\ba
+\bar \phi(r) &= f_\sky^\mathrm{eff}(z)
+= \int\frac{\dd^2\hat r}{4\pi}\,W(\vr)\,.
+\ea
+We choose this because we also need to calculate the mixing matrix for
+$W(\vr)/f_\sky^\mathrm{eff}(z)$.
+Then, we construct the average angular window,
+\ba
+\bar M(\rhat) &= \frac{1}{\int\dd r\,w(r)} \int \dd r\, w(r)\, W(\vr)\,,
+\ea
+where $w(r)$ is a weighting scheme (e.g., $1$ or $r^2$).
+Then we calculate the residual
+\ba
+\delta W(\vr) = W(\vr) - \bar\phi(r)\bar M(\rhat)\,.
+\ea
+We then perform the same procedure on this residual.
+As a final step, we apply a normalization (since SuperFaB expects
+$\max(W(\vr))=1$) to the angular terms.
 
 
 \section{Shot noise}
