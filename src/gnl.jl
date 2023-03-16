@@ -408,7 +408,7 @@ end
 
 
 function calc_cnl_dnl_velocity(knl, n, l, rmin, rmax)
-    @debug n,l,knl rmin,rmax
+    #@debug n,l,knl rmin,rmax
     kR = knl * rmin
     dc_numerator = - kR * besselj(l+1+1//2, kR) + l * besselj(l+1//2, kR)
     dc_denominator = - kR * bes_yl(l+1+1//2, kR) + l * bes_yl(l+1//2, kR)
@@ -416,7 +416,7 @@ function calc_cnl_dnl_velocity(knl, n, l, rmin, rmax)
         dc_denominator = Inf
     end
     dc = - dc_numerator / dc_denominator
-    @debug dc_numerator dc_denominator dc
+    #@debug dc_numerator dc_denominator dc
 
     gnl_rmin = calc_sphbes_gnl(knl*rmin, l, one(dc), dc)
     gnl_rmax = calc_sphbes_gnl(knl*rmax, l, one(dc), dc)
@@ -424,7 +424,7 @@ function calc_cnl_dnl_velocity(knl, n, l, rmin, rmax)
     gnlp1_rmax = calc_sphbes_gnl(knl*rmax, l+1, one(dc), dc)
     gnl_pp_rmin3 = ((l*(l-1) - (knl*rmin)^2) * gnl_rmin + 2 * knl*rmin * gnlp1_rmin) * rmin / knl^2
     gnl_pp_rmax3 = ((l*(l-1) - (knl*rmax)^2) * gnl_rmax + 2 * knl*rmax * gnlp1_rmax) * rmax / knl^2
-    @debug gnl_rmin gnl_rmax gnlp1_rmin gnlp1_rmax gnl_pp_rmin3 gnl_pp_rmax3
+    #@debug gnl_rmin gnl_rmax gnlp1_rmin gnlp1_rmax gnl_pp_rmin3 gnl_pp_rmax3
 
     normalization = - (gnl_rmax * gnl_pp_rmax3 - gnl_rmin * gnl_pp_rmin3) / 2
 

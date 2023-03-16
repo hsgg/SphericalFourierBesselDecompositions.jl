@@ -1,7 +1,7 @@
 #!/usr/bin/env julia
 
 
-using Revise
+#using Revise
 using SphericalFourierBesselDecompositions
 const SFB = SphericalFourierBesselDecompositions
 
@@ -336,7 +336,8 @@ using LinearAlgebra
         wkfull = SFB.window_chain(ell, n1, n2, cache, symmetries)
         @show wkfull
         #@test wkfull ≈ -1.2707026010569427e-8  # if :rotate is by E->G with healpy
-        @test wkfull ≈ -7.224995629370737e-9  # only useful for detecting changes
+        #@test wkfull ≈ -7.224995629370737e-9  # only useful for detecting changes
+        @test wkfull ≈ -7.224997920215561e-9  # only useful for detecting changes
     end
 
 

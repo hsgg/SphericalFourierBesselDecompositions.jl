@@ -6,7 +6,7 @@ const SFB = SphericalFourierBesselDecompositions
 
 using Test
 using LinearAlgebra
-using Profile
+#using Profile
 using Healpix
 
 #using PyPlot

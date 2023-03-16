@@ -1,7 +1,7 @@
 #!/usr/bin/env julia
 
 
-using Revise
+#using Revise
 using SphericalFourierBesselDecompositions
 const SFB = SphericalFourierBesselDecompositions
 
