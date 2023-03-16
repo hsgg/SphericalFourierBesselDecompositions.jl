@@ -409,7 +409,7 @@ function calc_cnl_dnl_velocity(knl, n, l, rmin, rmax)
     if kR == 0
         dc_denominator = Inf
     end
-    dc = dc_numerator / dc_denominator
+    dc = - dc_numerator / dc_denominator
     @debug dc_numerator dc_denominator dc
 
     gnl_rmin = calc_sphbes_gnl(knl*rmin, l, one(dc), dc)
