@@ -526,7 +526,7 @@ function gen_gnl_cache(knl, rmin, rmax, sphbesg)
         for l=0:lmax
             k = knl[n,l+1]
             isfinite(k) || continue
-            nr = 12 * ceil(Int, 2 * k * (rmax - rmin))
+            nr = 3 + 12 * ceil(Int, 2 * k * (rmax - rmin))
             Δr = (rmax - rmin) / nr
             myr = rmin:Δr:rmax+Δr/2
             myg = sphbesg.(n,l,myr)
