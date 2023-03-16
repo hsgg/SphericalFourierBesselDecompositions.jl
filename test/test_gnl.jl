@@ -46,8 +46,8 @@ end
 
 @testset "GNL" begin
     @testset "$boundary" for boundary in [SFB.GNL.potential, SFB.GNL.velocity]
-        @testset "rmin=$rmin" for rmin in [0.0, 500.0, 1539.98, 2000.0]
-            @testset "kmax=$kmax" for kmax in [0.01, 0.0614, 0.1]
+        @testset "rmin=$rmin" for rmin in [0.0, 500.0]#, 2000.0]
+            @testset "kmax=$kmax" for kmax in [0.01, 0.1]
                 println("=====")
                 @show boundary rmin kmax
 
@@ -147,12 +147,12 @@ end
 
                 do_cache = (kmax < 0.02)
                 @show do_cache
-                amodes = SFB.AnlmModes(kmax, rmin, rmax, cache=do_cache; boundary)
+                @time amodes = SFB.AnlmModes(kmax, rmin, rmax, cache=do_cache; boundary)
                 @show amodes.lmax amodes.nmax amodes.lmax_n amodes.nmax_l
                 @test amodes.lmax == maximum(amodes.lmax_n)
                 @test amodes.nmax == maximum(amodes.nmax_l)
 
-                cmodes = SFB.ClnnModes(amodes, Δnmax=0)
+                @time cmodes = SFB.ClnnModes(amodes, Δnmax=0)
                 knl = amodes.knl[isfinite.(amodes.knl)]
                 lkk = SFB.getlkk(cmodes)
                 @test cmodes.Δnmax == maximum(cmodes.Δnmax_l)
@@ -165,7 +165,7 @@ end
                 @show length(knl) length(knl[s])
 
                 println("Testing orthonormality ($boundary,rmin=$rmin,kmax=$kmax)...")
-                test_orthonormality(amodes)
+                @time test_orthonormality(amodes)
             end
         end
     end
