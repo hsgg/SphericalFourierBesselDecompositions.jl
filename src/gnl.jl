@@ -245,8 +245,8 @@ function knl_zero_function_velocity(k, l, rmin, rmax)
     ylmax_d = -k*rmax * bessely(l+3//2, k*rmax) + l * bessely(l+1//2, k*rmax)
     jlmin_d = -k*rmin * besselj(l+3//2, k*rmin) + l * besselj(l+1//2, k*rmin)
     ylmin_d = -k*rmin * bessely(l+3//2, k*rmin) + l * bessely(l+1//2, k*rmin)
-    ylmax_d *= scale
-    ylmin_d *= scale
+    ylmax_d *= 1
+    ylmin_d *= 1
     return jlmax_d * ylmin_d - jlmin_d * ylmax_d
 end
 
@@ -395,13 +395,13 @@ end
 
 
 function calc_normalization_trapz(l, knl, rmin, rmax, dc)
-    nr = 1000
+    nr = 2000
     Δr = (rmax - rmin) / nr
     r = range(rmin+Δr/2, rmax-Δr/2, length=nr)
     #gnl = @. calc_sphbes_gnl(knl * r, l, one(dc), dc)
     gnl = @. sphericalbesselj(l, knl * r)
     if dc != 0
-        @. gnl += dc * bes_yl(l, knl * r)
+        @. gnl += dc * sphbes_yl(l, knl * r)
     end
     return sum(@. gnl^2 * r^2 * Δr)
 end
@@ -432,9 +432,9 @@ function calc_cnl_dnl_velocity(knl, n, l, rmin, rmax)
         normalization = (rmax^3 - rmin^3) / 3
     end
 
-    normalization_trapz = calc_normalization_trapz(l, knl, rmin, rmax, dc)
-    @debug n,l,normalization,normalization_trapz
-    if normalization <= 0 || !isapprox(normalization, normalization_trapz, rtol=1e-4)
+    #normalization_trapz = calc_normalization_trapz(l, knl, rmin, rmax, dc)
+    #@debug n,l,normalization,normalization_trapz
+    if normalization <= 0 # || !isapprox(normalization, normalization_trapz, rtol=1e-4)
         kR = knl * rmax
         dc_numerator_rmax = - kR * besselj(l+1+1//2, kR) + l * besselj(l+1//2, kR)
         dc_denominator_rmax = - kR * bes_yl(l+1+1//2, kR) + l * bes_yl(l+1//2, kR)
@@ -468,7 +468,7 @@ function calc_cnl_dnl_velocity(knl, n, l, rmin, rmax)
         Δnormalization = normalization - normalization_trapz
         Δnorm_norm = (normalization - normalization_trapz) / normalization_trapz
 
-        @error "gnl(r) normalization error" typeof(knl) knl n l rmin rmax knl*rmin knl*rmax dc_numerator dc_denominator dc dc_numerator_rmax dc_denominator_rmax dc_rmax -jl_p_rmin/yl_p_rmin -jl_p_rmax/yl_p_rmax besselj(l+1//2, knl*rmin) besselj(l+1//2, knl*rmax) bes_yl(l+1//2, knl*rmin) bes_yl(l+1//2, knl*rmax) jl_rmin jl_rmax yl_rmin yl_rmax jl_p_rmin jl_p_rmax yl_p_rmin yl_p_rmax jl_rmin+dc*yl_rmin gnl_rmin gnl_rmax gnlp1_rmin gnlp1_rmax gnl_pp_rmin3 gnl_pp_rmax3 gnl_pp_rmin_est*rmin^3 gnl_pp_rmax_est*rmax^3 (l*(l-1)-(knl*rmax)^2)*gnl_rmax 2*knl*rmax*gnlp1_rmax jl_p_rmin+dc*yl_p_rmin jl_p_rmax+dc*yl_p_rmax gnl_p_rmin gnl_p_rmax knl_zero_function_result knl_zero_function_value normalization normalization_trapz Δnormalization Δnorm_norm
+        @error "gnl(r) normalization error" typeof(knl) knl n l rmin rmax knl*rmin knl*rmax dc_numerator dc_denominator dc dc_numerator_rmax dc_denominator_rmax dc_rmax -jl_p_rmin/yl_p_rmin -jl_p_rmax/yl_p_rmax besselj(l+1//2, knl*rmin) besselj(l+1//2, knl*rmax) bes_yl(l+1//2, knl*rmin) bes_yl(l+1//2, knl*rmax) jl_rmin jl_rmax yl_rmin yl_rmax jl_p_rmin jl_p_rmax yl_p_rmin yl_p_rmax jl_rmin+dc*yl_rmin jl_rmax+dc*yl_rmax jlp1_rmin+dc*ylp1_rmin jlp1_rmax+dc*ylp1_rmax gnl_rmin gnl_rmax gnlp1_rmin gnlp1_rmax gnl_pp_rmin3 gnl_pp_rmax3 gnl_pp_rmin_est*rmin^3 gnl_pp_rmax_est*rmax^3 jl_p_rmin+dc*yl_p_rmin jl_p_rmax+dc*yl_p_rmax gnl_p_rmin gnl_p_rmax knl_zero_function_result knl_zero_function_value normalization normalization_trapz Δnormalization Δnorm_norm
         error("normalization imprecise")
     end
     @assert normalization > 0
