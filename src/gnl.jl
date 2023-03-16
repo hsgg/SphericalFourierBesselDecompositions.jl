@@ -436,11 +436,11 @@ function calc_cnl_dnl_velocity(knl, n, l, rmin, rmax)
 
         gnl_p_rmin = - gnlp1_rmin + (l / (knl*rmin)) * gnl_rmin
         gnl_p_rmax = - gnlp1_rmax + (l / (knl*rmax)) * gnl_rmax
-        gnl_rmin_p = calc_sphbes_gnl(knl*rmin+0.002, l, one(dc), dc)
-        gnl_rmin_m = calc_sphbes_gnl(knl*rmin+0.001, l, one(dc), dc)  # midpoint, don't go negative
+        gnl_rmin_p = calc_sphbes_gnl(knl*rmin+0.001, l, one(dc), dc)
+        gnl_rmin_m = calc_sphbes_gnl(complex(knl*rmin-0.001), l, one(dc), dc)
         gnl_rmax_p = calc_sphbes_gnl(knl*rmax+0.001, l, one(dc), dc)
         gnl_rmax_m = calc_sphbes_gnl(knl*rmax-0.001, l, one(dc), dc)
-        gnl_pp_rmin_est = (gnl_rmin_p - 2 * gnl_rmin_m + gnl_rmin) / 0.001^2
+        gnl_pp_rmin_est = (gnl_rmin_p - 2 * gnl_rmin + gnl_rmin_m) / 0.001^2
         gnl_pp_rmax_est = (gnl_rmax_p - 2 * gnl_rmax + gnl_rmax_m) / 0.001^2
 
         normalization_trapz = calc_normalization_trapz(l, knl, rmin, rmax, dc)
