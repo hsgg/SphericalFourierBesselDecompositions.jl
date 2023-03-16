@@ -352,19 +352,25 @@ sphericalbesselj(nu, x) = SpecialFunctions.sphericalbesselj(nu, x)
 sphericalbessely(nu, x) = SpecialFunctions.sphericalbessely(nu, x)
 
 
+function bes_yl(l, x::T) where {T}
+    (x == 0) && return -T(Inf)
+    isnan(x) && return T(NaN)
+    return bessely(l,x)
+end
+
+
+function sphbes_yl(l, x::T) where {T}
+    (x == 0) && return -T(Inf)
+    isnan(x) && return T(NaN)
+    return sphericalbessely(l,x)
+end
+
 
 function calc_sphbes_gnl(q, l, c::Tyl, d::Tyl) where {Tyl}
     jl = sphericalbesselj(l, Tyl(q))
     (d == 0) && return c * jl
     yl = sphericalbessely(l, Tyl(q))
     return c * jl + d * yl
-end
-
-
-bes_yl(l, x) = begin
-    (x == 0) && return -typeof(x)(Inf)
-    isnan(x) && return typeof(x)(NaN)
-    return bessely(l,x)
 end
 
 
@@ -389,7 +395,7 @@ end
 
 
 function calc_normalization_trapz(l, knl, rmin, rmax, dc)
-    nr = 2000
+    nr = 1000
     Δr = (rmax - rmin) / nr
     r = range(rmin+Δr/2, rmax-Δr/2, length=nr)
     #gnl = @. calc_sphbes_gnl(knl * r, l, one(dc), dc)
@@ -432,7 +438,7 @@ function calc_cnl_dnl_velocity(knl, n, l, rmin, rmax)
         kR = knl * rmax
         dc_numerator_rmax = - kR * besselj(l+1+1//2, kR) + l * besselj(l+1//2, kR)
         dc_denominator_rmax = - kR * bes_yl(l+1+1//2, kR) + l * bes_yl(l+1//2, kR)
-        dc_rmax = dc_numerator_rmax / dc_denominator_rmax
+        dc_rmax = - dc_numerator_rmax / dc_denominator_rmax
 
         gnl_p_rmin = - gnlp1_rmin + (l / (knl*rmin)) * gnl_rmin
         gnl_p_rmax = - gnlp1_rmax + (l / (knl*rmax)) * gnl_rmax
@@ -443,11 +449,26 @@ function calc_cnl_dnl_velocity(knl, n, l, rmin, rmax)
         gnl_pp_rmin_est = (gnl_rmin_p - 2 * gnl_rmin + gnl_rmin_m) / 0.001^2
         gnl_pp_rmax_est = (gnl_rmax_p - 2 * gnl_rmax + gnl_rmax_m) / 0.001^2
 
+        jl_rmin = sphericalbesselj(l, knl*rmin)
+        jl_rmax = sphericalbesselj(l, knl*rmax)
+        yl_rmin = sphbes_yl(l, knl*rmin)
+        yl_rmax = sphbes_yl(l, knl*rmax)
+        jlp1_rmin = sphericalbesselj(l+1, knl*rmin)
+        jlp1_rmax = sphericalbesselj(l+1, knl*rmax)
+        ylp1_rmin = sphbes_yl(l+1, knl*rmin)
+        ylp1_rmax = sphbes_yl(l+1, knl*rmax)
+        jl_p_rmin = -jlp1_rmin + (l / (knl*rmin)) * jl_rmin
+        jl_p_rmax = -jlp1_rmax + (l / (knl*rmax)) * jl_rmax
+        yl_p_rmin = -ylp1_rmin + (l / (knl*rmin)) * yl_rmin
+        yl_p_rmax = -ylp1_rmax + (l / (knl*rmax)) * yl_rmax
+        knl_zero_function_result = knl_zero_function_velocity(knl, l, rmin, rmax)
+        knl_zero_function_value = jl_p_rmin / yl_p_rmin - jl_p_rmax / yl_p_rmax
+
         normalization_trapz = calc_normalization_trapz(l, knl, rmin, rmax, dc)
         Δnormalization = normalization - normalization_trapz
         Δnorm_norm = (normalization - normalization_trapz) / normalization_trapz
 
-        @error "gnl(r) normalization <= 0" typeof(knl) knl n l rmin rmax dc_numerator dc_denominator dc dc_numerator_rmax dc_denominator_rmax dc_rmax besselj(l, knl*rmin) besselj(l, knl*rmax) bes_yl(l, knl*rmin) bes_yl(l, knl*rmax) gnl_rmin gnl_rmax gnlp1_rmin gnlp1_rmax gnl_pp_rmin3 gnl_pp_rmax3 gnl_pp_rmin_est*rmin^3 gnl_pp_rmax_est*rmax^3 (l*(l-1)-(knl*rmax)^2)*gnl_rmax 2*knl*rmax*gnlp1_rmax gnl_p_rmin gnl_p_rmax normalization normalization_trapz Δnormalization Δnorm_norm
+        @error "gnl(r) normalization error" typeof(knl) knl n l rmin rmax knl*rmin knl*rmax dc_numerator dc_denominator dc dc_numerator_rmax dc_denominator_rmax dc_rmax -jl_p_rmin/yl_p_rmin -jl_p_rmax/yl_p_rmax besselj(l+1//2, knl*rmin) besselj(l+1//2, knl*rmax) bes_yl(l+1//2, knl*rmin) bes_yl(l+1//2, knl*rmax) jl_rmin jl_rmax yl_rmin yl_rmax jl_p_rmin jl_p_rmax yl_p_rmin yl_p_rmax jl_rmin+dc*yl_rmin gnl_rmin gnl_rmax gnlp1_rmin gnlp1_rmax gnl_pp_rmin3 gnl_pp_rmax3 gnl_pp_rmin_est*rmin^3 gnl_pp_rmax_est*rmax^3 (l*(l-1)-(knl*rmax)^2)*gnl_rmax 2*knl*rmax*gnlp1_rmax jl_p_rmin+dc*yl_p_rmin jl_p_rmax+dc*yl_p_rmax gnl_p_rmin gnl_p_rmax knl_zero_function_result knl_zero_function_value normalization normalization_trapz Δnormalization Δnorm_norm
         error("normalization imprecise")
     end
     @assert normalization > 0

@@ -2,6 +2,7 @@
 
 using SphericalFourierBesselDecompositions
 const SFB = SphericalFourierBesselDecompositions
+using SpecialFunctions
 
 using Test
 
@@ -17,11 +18,13 @@ using Test
 
                 # plot eqn for determining knl
                 figure()
-                k = 1e-5:1e-4:1e-2
+                k = 1e-5:1e-4:1.2kmax
                 knl = SFB.GNL.calc_knl(maximum(k), rmin, rmax; boundary)
                 l = 0:2
                 z = SFB.GNL.get_knl_zero_func(boundary).(k, l', rmin, rmax)
                 plot(k, z)
+                xlabel(L"k")
+                ylabel(L"$k_{n\ell}$ zeros  function")
                 hlines(0, extrema(k)..., color="0.75")
                 vlines(knl[:,1], extrema(z)..., color="0.75")
                 vlines(knl[:,2], extrema(z)..., color="0.75", ls="--")
@@ -34,15 +37,17 @@ using Test
                 if rmin == 0
                     # plot jl'
                     figure()
-                    j0 = @. sin(k*rmax) / (k * rmax)
-                    j1 = @. (sin(k*rmax) / (k*rmax) - cos(k*rmax)) / (k * rmax)
-                    j2 = @. (2*1 + 1) / (k*rmax) * j1 - j0
+                    j0 = @. sphericalbesselj(0, k*rmax)
+                    j1 = @. sphericalbesselj(1, k*rmax)
+                    j2 = @. sphericalbesselj(2, k*rmax)
                     j0_p = @. -j1
                     j1_p = @. j0 - (1+1) / (k*rmax) * j1
                     j2_p = @. j1 - (2+1) / (k*rmax) * j2
                     plot(k, j0_p)
                     plot(k, j1_p)
                     plot(k, j2_p)
+                    xlabel(L"k")
+                    ylabel(L"j'_\ell(k*r_{\rm max})")
                     hlines(0, extrema(k)..., color="0.75")
                     vlines(knl[:,1], extrema(j0_p)..., color="0.75")
                     vlines(knl[:,2], extrema(j1_p)..., color="0.75", ls="--")
@@ -53,12 +58,9 @@ using Test
                     nr = 2000
                     Δr = (rmax - rmin) / nr
                     r = range(rmin + Δr/2, rmax - Δr/2, length=nr)
-                    k = knl[1:3,1]
-                    j0 = @. sinc(k' * r / π)
-                    k = knl[1:3,2]
-                    j1 = @. (sinc(k' * r / π) - cos(k' * r)) / (k' * r)
-                    k = knl[1:3,3]
-                    j2 = @. (-1/(k'*r) + 3/(k'*r)^3) * sin(k'*r) - 3/(k'*r)^2 * cos(k'*r)
+                    j0 = @. sphericalbesselj(0, knl[1:3,1]' * r)
+                    j1 = @. sphericalbesselj(1, knl[1:3,2]' * r)
+                    j2 = @. sphericalbesselj(2, knl[1:3,3]' * r)
                     norm0 = sum((@. r^2 * Δr * j0^2), dims=1)
                     norm1 = sum((@. r^2 * Δr * j1^2), dims=1)
                     norm2 = sum((@. r^2 * Δr * j2^2), dims=1)
@@ -74,6 +76,8 @@ using Test
                     plot(NaN, NaN, "k", label=L"\ell=0")
                     plot(NaN, NaN, "k--", label=L"\ell=1")
                     plot(NaN, NaN, "k:", label=L"\ell=2")
+                    xlabel(L"r")
+                    ylabel(L"j_\ell(k_{n\ell}*r)")
                     hlines(0, extrema(r)..., color="0.75")
                     legend()
 
