@@ -410,9 +410,13 @@ function getlkk(cmodes::ClnnModes, l, n1, n2)
 end
 
 
-function estimate_nr(cmodes::ClnnModes)
+function estimate_nr(cmodes::ClnnModes; quick=false)
     # Note this is a pretty shitty algorithm. Speeding it up should be fairly easy.
     lnnsize = getlnnsize(cmodes)
+    if quick
+        @show 8*cmodes.amodes.nmax  2.5*cmodes.amodes.lmax
+        return 8 * cmodes.amodes.nmax
+    end
     Nsampmax = 1
     for i=1:lnnsize, i′=1:lnnsize
         l, n, n′ = getlnn(cmodes, i)
