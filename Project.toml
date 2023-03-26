@@ -26,7 +26,7 @@ WignerSymbols = "9f57e263-0b3d-5e2e-b1be-24f2bb48858b"
 
 [compat]
 ArbNumerics = "^1.2"
-FastTransforms = "0.13, 0.14"
+FastTransforms = "0.13, 0.14, 0.15"
 Healpix = "3, 4"
 LoopVectorization = "0.12"
 ProgressMeter = "1"
