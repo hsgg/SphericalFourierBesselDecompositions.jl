@@ -65,7 +65,6 @@ using Distributed
 using SharedArrays
 using ProgressMeter
 using Base.Threads
-using ThreadsX
 
 const progressmeter_update_interval = haskey(ENV, "PROGRESSMETER_UPDATE_INTERVAL") ? parse(Int, ENV["PROGRESSMETER_UPDATE_INTERVAL"]) : 1
 
@@ -168,30 +167,38 @@ function apply_window(rθϕ::AbstractArray{T}, win, rmin, rmax, win_r, win_Δr; 
     nr = length(win_r)
     #insample = Array{Bool}(undef, Ngals)
     #insample = BitArray(undef, Ngals)
-    insample = ThreadsX.map(1:Ngals) do i
-        r = rθϕ[1,i]
-        if !(rmin <= r <= rmax)
-            return false
-        end
-        θ = rθϕ[2,i]
-        ϕ = rθϕ[3,i]
+    insample = mybroadcast(1:Ngals) do ii
+        out = Array{Bool}(undef, length(ii))
+        for k=1:length(ii)
+            i = ii[k]
+            r = rθϕ[1,i]
+            if !(rmin <= r <= rmax)
+                out[k] = false
+                continue
+            end
+            θ = rθϕ[2,i]
+            ϕ = rθϕ[3,i]
 
-        idx_r = ceil(Int, (r - rmin) / win_Δr)
-        if idx_r == 0  # if r == rmin
-            idx_r = 1
-        elseif idx_r > nr
-            return false
-        end
+            idx_r = ceil(Int, (r - rmin) / win_Δr)
+            if idx_r == 0  # if r == rmin
+                idx_r = 1
+            elseif idx_r > nr
+                out[k] = false
+                continue
+            end
 
-        idx_ang = ang2pixRing(reso, θ, ϕ)
-        if !(1 <= idx_ang <= npix)
-            @error "healpixel outside healpix map" reso nside θ ϕ idx_ang npix
-        end
+            idx_ang = ang2pixRing(reso, θ, ϕ)
+            if !(1 <= idx_ang <= npix)
+                @error "healpixel outside healpix map" reso nside θ ϕ idx_ang npix
+            end
 
-        if rand(rng) <= win[idx_r,idx_ang] * ooWmax
-            return true
+            if rand(rng) <= win[idx_r,idx_ang] * ooWmax
+                out[k] = true
+                continue
+            end
+            out[k] = false
         end
-        return false
+        return out
     end
     return collect(rθϕ[:,insample])
 end
