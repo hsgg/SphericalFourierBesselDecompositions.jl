@@ -47,7 +47,7 @@ include("theory.jl")  # mostly for testing the package, may be split at some poi
 include("covariance.jl")  # mostly theory, may be split at some point
 
 using Statistics
-using FastTransforms
+using FastTransforms: sphevaluate
 using WignerD
 #using Roots
 using Healpix
