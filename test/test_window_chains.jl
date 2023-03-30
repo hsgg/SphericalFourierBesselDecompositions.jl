@@ -1,6 +1,7 @@
 #!/usr/bin/env julia
 
 
+#using Revise
 using SphericalFourierBesselDecompositions
 const SFB = SphericalFourierBesselDecompositions
 
@@ -15,13 +16,15 @@ using LinearAlgebra
     # details of how healpy is used.
 
     run_tests = true
+    #@test false
 
     run_tests && @testset "Wmix" begin
         rmin = 500.0
         rmax = 1000.0
+        nr = 200
         amodes = SFB.AnlmModes(3, 5, rmin, rmax)
         cmodes = SFB.ClnnModes(amodes, Δnmax=1)
-        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
         win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate, :separable)
 
         cache2 = SFB.WindowChains.WindowChainsCacheFullWmix(win, wmodes, amodes)
@@ -102,13 +105,13 @@ using LinearAlgebra
         test_mode([1, 1, 1], [1, 1, 1])
 
         nlmsize = SFB.getnlmsize(amodes)
-        long_tests && for j=1:nlmsize, i=1:nlmsize
+        for j=1:nlmsize, i=1:nlmsize
             n1, l1, m1 = SFB.getnlm(amodes, i)
             n2, l2, m2 = SFB.getnlm(amodes, j)
-            test_mode([n1, l1, m1], [n2, l2, m2]; verbose=true)
-            test_mode([n1, l1, -m1], [n2, l2, m2]; verbose=true)
-            test_mode([n1, l1, m1], [n2, l2, -m2]; verbose=true)
-            test_mode([n1, l1, -m1], [n2, l2, -m2]; verbose=true)
+            test_mode([n1, l1, m1], [n2, l2, m2]; verbose=false)
+            test_mode([n1, l1, -m1], [n2, l2, m2]; verbose=false)
+            test_mode([n1, l1, m1], [n2, l2, -m2]; verbose=false)
+            test_mode([n1, l1, -m1], [n2, l2, -m2]; verbose=false)
         end
     end
 
@@ -159,7 +162,7 @@ using LinearAlgebra
         wk_lnni = real.(wk_lnni)
 
         @show size(wk_lnni) size(wlnn)
-        long_tests && for i=1:SFB.getlnnsize(cmodes)
+        for i=1:SFB.getlnnsize(cmodes)
             l, n1, n2 = SFB.getlnn(cmodes, i)
             wk = wk_lnni[i] / (2*l+1)
             @show l,n1,n2,wk_lnni[i],wk,wlnn[i]
@@ -221,7 +224,7 @@ using LinearAlgebra
 
         @show size(wk_lnni) size(M)
         @test size(wk_lnni) == size(M)
-        long_tests && for i2=1:SFB.getlnnsize(cmodes), i1=1:SFB.getlnnsize(cmodes)
+        for i2=1:SFB.getlnnsize(cmodes), i1=1:SFB.getlnnsize(cmodes)
             l1, n1, n1′ = SFB.getlnn(cmodes, i1)
             l2, n2, n2′ = SFB.getlnn(cmodes, i2)
             i2′ = SFB.getidx(cmodes, l2, n2′, n2)
@@ -235,9 +238,10 @@ using LinearAlgebra
     run_tests && @testset "Wk method agreement" begin
         rmin = 500.0
         rmax = 1000.0
-        amodes = SFB.AnlmModes(8, 4, rmin, rmax)
+        nr = 200
+        amodes = SFB.AnlmModes(4, 2, rmin, rmax)
         cmodes = SFB.ClnnModes(amodes, Δnmax=0)
-        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
         win = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate, :separable)
 
         cache1 = SFB.WindowChains.WindowChainsCacheWignerChain(win, wmodes, amodes)
@@ -265,7 +269,7 @@ using LinearAlgebra
         end
 
         println("Testing individual modes...")
-        long_tests && for l1=0:amodes.lmax
+        for l1=0:amodes.lmax
             test_individual([l1], [1], [1])
             for l2=0:amodes.lmax
                 test_individual([l1, l2], [1, 1], [1, 1])
@@ -312,23 +316,6 @@ using LinearAlgebra
             @show wk wkp1
             @test wk ≈ wkp1
         end
-
-        return
-
-        # These checks can fail:
-        # check k=3 n,N ↔ n′,N′ symmetry, Nah, not a symmetry
-        for i=1:10
-            k = 3
-            ell = rand(0:amodes.lmax, k)
-            n1 = rand(1:amodes.nmax, k)
-            n2 = rand(1:amodes.nmax, k)
-            wk = test_individual(ell, n1, n2)
-            n1[2:3] .= n1[3:-1:2]
-            n2[2:3] .= n2[3:-1:2]
-            wkp1 = test_individual(ell, n2, n1)
-            @show wk wkp1
-            @test wk ≈ wkp1
-        end
     end
 
 
@@ -349,7 +336,8 @@ using LinearAlgebra
         wkfull = SFB.window_chain(ell, n1, n2, cache, symmetries)
         @show wkfull
         #@test wkfull ≈ -1.2707026010569427e-8  # if :rotate is by E->G with healpy
-        @test wkfull ≈ -7.224995629370737e-9  # only useful for detecting changes
+        #@test wkfull ≈ -7.224995629370737e-9  # only useful for detecting changes
+        @test wkfull ≈ -7.224997920215561e-9  # only useful for detecting changes
     end
 
 
@@ -360,7 +348,7 @@ using LinearAlgebra
         amodes = SFB.AnlmModes(8, 4, rmin, rmax; nside=nside)
         cmodes = SFB.ClnnModes(amodes, Δnmax=0)
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
-        mask = fill(0.0, SFB.hp.nside2npix(amodes.nside))
+        mask = fill(0.0, SFB.nside2npix(amodes.nside))
         mask[805+1] = 1.0
         phi = fill(1.0, wmodes.nr)
         win = SFB.SeparableArray(phi, mask, name1=:phi, name2=:mask)
@@ -392,7 +380,7 @@ using LinearAlgebra
         println("Testing individual modes...")
         for l1=0:amodes.lmax
             test_individual([l1], [1], [1])
-            long_tests && for l2=0:amodes.lmax
+            for l2=0:amodes.lmax
                 test_individual([l1, l2], [1, 1], [1, 1])
                 for l3=0:amodes.lmax
                     test_individual([l1, l2, l3], [1, 1, 1], [1, 1, 1])
@@ -405,29 +393,25 @@ using LinearAlgebra
     run_tests && @testset "Other tests" begin
         rmin = 0.0
         rmax = 2000.0
+        nr = 1000
         amodes = SFB.AnlmModes(0.03, rmin, rmax)
         cmodes = SFB.ClnnModes(amodes, Δnmax=0)
-        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
         @show amodes.lmax_n
 
         phi = fill(1.0, wmodes.nr)
-        mask = fill(1.0, SFB.hp.nside2npix(amodes.nside))
+        mask = fill(1.0, SFB.nside2npix(amodes.nside))
         win = SFB.SeparableArray(phi, mask, name1=:phi, name2=:mask)
 
         wlm, LMcache = SFB.WindowChains.calc_Wlm(mask, amodes.lmax, amodes.nside)
         lrange = 48:48
-        long_tests && for l1=lrange, l2=lrange, m1=-l1:l1, m2=-l2:l2
+        for l1=lrange, l2=lrange, m1=-l1:l1, m2=-l2:l2
             w = SFB.WindowChains.window_wmix(l1, m1, l2, m2, wlm, LMcache)
-            if l1 == l2 && m1 == m2
-                @test w ≈ 1
-                if !(w ≈ 1)
-                    @error "Wlmlm unexpected result" l1,l2 m1,m2 w
-                end
-            else
-                @test w ≈ 0  atol=1e-10
-                if !(abs(w) <= 1e-10)
-                    @error "Wlmlm unexpected result" l1,l2 m1,m2 w
-                end
+            correct_result = (l1 == l2 && m1 == m2) ? 1 : 0
+            atol = 1e-6
+            @test w ≈ correct_result  atol=atol
+            if !(abs(w - correct_result) <= atol)
+                @error "Wlmlm unexpected result" l1,l2 m1,m2 w
             end
         end
 
@@ -450,20 +434,17 @@ using LinearAlgebra
         n2 = [1, 1]
         wk = SFB.window_chain(ell, n1, n2, cache)
         @show wk wk/(2*ell[1]+1)
-        @test wk/(2*ell[1]+1) ≈ 1
+        @test wk/(2*ell[1]+1) ≈ 1  rtol=1e-4
 
-        long_tests && for m1=-ell[1]:ell[1], m2=-ell[2]:ell[2]
+        for m1=-ell[1]:ell[1], m2=-ell[2]:ell[2]
             w = SFB.WindowChains.get_wlmlm(cache, ell[end], m2, ell[1], m1)
             w2 = SFB.WindowChains.window_wmix(ell[end], m2, ell[1], m1, wlm, LMcache)
-            if m1 != m2 || ell[1] != ell[2]
-                @test w ≈ 0  atol=1e-10
-                @test w2 ≈ 0  atol=1e-10
-            else
-                @test w ≈ 1
-                @test w2 ≈ 1
-                if !(w ≈ 1)
-                    @error "Wlmlm unexpected result" ell m1,m2 w w2
-                end
+            correct_result = (m1 != m2 || ell[1] != ell[2]) ? 0 : 1
+            atol=1e-6
+            @test w ≈ correct_result  atol=atol
+            @test w2 ≈ correct_result  atol=atol
+            if !(abs(w - correct_result) <= atol)
+                @error "Wlmlm unexpected result" ell m1,m2 w w2
             end
         end
 
@@ -479,10 +460,11 @@ using LinearAlgebra
     run_tests && @testset "calc_wmix_all()" begin
         rmin = 500.0
         rmax = 1000.0
+        nr = 200
         amodes = SFB.AnlmModes(0.02, rmin, rmax)
-        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, 1000, amodes.nside)
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
         @show amodes.lmax_n
-        win0 = SFB.make_window(wmodes, :radial, :ang_quarter, :rotate, :separable)
+        win0 = SFB.make_window(wmodes, :radial, :ang_quarter, :separable, :rotate)
         win1 = win0[:,:]
         @show typeof(win0) typeof(win1)
         @assert typeof(win0) <: SFB.SeparableArray

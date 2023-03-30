@@ -6,7 +6,7 @@ const SFB = SphericalFourierBesselDecompositions
 
 using Test
 using LinearAlgebra
-using Profile
+#using Profile
 using Healpix
 
 #using PyPlot
@@ -59,9 +59,8 @@ using Healpix
         kmax = 0.01
         nbar = 3e-4
         nr = 200
-        nside = 1
         fkp_nbar_pk = 3e-4 * 1e4
-        amodes = SFB.AnlmModes(kmax, rmin, rmax, nside=nside)
+        amodes = SFB.AnlmModes(kmax, rmin, rmax)
         cmodes = SFB.ClnnModes(amodes, Δnmax=0)
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
         win = SFB.make_window(wmodes, :radial_cossin_l00_m00)

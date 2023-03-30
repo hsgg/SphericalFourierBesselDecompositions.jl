@@ -20,6 +20,9 @@ Base.iterate(alm::Alm) = iterate(alm.alm)
 Base.iterate(alm::Alm, i) = iterate(alm.alm, i)
 Base.getindex(alm::Alm, i) = alm.alm[i]
 
+#Base.BroadcastStyle(::Type{Alm}) = SrcStyle()
+#Base.similar(bc::Broadcasted{DestStyle}, ::Type{ElType})
+
 
 ######## Healpix.jl piracy
 
@@ -34,8 +37,8 @@ function Healpix.pix2angRing(nside::Integer, pix::AbstractArray)
 end
 
 
-function Healpix.udgrade(map::Vector, new_nside::Integer)
-    hpmap = HealpixMap{Float64,Healpix.RingOrder}(map)
+function Healpix.udgrade(map::Union{Vector{T},SubArray{T}}, new_nside::Integer) where {T<:Real}
+    hpmap = HealpixMap{T,Healpix.RingOrder}(map)
     newmap = udgrade(hpmap, new_nside)
     return newmap  # will usually want to keep it as a HealpixMap
 end
@@ -44,6 +47,10 @@ end
 ######## convenience functions
 
 function mymap2alm_healpixjl(map::HealpixMap; lmax=3*map.resolution.nside-1)
+    if lmax > 4 * map.resolution.nside
+        @error "lmax > 4*nside is a poor choice" lmax 4*map.resolution.nside map.resolution
+        error("exiting")
+    end
     #if map.resolution.nside >= 32
     #    # Note: This makes the field2anlm() test fail:
     #    map2 = deepcopy(map)
@@ -58,8 +65,8 @@ end
 #    return Alm(lmax, lmax, Vector(alm))
 #end
 
-mymap2alm = mymap2alm_healpixjl
-#mymap2alm = mymap2alm_healpy
+const mymap2alm = mymap2alm_healpixjl
+#const mymap2alm = mymap2alm_healpy
 
 
 end

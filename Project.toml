@@ -1,11 +1,12 @@
 name = "SphericalFourierBesselDecompositions"
 uuid = "7c5eff59-6392-4db1-b2e3-7d0560cca202"
 authors = ["Henry S. Grasshorn Gebhardt <henry.s.gebhardt@jpl.nasa.gov>"]
-version = "0.4.2"
+version = "0.4.4"
 
 [deps]
 ArbNumerics = "7e558dbc-694d-5a72-987c-6f4ebed21442"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+FastGaussQuadrature = "442a2c76-b920-505d-bb47-c5924d526838"
 FastTransforms = "057dd010-8810-581a-b7be-e3fc3b93f78c"
 Healpix = "9f4e344d-96bc-545a-84a3-ae6b9e1b672b"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -42,3 +43,9 @@ julia = "1"
 
 [extras]
 CPUSummary = "2a0fbf3d-bb9c-48f3-b0a9-814d99fd7ab9"
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["DelimitedFiles", "PyPlot", "Test"]

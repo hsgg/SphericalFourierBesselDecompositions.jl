@@ -72,8 +72,8 @@ estimate_nside(lmax) = 2^max(2, ceil(Int, log2((2*lmax + 1) / 2)))
 
 
 @doc raw"""
-    AnlmModes(kmax, rmin, rmax; cache=true, nside=nothing)
-    AnlmModes(nmax, lmax, rmin, rmax; cache=true, nside=nothing)
+    AnlmModes(kmax, rmin, rmax; cache=true, nside=nothing, boundary=SFB.GNL.potential)
+    AnlmModes(nmax, lmax, rmin, rmax; cache=true, nside=nothing, boundary=SFB.GNL.potential)
 
 This is where we define which modes are included. As our criterium, we set a
 maximum qmax = kmax * rmax, and we include all modes below that.
@@ -111,8 +111,8 @@ iterate(s::AnlmModes) = s, nothing
 iterate(s::AnlmModes, x) = nothing
 
 
-function AnlmModes(kmax::Real, rmin::Real, rmax::Real; cache=true, nside=nothing, nmax=typemax(Int64), lmax=typemax(Int64))
-    sphbesg = SphericalBesselGnl(kmax, rmin, rmax, cache=cache; nmax, lmax)
+function AnlmModes(kmax::Real, rmin::Real, rmax::Real; cache=true, nside=nothing, nmax=typemax(Int64), lmax=typemax(Int64), boundary=GNL.potential)
+    sphbesg = SphericalBesselGnl(kmax, rmin, rmax; nmax, lmax, cache, boundary)
     knl = sphbesg.knl
     nmax, lmax = size(knl) .- (0,1)
     modes = @. knl <= kmax
@@ -145,10 +145,10 @@ function AnlmModes(kmax::Real, rmin::Real, rmax::Real; cache=true, nside=nothing
 end
 
 
-function AnlmModes(nmax::Int, lmax::Int, rmin::Real, rmax::Real; cache=true, nside=nothing)
+function AnlmModes(nmax::Int, lmax::Int, rmin::Real, rmax::Real; cache=true, nside=nothing, boundary=GNL.potential)
     lmax_n = [lmax for n=1:nmax]
     nmax_l = [nmax for l=0:lmax]
-    sphbesg = SphericalBesselGnl(nmax, lmax, rmin, rmax, cache=cache)
+    sphbesg = SphericalBesselGnl(nmax, lmax, rmin, rmax; cache, boundary)
     if nside == nothing
         nside = estimate_nside(lmax)
     end
@@ -259,18 +259,21 @@ iterate(s::ClnnModes, x) = nothing
 
 function ClnnModes(amodes::AnlmModes; Δnmax=typemax(Int64), symmetric=true)
     @assert symmetric  # cross-correlations are not yet implemented
-    Δnmax = min(Δnmax, amodes.nmax-1)
     knl = amodes.knl
     Δnmax_l = fill(0, amodes.lmax+1)
     Δnmax_n = fill(0, amodes.nmax)
+    #@show amodes.lmax amodes.nmax amodes.nmax_l
     for l=0:amodes.lmax
         Δnmax_l[l+1] = min(Δnmax, amodes.nmax_l[l+1]-1)
         for Δn=0:Δnmax_l[l+1]
             for n=1:amodes.nmax_l[l+1]-Δn
+                #@show l,n,Δn
                 Δnmax_n[n] = max(Δnmax_n[n], Δn)
             end
         end
     end
+    Δnmax = maximum(Δnmax_l)
+    @assert Δnmax == maximum(Δnmax_n)
     return ClnnModes(amodes, knl, Δnmax, Δnmax_l, Δnmax_n, symmetric)
 end
 
@@ -407,9 +410,13 @@ function getlkk(cmodes::ClnnModes, l, n1, n2)
 end
 
 
-function estimate_nr(cmodes::ClnnModes)
+function estimate_nr(cmodes::ClnnModes; quick=false)
     # Note this is a pretty shitty algorithm. Speeding it up should be fairly easy.
     lnnsize = getlnnsize(cmodes)
+    if quick
+        @show 8*cmodes.amodes.nmax  2.5*cmodes.amodes.lmax
+        return 8 * cmodes.amodes.nmax
+    end
     Nsampmax = 1
     for i=1:lnnsize, i′=1:lnnsize
         l, n, n′ = getlnn(cmodes, i)

@@ -30,13 +30,13 @@
 
 module SphericalFourierBesselDecompositions
 
+include("MyBroadcast.jl")
 include("healpix_helpers.jl")
 include("Splines.jl")
 include("gnl.jl")  # SphericalBesselGnls
 include("modes.jl")  # AnlmModes, ClnnModes, ClnnBinnedModes
 include("utils.jl")  # mostly theory, may be split at some point
 include("SeparableArrays.jl")
-include("MyBroadcast.jl")
 include("LMcalcStructs.jl")
 include("windows.jl")  # window function related
 include("NDIterators.jl")
@@ -128,7 +128,10 @@ end
 
 
 
-function amln2clnn(anlm, cmodes::ClnnModes)
+amln2clnn(anlm, cmodes::ClnnModes) = amln2clnn(anlm, anlm, cmodes)
+
+
+function amln2clnn(anlm1, anlm2, cmodes::ClnnModes)
     clnn = fill(NaN, getlnnsize(cmodes))
     nmax = cmodes.amodes.nmax
     for n̄=1:nmax, Δn=0:cmodes.Δnmax
@@ -142,7 +145,7 @@ function amln2clnn(anlm, cmodes::ClnnModes)
         n1_idxs = getnlmsize(cmodes.amodes, n1 - 1) .+ (1:lmsize)
         n2_idxs = getnlmsize(cmodes.amodes, n2 - 1) .+ (1:lmsize)
         lnn_idxs = getidx.(cmodes, 0:lmax, n1, n2)
-        clnn[lnn_idxs] .= alm2cl(anlm[n1_idxs], anlm[n2_idxs], lmax)
+        clnn[lnn_idxs] .= alm2cl(anlm1[n1_idxs], anlm2[n2_idxs], lmax)
     end
     return clnn
 end
@@ -451,6 +454,9 @@ function make_window(wmodes::ConfigurationSpaceModes, features...)
             mask = mean(win, dims=1)[:]
             phi = mean(win, dims=2)[:]
             win = @SeparableArray phi mask
+
+        elseif feat == :dense
+            win = collect(win[:,:])
 
         else
             # Maybe it is a bit harsh to error on this. However, it is better to be
