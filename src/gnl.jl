@@ -517,10 +517,14 @@ function calc_cnl_dnl(knl, rmin, rmax, Tyl=Float64; boundary=potential)
 end
 
 
-function gen_gnl_cache(knl, rmin, rmax, sphbesg)
-    nmax, lmax = size(knl) .- (0,1)
+function gen_gnl_cache(sphbesg)
+    nmax = sphbesg.nmax
+    lmax = sphbesg.lmax
+    rmin = sphbesg.rmin
+    rmax = sphbesg.rmax
+    knl = sphbesg.knl
     #T = typeof(Spline1D(0.1:0.1:1.0, Float64.(sphbesg.(1, 0, 0.1:0.1:1.0))))
-    gnl = fill(Spline1D(), size(knl))
+    gnl = fill(Spline1D(T=Float64), size(knl))
     #gnl = SharedArray{T}(size(knl)...)
     @time Threads.@threads for n=1:nmax
         for l=0:lmax
@@ -555,7 +559,7 @@ end
 function SphericalBesselGnl(nmax, lmax, rmin, rmax, knl, cnl, dnl, boundary)
     sphbesg = SphericalBesselGnl(nmax, lmax, rmin, rmax, knl, cnl, dnl, boundary, nothing)
     #return sphbesg  # Don't commit
-    gnl = gen_gnl_cache(knl, rmin, rmax, sphbesg)
+    gnl = gen_gnl_cache(sphbesg)
     return SphericalBesselGnl(nmax, lmax, rmin, rmax, knl, cnl, dnl, boundary, gnl)
 end
 
