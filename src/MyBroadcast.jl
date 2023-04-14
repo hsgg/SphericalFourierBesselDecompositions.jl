@@ -73,7 +73,7 @@ function get_new_batch!(next_ifirst_channel, ntasks, batchsize)
 end
 
 
-function mybroadcast!(out, fn, x...; num_threads=Threads.nthreads())
+function mybroadcast!(out, fn, x...; num_threads=Threads.nthreads(), initial_batchsize=1)
     ntasks = prod(calc_outsize(x...))
     @assert size(out) == calc_outsize(x...)
 
@@ -87,7 +87,7 @@ function mybroadcast!(out, fn, x...; num_threads=Threads.nthreads())
     # worker threads process the data
     @threads for _ in 1:num_threads
         try
-            batchsize = 1
+            batchsize = initial_batchsize
 
             # worker threads feed themselves with a set of iterations
             iset = get_new_batch!(next_ifirst_channel, ntasks, batchsize)
