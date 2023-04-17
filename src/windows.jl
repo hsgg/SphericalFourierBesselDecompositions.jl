@@ -349,6 +349,7 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
         next!(p, step=length(nlarr), showvalues=[(:batchsize, length(nlarr))])
         return zero(real(T))  # must return something broadcastable for mybroadcast()
     end
+    finish!(p)
     BLAS.set_num_threads(blas_nthreads)
     #@assert all(isfinite, wmix)
     return wmix
@@ -730,6 +731,7 @@ function calc_cmix(cmodes, rsdrgnlr, W1rl_W2rl, div2Lp1, interchange_NN′; lnn_
         next!(p, step=length(ii′), showvalues=[(:batchsize, length(ii′)), (:counter, p.counter)])
         return mout
     end
+    finish!(p)
     BLAS.set_num_threads(blas_nthreads)
 
     return mix
@@ -974,6 +976,7 @@ function _power_win_mix(w̃mat, vmat, rsdrgnlr, W1r_lm::SeparableArray, W2r_lm::
         next!(p, step=length(nn), showvalues=[(:batchsize, length(nn))])
         return out
     end
+    finish!(p)
     @show typeof(mix)
     return mix
 end
