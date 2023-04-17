@@ -2,7 +2,7 @@
 # from healpy to healpix.jl.
 module HealpixHelpers
 
-export mymap2alm
+export mymap2alm, mymap2alm!
 
 using Healpix
 #using ..HealPy
@@ -46,6 +46,15 @@ end
 
 ######## convenience functions
 
+function mymap2alm_healpixjl!(map::HealpixMap, alm::Alm; niter=3)
+    if alm.lmax > 4 * map.resolution.nside
+        @error "alm.lmax > 4*nside is a poor choice" alm.lmax 4*map.resolution.nside map.resolution
+        error("exiting")
+    end
+    return map2alm!(map, alm; niter)
+end
+
+
 function mymap2alm_healpixjl(map::HealpixMap; lmax=3*map.resolution.nside-1)
     if lmax > 4 * map.resolution.nside
         @error "lmax > 4*nside is a poor choice" lmax 4*map.resolution.nside map.resolution
@@ -66,6 +75,7 @@ end
 #end
 
 const mymap2alm = mymap2alm_healpixjl
+const mymap2alm! = mymap2alm_healpixjl!
 #const mymap2alm = mymap2alm_healpy
 
 

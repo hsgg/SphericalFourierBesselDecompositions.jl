@@ -90,13 +90,12 @@ function make_pmu_pmupix(pix)
 end
 
 
-function transform_gnl_spmap(npix, pmu, pmupix, r, sphbesg_nl, weight)
+function transform_gnl_spmap!(map, npix, pmu, pmupix, r, sphbesg_nl, weight)
     Ngal = length(pmupix)
     spmap = fill(0.0, length(pmu))
     for i=1:Ngal
         spmap[pmupix[i]] += weight[i] * sphbesg_nl(r[i])
     end
-    map = fill(0.0, npix)
     @. map[pmu] = spmap
     return map
 end
@@ -265,44 +264,29 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weight=ones(eltype(rθϕ), s
     @show typeof(pmu) typeof(pmupix)
     npix = nside2npix(amodes.nside)
     ΔΩpix = 4π / npix
+    lmax = amodes.lmax
+
+    map = HealpixMap{T,Healpix.RingOrder}(fill(T(0), npix))
+    alm = mymap2alm(map; lmax)
+    almref = Ref(alm)
     anlm = fill(NaN+im*NaN, getnlmsize(amodes))
-    #anlm = SharedArray{Complex{Float64}}(getnlmsize(amodes))
-    #anlm .= NaN+NaN*im
+
+    idxs = fill(0, length(alm))
+
     for n=1:amodes.nmax
         @show n,amodes.nmax,0:amodes.lmax_n[n]
         #@time @sync @distributed for l=0:amodes.lmax_n[n]
         @time for l=0:amodes.lmax_n[n]
             #@show n,l
             #map0 = transform_gnl(npix, pix, r, sphbesg.gnl[n,l+1], weight)
-            map1 = transform_gnl_spmap(npix, pmu, pmupix, r, sphbesg.gnl[n,l+1], weight)
+            map .= 0
+            transform_gnl_spmap!(map, npix, pmu, pmupix, r, sphbesg.gnl[n,l+1], weight)
             #@time map2 = transform_jnl_binned_quadratic(npix, pix, knl[n,l+1], l, r, rmax)
-            #map3 = transform_jnl_binned_quadratic_cached(npix, pix, knl[n,l+1], l, r, rmax, jl_q, jl[l+1])
-            map = map1
-            #@show map
-            #@show extrema(map1 ./ map0 .- 1)
-            #@show extrema(map2 ./ map0 .- 1)
-            #@show extrema(map3 ./ map0 .- 1)
-            #readline()
-            #close("all")
-            #@show mean(map ./ map1),std(map ./ map1)
-            #@show mean(map ./ map2),std(map ./ map2)
-            #@show mean(map ./ map3),std(map ./ map3)
 
             map .*= 1 / (nbar * ΔΩpix)
-            mapT = convert(Vector{T}, map)
 
             c = @view win_rhat_ln[:,l+1,n]
-            #@show size(map) size(c)
-            #@show n,l mean(map) mean(c)
-            #@show mean(map[c .!= 0]) mean(c[c .!= 0])
-            #@show mean(map[c .== 0]) mean(c[c .== 0])
-            @. mapT = mapT - c
-            #@show n,l,mean(map),median(map)
-            #@show map
-
-            # TODO: check manual implementation for a single ℓ, check libsharp,
-            #       how does healpix do it?
-            # TODO: start with small nside for small ℓ, dangerous for pixel window
+            @. map = map - c
 
             #set_masked_pixels!(map, masked_pixels)
 
@@ -311,9 +295,9 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weight=ones(eltype(rθϕ), s
             #idx = hp.Alm.getidx.(l, l, 0:l) .+ 1  # python is 0-indexed
 
             # Healpix.jl:
-            maphp = HealpixMap{T,Healpix.RingOrder}(mapT)
-            alm = mymap2alm(maphp, lmax=l)
-            idx = almIndex(alm, l, 0:l)
+            mymap2alm!(map, alm)
+            idx = @view idxs[1:l+1]
+            @. idx = almIndex(almref, l, 0:l)
 
             baseidx = getidx(amodes, n, l, 0)
             @views @. anlm[baseidx:(baseidx+l)] = alm.alm[idx]

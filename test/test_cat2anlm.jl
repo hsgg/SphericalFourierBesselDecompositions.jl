@@ -14,6 +14,7 @@ using Healpix
 @testset "Cat2Anlm" begin
 
     run_tests = true
+    run_big_tests = false
 
     run_tests && @testset "basis function transform" begin
         rmin = 0.0
@@ -180,6 +181,43 @@ using Healpix
             f[i,j] = 0
         end
     end
+
+
+    run_big_tests && @testset "Cat2Anlm with weights" begin
+        rmin = 0.0
+        rmax = 2000.0
+        kmax = 0.06
+        nbar = 1e-5
+        nr = 400
+        fkp_nbar_pk = nbar * 1e4
+        amodes = SFB.AnlmModes(kmax, rmin, rmax)
+        cmodes = SFB.ClnnModes(amodes, Δnmax=0)
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
+        win = SFB.make_window(wmodes, :radial_cossin_l00_m00)
+
+        T = Float64
+        Ngalaxies = round(Int, (2*rmax)^3 * nbar)
+        xyz = 2 * T(rmax) * rand(T, 3, Ngalaxies) .- T(rmax)
+        rθϕ = SFB.xyz2rtp(xyz)
+        rθϕ = SFB.apply_window(rθϕ, win, wmodes)
+        @assert all(@. rmin <= rθϕ[1,:] <= rmax)
+
+        weights_fkp_r = @. 1 / (1 + win * fkp_nbar_pk)
+        weights_fkp = SFB.winweights2galweights(weights_fkp_r, wmodes, rθϕ)
+
+        #wrhatln_fkp = SFB.win_rhat_ln(win .* weights_fkp_r, wmodes, amodes)
+        wrhatln_dummy = fill(0.0, size(win,2), amodes.lmax+1, amodes.nmax)
+        wrhatln_fkp = wrhatln_dummy
+
+        Ngal = size(rθϕ,2)
+        Veff = SFB.integrate_window(win, wmodes)
+        nbar_s = Ngal / Veff
+        anlm_fkp = SFB.cat2amln(rθϕ, amodes, nbar_s, wrhatln_fkp, weights_fkp)
+
+        @time anlm_fkp = Complex{Float16}.(anlm_fkp)
+        #@time anlm_fkp = Complex{Float16}.(anlm_fkp)
+    end
+
 end
 
 
