@@ -327,6 +327,18 @@ function getlnn(cmodes::ClnnModes, idx)
 end
 
 
+function getlnn(cmodes::ClnnModes)
+    lnn = fill(0, 3, getlnnsize(cmodes))
+    for i=1:size(lnn,2)
+        l, n1, n2 = getlnn(cmodes, i)
+        lnn[1,i] = l
+        lnn[2,i] = n1
+        lnn[3,i] = n2
+    end
+    return lnn
+end
+
+
 function isvalidlnn(cmodes::ClnnModes, l, n1, n2)
     @assert cmodes.symmetric
     Δn = n2 - n1
