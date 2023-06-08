@@ -103,6 +103,39 @@ using LinearAlgebra
         end
     end
 
+    @testset "Bandpower binning with select" begin
+        rmin = 0.0
+        rmax = 1000.0
+        kmax = 0.03
+        amodes = SFB.AnlmModes(kmax, rmin, rmax)
+        cmodes = SFB.ClnnModes(amodes, Δnmax=0)
+        lkk = SFB.getlkk(cmodes)
+        select = @. lkk[2,:] < 0.02
+
+        lnnsize = SFB.getlnnsize(cmodes)
+        lnnselect = sum(select)
+
+        @time w̃0, v0 = SFB.bandpower_binning_weights(cmodes; Δℓ=1, Δn=1)
+        @test size(w̃0) == (lnnsize,lnnsize)
+        @test size(v0) == (lnnsize,lnnsize)
+
+        @time w̃1, v1 = SFB.bandpower_binning_weights(cmodes; Δℓ=1, Δn=1, select)
+        @test size(w̃1) == (lnnselect,lnnselect)
+        @test size(v1) == (lnnselect,lnnselect)
+
+        @time w̃2, v2 = SFB.bandpower_binning_weights(cmodes; Δℓ=2, Δn=3)
+        @test size(w̃2,1) < size(w̃1,1)
+        @test size(w̃2,2) == lnnsize
+        @test size(v2,1) == lnnsize
+        @test size(v2,2) < size(v1,2)
+
+        @time w̃3, v3 = SFB.bandpower_binning_weights(cmodes; Δℓ=2, Δn=3, select)
+        @test size(w̃3,1) < size(w̃2,1)
+        @test size(w̃3,2) == lnnselect
+        @test size(v3,1) == lnnselect
+        @test size(v3,2) < size(v2,2)
+    end
+
     @testset "ClnnBinnedModes" begin
         rmin = 1370.0
         rmax = 3540.0

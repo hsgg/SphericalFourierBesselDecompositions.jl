@@ -599,7 +599,7 @@ function bandpower_binning_weights(cmodes::ClnnModes; Δℓ=1, Δn=1, select=:al
         end
     end
     LNNsize = i - 1
-    w̃ = w̃[1:LNNsize,:]
+    w̃ = w̃[1:LNNsize,select]
     @show LNNsize
 
     w̃ = w̃ ./ sum(w̃, dims=2)  # normalize
