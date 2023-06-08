@@ -547,7 +547,7 @@ end
 
 ########## calculate binning and debinning matrices
 
-function bandpower_binning_weights(cmodes::ClnnModes; Δℓ=1, Δn=1)
+function bandpower_binning_weights(cmodes::ClnnModes; Δℓ=1, Δn=1, select=:all)
     # Note: Should really change this to bin in only Δℓ and Δn. Binning in ΔΔn
     # and Δn̄ is untested.
     ΔΔn, Δn̄ = Δn, Δn
@@ -556,6 +556,11 @@ function bandpower_binning_weights(cmodes::ClnnModes; Δℓ=1, Δn=1)
     Δnmax_l = cmodes.Δnmax_l
     n̄max_l = cmodes.amodes.nmax_l
     nmax = cmodes.amodes.nmax
+    lnnsize = getlnnsize(cmodes)
+
+    if select == :all
+        select = fill(true, lnnsize)
+    end
 
     LNNsizemax = 0
     for l=0:Δℓ:lmax
@@ -564,7 +569,6 @@ function bandpower_binning_weights(cmodes::ClnnModes; Δℓ=1, Δn=1)
             LNNsizemax += 1
         end
     end
-    lnnsize = getlnnsize(cmodes)
     @show LNNsizemax lnnsize
 
     w̃ = fill(0.0, LNNsizemax, lnnsize)
@@ -584,6 +588,7 @@ function bandpower_binning_weights(cmodes::ClnnModes; Δℓ=1, Δn=1)
                 n2 = n̄ + Δn
                 isvalidlnn(cmodes, l, n1, n2) || continue
                 j = getidx(cmodes, l, n1, n2)
+                select[j] || continue
                 #@show i,j, l,Δn,n̄
                 w̃[i,j] += 1
                 num += 1
