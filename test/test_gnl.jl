@@ -152,11 +152,9 @@ end
                 @test amodes.lmax == maximum(amodes.lmax_n)
                 @test amodes.nmax == maximum(amodes.nmax_l)
 
-                @time cmodes = SFB.ClnnModes(amodes, Δnmax=0)
+                @time cmodes = SFB.ClnnModes(amodes, Δkmax=0)
                 knl = amodes.knl[isfinite.(amodes.knl)]
                 lkk = SFB.getlkk(cmodes)
-                @test cmodes.Δnmax == maximum(cmodes.Δnmax_l)
-                @test cmodes.Δnmax == maximum(cmodes.Δnmax_n)
                 @test all(@. knl < kmax)
                 @test all(@. lkk[2,:] < kmax)
                 @test all(@. lkk[3,:] < kmax)

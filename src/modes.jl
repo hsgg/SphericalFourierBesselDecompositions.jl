@@ -231,6 +231,7 @@ end
 
 @doc raw"""
     ClnnModes(::AnlmModes)
+    ClnnModes(::AnlmModes, ::AnlmModes)
 
 This is where we define which modes are included in the power spectrum, given a
 `AnlmModes` struct.
@@ -241,117 +242,146 @@ convention that `n̄` is the smaller of the k-modes, and `Δn >= 0`.
 
 More useful is the labeling by `ℓ, n₁, n₂`. In that case we make the convention
 that `n₁ = n̄` and `n₂ = n̄ + Δn`.
+
+If two `AnlmModes` are given, then we assume a cross-correlation is desired.
+The `S` parameter specifies whether the resulting modes are symmetric (S=true)
+on interchange of k1 and k2, or not (S=false). This is useful for auto- and
+cross-correlation, respectively.
 """
-struct ClnnModes
-    amodes::AnlmModes
-    knl::Array{Float64,2}
-    Δnmax::Int64
-    Δnmax_l::Array{Int64,1}
-    Δnmax_n::Array{Int64,1}
-    symmetric::Bool
+struct ClnnModes{S}
+    amodesA::AnlmModes
+    amodesB::AnlmModes
+    Δkmax::Float64
+    Δnmax::Int
+    # cache:
+    lnn::Matrix{Int}
 end
 
-# for the @__dot syntax:
-length(s::ClnnModes) = 1
-iterate(s::ClnnModes) = s, nothing
-iterate(s::ClnnModes, x) = nothing
+Base.broadcastable(x::ClnnModes) = x
+
+# backwards compatibility:
+Base.getproperty(cmodes::ClnnModes{true}, property::Symbol) = begin
+    if property == :amodes
+        return cmodes.amodesA
+    end
+    return getfield(cmodes, property)
+end
 
 
-function ClnnModes(amodes::AnlmModes; Δnmax=typemax(Int64), symmetric=true)
-    @assert symmetric  # cross-correlations are not yet implemented
-    knl = amodes.knl
-    Δnmax_l = fill(0, amodes.lmax+1)
-    Δnmax_n = fill(0, amodes.nmax)
-    #@show amodes.lmax amodes.nmax amodes.nmax_l
-    for l=0:amodes.lmax
-        Δnmax_l[l+1] = min(Δnmax, amodes.nmax_l[l+1]-1)
-        for Δn=0:Δnmax_l[l+1]
-            for n=1:amodes.nmax_l[l+1]-Δn
-                #@show l,n,Δn
-                Δnmax_n[n] = max(Δnmax_n[n], Δn)
+function calc_lnn(amodesA, amodesB; Δkmax=Inf, Δnmax=typemax(Int), symmetric_kk=false)
+    lmax = min(amodesA.lmax, amodesB.lmax)
+    ell = 0:lmax
+    knlA = amodesA.knl[:,ell.+1]
+    knlB = amodesB.knl[:,ell.+1]
+
+    Δkmax_out = -Inf
+    Δnmax_out = 0
+
+    lnn = Int64[]
+    for l=0:lmax
+        nAmax = amodesA.nmax_l[l+1]
+        nBmax = amodesB.nmax_l[l+1]
+        for nA = 1:nAmax, nB = (symmetric_kk ? nA : 1):nBmax
+            kA = knlA[nA,l+1]
+            kB = knlB[nB,l+1]
+            Δk = kB - kA
+            if abs(Δk) <= Δkmax  &&  abs(nB - nA) <= Δnmax
+                append!(lnn, (l, nA, nB))
+                Δkmax_out = max(abs(Δk), Δkmax_out)
+                Δnmax_out = max(abs(nB - nA), Δnmax_out)
             end
         end
     end
-    Δnmax = maximum(Δnmax_l)
-    @assert Δnmax == maximum(Δnmax_n)
-    return ClnnModes(amodes, knl, Δnmax, Δnmax_l, Δnmax_n, symmetric)
+    lnn = reshape(lnn, 3, :)
+
+    return collect(lnn), Δkmax_out, Δnmax_out
 end
 
 
-function getnsize(modes::ClnnModes, l, Δn, n̄max=modes.amodes.nmax_l[l+1]-Δn)
-    symfac = (modes.symmetric || Δn==0) ? 1 : 2
-    return symfac * n̄max
+function ClnnModes(amodes::AnlmModes; Δkmax=Inf, Δnmax=typemax(Int))
+    lnn, Δkmax, Δnmax = calc_lnn(amodes, amodes; Δkmax, Δnmax, symmetric_kk=true)
+    return ClnnModes{true}(amodes, amodes, Δkmax, Δnmax, lnn)
 end
 
 
-function getnΔnsize(modes::ClnnModes, l, Δnmax=modes.Δnmax_l[l+1])
-    n̄center = modes.amodes.nmax_l[l+1]
-    n̄offdiag = n̄center * (n̄center - 1) ÷ 2 - (n̄center - Δnmax) * (n̄center - Δnmax - 1) ÷ 2
-    symfac = (modes.symmetric) ? 1 : 2
-    s2 = n̄center + symfac * n̄offdiag
-    if Δnmax < 0
-        s2 = 0
-    end
-    return s2
+function ClnnModes(amodesA::AnlmModes, amodesB::AnlmModes; Δkmax=Inf, Δnmax=typemax(Int))
+    lnn, Δkmax, Δnmax = calc_lnn(amodesA, amodesB; Δkmax, Δnmax, symmetric_kk=false)
+    return ClnnModes{false}(amodesA, amodesB, Δkmax, Δnmax, lnn)
 end
 
 
-function getlnnsize(modes::ClnnModes, lmax=modes.amodes.lmax)
-    s = 0
-    for l=0:lmax
-        s += getnΔnsize(modes, l)
-    end
-    return s
-end
+getlnnsize(modes::ClnnModes) = size(modes.lnn,2)
 
 
-function getlnn(cmodes::ClnnModes, idx)
-    l = 0
-    nmodes = getnΔnsize(cmodes, l)
-    while idx > nmodes
-        idx -= nmodes
-        l += 1
-        nmodes = getnΔnsize(cmodes, l)
-    end
-    Δn = 0
-    nmodes = getnsize(cmodes, l, Δn)
-    while idx > nmodes
-        idx -= nmodes
-        Δn += 1
-        nmodes = getnsize(cmodes, l, Δn)
-    end
-    n̄ = idx
-    n1 = n̄
-    n2 = n1 + Δn
+getlnn(cmodes::ClnnModes, idx) = begin
+    l = cmodes.lnn[1,idx]
+    n1 = cmodes.lnn[2,idx]
+    n2 = cmodes.lnn[3,idx]
     return l, n1, n2
 end
 
+getlnn(cmodes::ClnnModes) = cmodes.lnn
 
-function getlnn(cmodes::ClnnModes)
-    lnn = fill(0, 3, getlnnsize(cmodes))
-    for i=1:size(lnn,2)
-        l, n1, n2 = getlnn(cmodes, i)
-        lnn[1,i] = l
-        lnn[2,i] = n1
-        lnn[3,i] = n2
+
+function getidx(cmodes::ClnnModes{S}, l, n1, n2) where {S}
+    if S
+        n1, n2 = minmax(n1, n2)
     end
-    return lnn
+    lnnsize = getlnnsize(cmodes)
+    idx = findfirst(1:lnnsize) do i
+        all(cmodes.lnn[:,i] .== (l, n1, n2))
+    end
+    if isnothing(idx)
+        lA = min(l, cmodes.amodesA.lmax)
+        lB = min(l, cmodes.amodesB.lmax)
+        n1A = min(n1, cmodes.amodesA.nmax_l[lA+1])
+        n2B = min(n2, cmodes.amodesB.nmax_l[lB+1])
+        Δk = cmodes.amodesB.knl[n2B,lB+1] - cmodes.amodesA.knl[n1A,lA+1]
+        @error "Cannot find index" l,n1,n2 lnnsize idx S cmodes.Δkmax cmodes.amodesA.lmax cmodes.amodesB.lmax cmodes.amodesA.nmax cmodes.amodesB.nmax isvalidlnn(cmodes, l, n1, n2) cmodes.amodesA.nmax_l[lA+1] cmodes.amodesB.nmax_l[lB+1] cmodes.amodesA.knl[n1A,lA+1] cmodes.amodesB.knl[n2B,lB+1] Δk
+    end
+    return idx
 end
 
 
-function isvalidlnn(cmodes::ClnnModes, l, n1, n2)
-    @assert cmodes.symmetric
-    Δn = n2 - n1
-    n̄ = n1
-    return (0 <= l <= cmodes.amodes.lmax &&
-            0 <= Δn <= cmodes.Δnmax_l[l+1] &&
-            1 <= n̄ <= cmodes.amodes.nmax_l[l+1] - Δn)
+function isvalidlnn(cmodes::ClnnModes{S}, l, n1, n2, ::Val{VERBOSE}=Val(false)) where {S,VERBOSE}
+    if VERBOSE
+        @show S
+    end
+    (S && n2 < n1) && return false
+
+    abs(n2 - n1) <= cmodes.Δnmax || return false
+
+    if VERBOSE
+        @show size(cmodes.amodesA.knl)
+        @show size(cmodes.amodesB.knl)
+    end
+    size(cmodes.amodesA.knl,2) >= l+1  ||  return false
+    size(cmodes.amodesB.knl,2) >= l+1  ||  return false
+
+    size(cmodes.amodesA.knl,1) >= n1  ||  return false
+    size(cmodes.amodesB.knl,1) >= n2  ||  return false
+
+    kA = cmodes.amodesA.knl[n1,l+1]
+    kB = cmodes.amodesB.knl[n2,l+1]
+    if VERBOSE
+        @show kA,kB
+    end
+    isnan(kA) && return false
+    isnan(kB) && return false
+
+    Δk = kB - kA
+    if VERBOSE
+        @show Δk
+    end
+    abs(Δk) <= cmodes.Δkmax  ||  return false
+
+    return true
 end
 
 
-function isvalidlnn_symmetric(cmodes::ClnnModes, l, n1, n2)
+function isvalidlnn_symmetric(cmodes::ClnnModes, l, n1, n2, args...)
     n1, n2 = minmax(n1, n2)
-    return isvalidlnn(cmodes, l, n1, n2)
+    return isvalidlnn(cmodes, l, n1, n2, args...)
 end
 
 
@@ -373,18 +403,6 @@ function check_isvalidclnn_symmetric(cmodes::ClnnModes, l, n1, n2)
 end
 
 
-function getidx(cmodes::ClnnModes, l, n1, n2)
-    check_isvalidclnn_symmetric(cmodes, l, n1, n2)
-    Δn = abs(n1 - n2)
-    n̄ = min(n1, n2)
-    idx = 0
-    idx += getlnnsize(cmodes, l-1)
-    idx += getnΔnsize(cmodes, l, Δn-1)
-    idx += n̄
-    return idx
-end
-
-
 @doc raw"""
     getlkk(::ClnnModes, [i])
     getlkk(::ClnnBinnedModes, [i])
@@ -396,8 +414,8 @@ k'-values.
 """
 function getlkk(cmodes::ClnnModes, i)
     l, n1, n2 = getlnn(cmodes, i)
-    k1 = cmodes.knl[n1,l+1]
-    k2 = cmodes.knl[n2,l+1]
+    k1 = cmodes.amodesA.knl[n1,l+1]
+    k2 = cmodes.amodesB.knl[n2,l+1]
     return l, k1, k2
 end
 
@@ -416,8 +434,8 @@ end
 
 
 function getlkk(cmodes::ClnnModes, l, n1, n2)
-    k1 = cmodes.knl[n1,l+1]
-    k2 = cmodes.knl[n2,l+1]
+    k1 = cmodes.amodesA.knl[n1,l+1]
+    k2 = cmodes.amodesB.knl[n2,l+1]
     return l, k1, k2
 end
 
@@ -447,8 +465,8 @@ end
 # from the indices. That is, if the actual mode is ℓ and its index l, then we
 # don't require ℓ=l.
 
-struct ClnnBinnedModes{T}
-    cmodes::ClnnModes
+struct ClnnBinnedModes{T,S}
+    cmodes::ClnnModes{S}
     LKK::Array{T,2}  # l=LKK[1,:], k1=LKK[2,:], k2=LKK[3,:]
 end
 
@@ -458,10 +476,10 @@ iterate(s::ClnnBinnedModes) = s, nothing
 iterate(s::ClnnBinnedModes, x) = nothing
 
 
-function ClnnBinnedModes(w̃, v, cmodes::ClnnModes)
+function ClnnBinnedModes(w̃, v, cmodes::ClnnModes{S}) where {S}
     (w̃ != I) && @assert all(sum(w̃, dims=2) .≈ 1)  # ensure w̃ is normalized
     LKK = getlkk(cmodes) * w̃'
-    if cmodes.symmetric
+    if S
         # ensure k1 <= k2
         for i=1:size(LKK,2)
             LKK[2:3,i] .= extrema(LKK[2:3,i])
@@ -499,10 +517,10 @@ _getcblnn_helper(arr, i) = begin
     return lo, hi
 end
 
-getidxapprox(bcmodes::ClnnBinnedModes, ℓ, k1in, k2in) = begin
-    @assert bcmodes.cmodes.symmetric
-    k1 = min(k1in, k2in)
-    k2 = max(k1in, k2in)
+getidxapprox(bcmodes::ClnnBinnedModes{T,S}, ℓ, k1, k2) where{T,S} = begin
+    if S
+        k1, k2 = minmax(k1, k2)
+    end
     i = findfirst(i -> begin
                       ℓ_lo, ℓ_hi = _getcblnn_helper(bcmodes.LKK[1,:], i)
                       (ℓ_lo <= ℓ <= ℓ_hi) || return false
@@ -522,14 +540,13 @@ getidxapprox(bcmodes::ClnnBinnedModes, ℓ, k1in, k2in) = begin
 end
 
 # Same as getidxapprox(), except that the agreement needs to be ~machine precision.
-getidx(bcmodes::ClnnBinnedModes, ℓ, k1in, k2in) = begin
-    @assert bcmodes.cmodes.symmetric
-    return getidx(bcmodes.LKK, ℓ, k1in, k2in)
+getidx(bcmodes::ClnnBinnedModes{T,true}, ℓ, k1in, k2in) where {T} = begin
+    k1, k2 = minmax(k1in, k2in)
+    return getidx(bcmodes.LKK, ℓ, k1, k2)
 end
-getidx(LKK::AbstractArray{T,2}, ℓ, k1in, k2in) where {T<:Real} = begin
+
+getidx(bcmodes::ClnnBinnedModes, ℓ, k1in, k2in) = begin
     lnnsize = size(LKK,2)
-    k1 = min(k1in, k2in)
-    k2 = max(k1in, k2in)
     i = findfirst(i -> begin
                       L = LKK[1,i]
                       (L ≈ ℓ) || return false
@@ -547,60 +564,51 @@ end
 
 ########## calculate binning and debinning matrices
 
-function bandpower_binning_weights(cmodes::ClnnModes; Δℓ=1, Δn=1, select=:all)
-    # Note: Should really change this to bin in only Δℓ and Δn. Binning in ΔΔn
-    # and Δn̄ is untested.
-    ΔΔn, Δn̄ = Δn, Δn
-    @show Δℓ, ΔΔn, Δn̄
-    lmax = cmodes.amodes.lmax
-    Δnmax_l = cmodes.Δnmax_l
-    n̄max_l = cmodes.amodes.nmax_l
-    nmax = cmodes.amodes.nmax
+function getidx!(iLNN, imax, iL, iN1, iN2)
+    idx = findfirst(1:imax) do i
+        all(iLNN[:,i] .== (iL, iN1, iN2))
+    end
+    if isnothing(idx)
+        imax += 1
+        iLNN[:,imax] .= iL, iN1, iN2
+        idx = imax
+    end
+    imax = max(idx, imax)
+    return idx, imax
+end
+
+function bandpower_binning_weights(cmodes::ClnnModes; Δℓ=1, Δn1=1, Δn2=1, select=:all)
+    lmax = min(cmodes.amodesA.lmax, cmodes.amodesB.lmax)
+    nAmax = cmodes.amodesA.nmax
+    nBmax = cmodes.amodesB.nmax
     lnnsize = getlnnsize(cmodes)
 
     if select == :all
         select = fill(true, lnnsize)
     end
 
-    LNNsizemax = 0
-    for l=0:Δℓ:lmax
-        lrange = l:min(l+Δℓ-1,lmax)
-        for Δn=0:ΔΔn:maximum(Δnmax_l[lrange.+1]), n̄=1:Δn̄:maximum(n̄max_l[lrange.+1])
-            LNNsizemax += 1
-        end
-    end
-    @show LNNsizemax lnnsize
-
+    LNNsizemax = ((lnnsize ÷ Δℓ + 1) ÷ Δn1 + 1) ÷ Δn2 + 1 + lmax + nAmax + nBmax
     w̃ = fill(0.0, LNNsizemax, lnnsize)
-    i = 1
-    for llo=0:Δℓ:lmax
-        lrange = llo:min(llo+Δℓ-1,lmax)
-        #@show lrange
-        for Δnlo=0:ΔΔn:maximum(Δnmax_l[lrange.+1]), n̄lo=1:Δn̄:maximum(n̄max_l[lrange.+1])
-            Δnrange = [Δnlo:min(Δnlo+ΔΔn-1,Δnmax_l[l+1]) for l in lrange]
-            n̄range = [n̄lo:min(n̄lo+Δn̄-1,n̄max_l[l+1]) for l in lrange]
-            #@show Δnrange n̄range
-            num = 0
-            for il=1:length(lrange), Δn in Δnrange[il], n̄ in n̄range[il]
-                #@error "Mode ignored" i lrange Δnrange n̄range
-                l = lrange[il]
-                n1 = n̄
-                n2 = n̄ + Δn
-                isvalidlnn(cmodes, l, n1, n2) || continue
-                j = getidx(cmodes, l, n1, n2)
-                select[j] || continue
-                #@show i,j, l,Δn,n̄
-                w̃[i,j] += 1
-                num += 1
-            end
-            if num != 0
-                i += 1
-            end
-        end
+
+    iLNN = fill(0, 3, LNNsizemax)
+    LNNsize = 0
+    for i=1:lnnsize
+        select[i] || continue
+        l, n1, n2 = getlnn(cmodes, i)
+
+        # lowest bin shall always contain `Δℓ * Δn1 * Δn2` modes
+        iL = (l ÷ Δℓ) + 1
+        iN1 = ((n1 - 1) ÷ Δn1) + 1
+        iN2 = ((n2 - 1) ÷ Δn2) + 1
+
+        I, LNNsize = getidx!(iLNN, LNNsize, iL, iN1, iN2)
+
+        w̃[I,i] += 1
     end
-    LNNsize = i - 1
-    w̃ = w̃[1:LNNsize,select]
-    @show LNNsize
+
+    w̃ = collect(w̃[1:LNNsize,select])
+    @show LNNsize,lnnsize
+    @show size(w̃)
 
     w̃ = w̃ ./ sum(w̃, dims=2)  # normalize
 

@@ -15,8 +15,6 @@ using Healpix
 @testset "Mixing matrices" begin
 
     run_tests = true
-    #run_tests = false
-
 
     run_tests && @testset "calc_Wr_lm()" begin
         nside = 64
@@ -181,6 +179,7 @@ using Healpix
 
 
     run_tests && @testset "No window" begin
+    #@testset "No window" begin
         # Note: inaccuracies in this test are dominated by inaccuracies in healpix.
         rmin = 500.0
         rmax = 1000.0
@@ -192,9 +191,9 @@ using Healpix
         wmix = SFB.calc_wmix(win, wmodes, amodes)
         diff = wmix - I
         for i′=1:size(diff,2), i=1:size(diff,1)
-            @test isapprox(diff[i,i′], 0, atol=1e-2)
+            @test isapprox(diff[i,i′], 0, atol=1e-3)
         end
-        @test wmix ≈ I  atol=1e-2
+        @test wmix ≈ I  atol=1e-3
 
         # wmix_negm
         wmix_negm = SFB.calc_wmix(win, wmodes, amodes, neg_m=true)
@@ -202,21 +201,22 @@ using Healpix
             n, l, m = SFB.getnlm(amodes, i)
             n′, l′, m′ = SFB.getnlm(amodes, i′)
             correct = (n==n′ && l==l′ && m==-m′) ? 1 : 0
-            @test isapprox(wmix_negm[i,i′], correct, atol=1e-2)
+            @test isapprox(wmix_negm[i,i′], correct, atol=1e-3)
         end
 
         # M
         cmodes = SFB.ClnnModes(amodes, Δnmax=1)
         mmix1 = SFB.power_win_mix(wmix, wmix_negm, cmodes)
-        @test isapprox(mmix1, I, atol=1e-2)
+        @test isapprox(mmix1, I, atol=1e-3)
         M = SFB.power_win_mix(win, wmodes, cmodes)
         @test M ≈ mmix1
-        @test isapprox(M, I, atol=1e-2)
+        @test isapprox(M, I, atol=1e-3)
 
         # CWlnn
         pk(k) = 1e4 * (k/1e-2)^(-3.1)
         Clnn = SFB.gen_Clnn_theory(pk, cmodes)
         CnlmNLM = SFB.Clnn2CnlmNLM(Clnn, cmodes)
+        @show CnlmNLM[1]
         CWlnn1 = SFB.sum_m_lmeqLM(wmix * CnlmNLM * wmix', cmodes)
         CWlnn2 = M * Clnn
         @test CWlnn1 ≈ CWlnn2
@@ -225,7 +225,7 @@ using Healpix
         nbar = 3e-4
         Nshotobs = SFB.win_lnn(win, wmodes, cmodes) ./ nbar
         Nshotobs2 = SFB.sum_m_lmeqLM(wmix, cmodes) ./ nbar
-        @test isapprox(Nshotobs, Nshotobs2, rtol=1e-2)
+        @test isapprox(Nshotobs, Nshotobs2, rtol=1e-3)
     end
 
 
@@ -426,7 +426,7 @@ using Healpix
         # Bandpower binning
         fsky = sum(win1[1,:]) / size(win1,2)
         Δℓ = round(Int, 1 / fsky)
-        w̃, v = SFB.bandpower_binning_weights(cmodes; Δℓ=Δℓ, Δn=1)
+        w̃, v = SFB.bandpower_binning_weights(cmodes; Δℓ=Δℓ)
         bcmodes = SFB.ClnnBinnedModes(w̃, v, cmodes)
         Nmix1 = SFB.power_win_mix(win1, w̃, v, wmodes, bcmodes)
         Nmix2 = SFB.power_win_mix(win2, w̃, v, wmodes, bcmodes)
@@ -566,7 +566,7 @@ using Healpix
         # Bandpower binning basics
         fsky = sum(win[1,:]) / size(win,2)
         Δℓ = round(Int, 1 / fsky)
-        w̃, v = SFB.bandpower_binning_weights(cmodes; Δℓ=Δℓ, Δn=1)
+        w̃, v = SFB.bandpower_binning_weights(cmodes; Δℓ=Δℓ)
         N = w̃ * M1 * v
         w = inv(N) * w̃ * M1
         ṽ = M1 * v * inv(N)

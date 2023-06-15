@@ -132,20 +132,15 @@ amln2clnn(anlm, cmodes::ClnnModes) = amln2clnn(anlm, anlm, cmodes)
 
 
 function amln2clnn(anlm1, anlm2, cmodes::ClnnModes)
-    clnn = fill(NaN, getlnnsize(cmodes))
-    nmax = cmodes.amodes.nmax
-    for n̄=1:nmax, Δn=0:cmodes.Δnmax
-        n1 = n̄
-        n2 = n̄ + Δn
-        if n1 > nmax || n2 > nmax
-            continue
-        end
-        lmax = minimum(cmodes.amodes.lmax_n[[n1,n2]])
-        lmsize = getlmsize(lmax)
-        n1_idxs = getnlmsize(cmodes.amodes, n1 - 1) .+ (1:lmsize)
-        n2_idxs = getnlmsize(cmodes.amodes, n2 - 1) .+ (1:lmsize)
-        lnn_idxs = getidx.(cmodes, 0:lmax, n1, n2)
-        clnn[lnn_idxs] .= alm2cl(anlm1[n1_idxs], anlm2[n2_idxs], lmax)
+    lnnsize = getlnnsize(cmodes)
+    clnn = fill(NaN, lnnsize)
+    for i=1:lnnsize
+        l, n1, n2 = getlnn(cmodes, i)
+        n1_idxs = getidx.(cmodes.amodesA, n1, l, 0:l)
+        n2_idxs = getidx.(cmodes.amodesB, n2, l, 0:l)
+        a1 = @view anlm1[n1_idxs]
+        a2 = @view anlm2[n2_idxs]
+        clnn[i] = alm2cl(a1, a2, l, l)
     end
     return clnn
 end

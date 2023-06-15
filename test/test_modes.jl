@@ -44,24 +44,26 @@ using LinearAlgebra
         #@time anlmmodes = SFB.AnlmModes(2, 0, rmin, rmax)
         @time clnnmodes = SFB.ClnnModes(anlmmodes, Δnmax=4)
         @show anlmmodes.nmax anlmmodes.lmax anlmmodes.nside
-        @show clnnmodes.Δnmax clnnmodes.Δnmax_l
         @show SFB.getlnnsize(clnnmodes)
-        @test maximum(clnnmodes.Δnmax_l) == clnnmodes.Δnmax
+        lmax = anlmmodes.lmax
+        nmax = anlmmodes.nmax
         idx2 = 1
-        @time for l=0:clnnmodes.amodes.lmax, Δn=0:clnnmodes.Δnmax_l[l+1], n̄=1:clnnmodes.amodes.nmax_l[l+1]-Δn
-            idx = SFB.getidx(clnnmodes, l, n̄+Δn, n̄)
-            idx3 = SFB.getidx(clnnmodes, l, n̄, n̄+Δn)
+        @time for l=0:lmax, nA=1:anlmmodes.nmax_l[l+1], nB=nA:anlmmodes.nmax_l[l+1]
+            if abs(nB - nA) > 4
+                @test !SFB.isvalidlnn(clnnmodes, l, nA, nB)
+                continue
+            end
+            @test SFB.isvalidlnn(clnnmodes, l, nA, nB)
+            idx = SFB.getidx(clnnmodes, l, nA, nB)
+            idx3 = SFB.getidx(clnnmodes, l, nB, nA)
             @test idx == idx3
-            l2, n2, n2′ = SFB.getlnn(clnnmodes, idx)
-            Δn2 = n2′ - n2
-            n̄2 = n2
-            #@show idx, l,Δn,n̄, l2,Δn2,n̄2
-            @test l2 <= clnnmodes.amodes.lmax
-            @test Δn2 <= clnnmodes.Δnmax_l[l+1]
-            @test n̄2 <= clnnmodes.amodes.nmax_l[l+1] - Δn
+            l2, nA2, nB2 = SFB.getlnn(clnnmodes, idx)
+            @test l2 <= lmax
+            @test nA2 <= anlmmodes.nmax_l[l+1]
+            @test nB2 <= anlmmodes.nmax_l[l+1]
             @test l == l2
-            @test Δn == Δn2
-            @test n̄ == n̄2
+            @test nA == nA2
+            @test nB == nB2
             @test idx == idx2
             idx2 += 1
         end
@@ -70,7 +72,7 @@ using LinearAlgebra
         amodes = SFB.AnlmModes(0.05, 0.0, 1000.0, nside=8)
         cmodes = SFB.ClnnModes(amodes, Δnmax=0)
         nmax = cmodes.amodes.nmax
-        @show nmax cmodes.amodes.nmax_l cmodes.Δnmax_l
+        @show nmax cmodes.amodes.nmax_l cmodes.Δnmax
         k1_old = 0.0
         l = 4
         for n1=1:nmax
@@ -115,21 +117,21 @@ using LinearAlgebra
         lnnsize = SFB.getlnnsize(cmodes)
         lnnselect = sum(select)
 
-        @time w̃0, v0 = SFB.bandpower_binning_weights(cmodes; Δℓ=1, Δn=1)
+        @time w̃0, v0 = SFB.bandpower_binning_weights(cmodes; Δℓ=1, Δn1=1, Δn2=1)
         @test size(w̃0) == (lnnsize,lnnsize)
         @test size(v0) == (lnnsize,lnnsize)
 
-        @time w̃1, v1 = SFB.bandpower_binning_weights(cmodes; Δℓ=1, Δn=1, select)
+        @time w̃1, v1 = SFB.bandpower_binning_weights(cmodes; Δℓ=1, Δn1=1, Δn2=1, select)
         @test size(w̃1) == (lnnselect,lnnselect)
         @test size(v1) == (lnnselect,lnnselect)
 
-        @time w̃2, v2 = SFB.bandpower_binning_weights(cmodes; Δℓ=2, Δn=3)
+        @time w̃2, v2 = SFB.bandpower_binning_weights(cmodes; Δℓ=2, Δn1=3, Δn2=3)
         @test size(w̃2,1) < size(w̃1,1)
         @test size(w̃2,2) == lnnsize
         @test size(v2,1) == lnnsize
         @test size(v2,2) < size(v1,2)
 
-        @time w̃3, v3 = SFB.bandpower_binning_weights(cmodes; Δℓ=2, Δn=3, select)
+        @time w̃3, v3 = SFB.bandpower_binning_weights(cmodes; Δℓ=2, Δn1=3, Δn2=3, select)
         @test size(w̃3,1) < size(w̃2,1)
         @test size(w̃3,2) == lnnselect
         @test size(v3,1) == lnnselect

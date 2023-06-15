@@ -16,7 +16,6 @@ using LinearAlgebra
     # details of how healpy is used.
 
     run_tests = true
-    #@test false
 
     run_tests && @testset "Wmix" begin
         rmin = 500.0

@@ -31,7 +31,6 @@ using LinearAlgebra
     include("test_window_chains.jl")
     include("test_covariance.jl")
     include("test_sfb.jl")
-    #@test false
 
     ## Only intended for interactive testing:
     # include("calc_cmix.jl")
