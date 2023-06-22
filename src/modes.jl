@@ -57,7 +57,6 @@ export getlkk, getidxapprox
 export bandpower_binning_weights, bandpower_eigen_weights
 export get_incomplete_bins, find_most_hi_k_convolved_mode, find_klarge, get_hi_k_affection
 
-import Base.length, Base.iterate
 
 
 ########################## AnlmModes: define ordering of modes in data vector ########
@@ -105,10 +104,7 @@ struct AnlmModes{T}
     knl::Array{Float64,2}
 end
 
-# for the @__dot syntax:
-length(s::AnlmModes) = 1
-iterate(s::AnlmModes) = s, nothing
-iterate(s::AnlmModes, x) = nothing
+Base.broadcastable(s::AnlmModes) = s
 
 
 function AnlmModes(kmax::Real, rmin::Real, rmax::Real; cache=true, nside=nothing, nmax=typemax(Int64), lmax=typemax(Int64), boundary=GNL.potential)
@@ -470,10 +466,7 @@ struct ClnnBinnedModes{T,S}
     LKK::Array{T,2}  # l=LKK[1,:], k1=LKK[2,:], k2=LKK[3,:]
 end
 
-# for the @__dot syntax:
-length(s::ClnnBinnedModes) = 1
-iterate(s::ClnnBinnedModes) = s, nothing
-iterate(s::ClnnBinnedModes, x) = nothing
+Base.broadcastable(s::ClnnBinnedModes) = s
 
 
 function ClnnBinnedModes(w̃, v, cmodes::ClnnModes{S}) where {S}

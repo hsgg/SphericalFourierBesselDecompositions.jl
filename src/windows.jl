@@ -87,10 +87,7 @@ struct ConfigurationSpaceModes{Tarr,T<:Real}
     nside::Integer
 end
 
-# for the @__dot syntax:
-Base.length(w::ConfigurationSpaceModes) = 1
-Base.iterate(w::ConfigurationSpaceModes) = w, nothing
-Base.iterate(w::ConfigurationSpaceModes, x) = nothing
+Base.broadcastable(w::ConfigurationSpaceModes) = w
 
 
 @doc raw"""
