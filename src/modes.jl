@@ -244,9 +244,9 @@ The `S` parameter specifies whether the resulting modes are symmetric (S=true)
 on interchange of k1 and k2, or not (S=false). This is useful for auto- and
 cross-correlation, respectively.
 """
-struct ClnnModes{S}
-    amodesA::AnlmModes
-    amodesB::AnlmModes
+struct ClnnModes{S,Ta,Tb}
+    amodesA::AnlmModes{Ta}
+    amodesB::AnlmModes{Tb}
     Δkmax::Float64
     Δnmax::Int
     # cache:
@@ -317,15 +317,15 @@ function calc_lnn(amodesA, amodesB; Δkmax=Inf, Δnmax=typemax(Int), symmetric_k
 end
 
 
-function ClnnModes(amodes::AnlmModes; Δkmax=Inf, Δnmax=typemax(Int))
+function ClnnModes(amodes::AnlmModes{Ta}; Δkmax=Inf, Δnmax=typemax(Int)) where {Ta}
     lnn, Δkmax, Δnmax = calc_lnn(amodes, amodes; Δkmax, Δnmax, symmetric_kk=true)
-    return ClnnModes{true}(amodes, amodes, Δkmax, Δnmax, lnn)
+    return ClnnModes{true,Ta,Ta}(amodes, amodes, Δkmax, Δnmax, lnn)
 end
 
 
-function ClnnModes(amodesA::AnlmModes, amodesB::AnlmModes; Δkmax=Inf, Δnmax=typemax(Int))
+function ClnnModes(amodesA::AnlmModes{Ta}, amodesB::AnlmModes{Tb}; Δkmax=Inf, Δnmax=typemax(Int)) where {Ta,Tb}
     lnn, Δkmax, Δnmax = calc_lnn(amodesA, amodesB; Δkmax, Δnmax, symmetric_kk=false)
-    return ClnnModes{false}(amodesA, amodesB, Δkmax, Δnmax, lnn)
+    return ClnnModes{false,Ta,Tb}(amodesA, amodesB, Δkmax, Δnmax, lnn)
 end
 
 
@@ -484,8 +484,8 @@ end
 # from the indices. That is, if the actual mode is ℓ and its index l, then we
 # don't require ℓ=l.
 
-struct ClnnBinnedModes{T,S}
-    cmodes::ClnnModes{S}
+struct ClnnBinnedModes{T,S,Ta,Tb}
+    cmodes::ClnnModes{S,Ta,Tb}
     LKK::Array{T,2}  # l=LKK[1,:], k1=LKK[2,:], k2=LKK[3,:]
 end
 
