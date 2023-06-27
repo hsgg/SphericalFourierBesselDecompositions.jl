@@ -264,6 +264,27 @@ Base.getproperty(cmodes::ClnnModes{true}, property::Symbol) = begin
 end
 
 
+# Here we will sort first by l, then Δn, then n
+function sort_lnn(lnn)
+    lnnsize = size(lnn,2)
+    idxs_sorted = sort(1:lnnsize;
+         lt = (i,j) -> begin
+             li, ni1, ni2 = @view lnn[:,i]
+             lj, nj1, nj2 = @view lnn[:,j]
+             Δni = ni2 - ni1
+             Δnj = nj2 - nj1
+             if li != lj
+                 return li < lj
+             elseif Δni != Δnj
+                 return Δni < Δnj
+             else
+                 return ni1 < nj1
+             end
+         end)
+    return collect(lnn[:,idxs_sorted])
+end
+
+
 function calc_lnn(amodesA, amodesB; Δkmax=Inf, Δnmax=typemax(Int), symmetric_kk=false)
     lmax = min(amodesA.lmax, amodesB.lmax)
     ell = 0:lmax
@@ -289,6 +310,8 @@ function calc_lnn(amodesA, amodesB; Δkmax=Inf, Δnmax=typemax(Int), symmetric_k
         end
     end
     lnn = reshape(lnn, 3, :)
+
+    lnn = sort_lnn(lnn)
 
     return collect(lnn), Δkmax_out, Δnmax_out
 end

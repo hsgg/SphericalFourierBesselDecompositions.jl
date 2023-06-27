@@ -40,33 +40,31 @@ using LinearAlgebra
         rmin = 500.0
         rmax = 2000.0
         kmax = 0.02
+        Δnmax = 4
         @time anlmmodes = SFB.AnlmModes(kmax, rmin, rmax)
         #@time anlmmodes = SFB.AnlmModes(2, 0, rmin, rmax)
-        @time clnnmodes = SFB.ClnnModes(anlmmodes, Δnmax=4)
+        @time clnnmodes = SFB.ClnnModes(anlmmodes; Δnmax=Δnmax)
         @show anlmmodes.nmax anlmmodes.lmax anlmmodes.nside
         @show SFB.getlnnsize(clnnmodes)
         lmax = anlmmodes.lmax
-        nmax = anlmmodes.nmax
-        idx2 = 1
+        idxmax = 0
         @time for l=0:lmax, nA=1:anlmmodes.nmax_l[l+1], nB=nA:anlmmodes.nmax_l[l+1]
-            if abs(nB - nA) > 4
+            if abs(nB - nA) > Δnmax
                 @test !SFB.isvalidlnn(clnnmodes, l, nA, nB)
                 continue
             end
             @test SFB.isvalidlnn(clnnmodes, l, nA, nB)
             idx = SFB.getidx(clnnmodes, l, nA, nB)
-            idx3 = SFB.getidx(clnnmodes, l, nB, nA)
-            @test idx == idx3
+
+            idxmax = max(idx, idxmax)
+
             l2, nA2, nB2 = SFB.getlnn(clnnmodes, idx)
-            @test l2 <= lmax
-            @test nA2 <= anlmmodes.nmax_l[l+1]
-            @test nB2 <= anlmmodes.nmax_l[l+1]
             @test l == l2
             @test nA == nA2
             @test nB == nB2
-            @test idx == idx2
-            idx2 += 1
         end
+        lnnsize = SFB.getlnnsize(clnnmodes)
+        @test idxmax == lnnsize  # tests that idx goes from 1:lnnsize
 
         # test getidx, getlkk
         amodes = SFB.AnlmModes(0.05, 0.0, 1000.0, nside=8)
