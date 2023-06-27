@@ -1,7 +1,7 @@
 name = "SphericalFourierBesselDecompositions"
 uuid = "7c5eff59-6392-4db1-b2e3-7d0560cca202"
 authors = ["Henry S. Grasshorn Gebhardt <gebhardt@caltech.edu>"]
-version = "0.5.0"
+version = "0.5.1"
 
 [deps]
 ArbNumerics = "7e558dbc-694d-5a72-987c-6f4ebed21442"
