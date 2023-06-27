@@ -369,7 +369,9 @@ function getidx(cmodes::ClnnModes{S}, l, n1, n2) where {S}
     ifirst = cmodes.first_ell_idx[l+1]
 
     i = findfirst(ifirst:lnnsize) do i
-        all(cmodes.lnn[:,i] .== (l, n1, n2))
+        cmodes.lnn[1,i] == l &&
+        cmodes.lnn[2,i] == n1 &&
+        cmodes.lnn[3,i] == n2
     end
     idx = ifirst + i - 1
 
