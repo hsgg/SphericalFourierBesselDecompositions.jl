@@ -258,7 +258,7 @@ Base.broadcastable(x::ClnnModes) = x
 # backwards compatibility:
 Base.getproperty(cmodes::ClnnModes{true}, property::Symbol) = begin
     if property == :amodes
-        return cmodes.amodesA
+        return getfield(cmodes, :amodesA)
     end
     return getfield(cmodes, property)
 end
