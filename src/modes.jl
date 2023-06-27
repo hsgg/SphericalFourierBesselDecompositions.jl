@@ -251,6 +251,7 @@ struct ClnnModes{S,Ta,Tb}
     Δnmax::Int
     # cache:
     lnn::Matrix{Int}
+    first_ell_idx::Array{Int}
 end
 
 Base.broadcastable(x::ClnnModes) = x
@@ -261,6 +262,22 @@ Base.getproperty(cmodes::ClnnModes{true}, property::Symbol) = begin
         return getfield(cmodes, :amodesA)
     end
     return getfield(cmodes, property)
+end
+
+
+function ClnnModes{S,Ta,Tb}(amodesA::AnlmModes{Ta}, amodesB::AnlmModes{Tb}, Δkmax, Δnmax, lnn) where {S,Ta,Tb}
+
+    lnnsize = size(lnn,2)
+    lmax = maximum(lnn[1,:])
+    first_ell_idx = fill(0, lmax + 1)
+    for i=1:lnnsize
+        l = lnn[1,i]
+        if first_ell_idx[l+1] == 0
+            first_ell_idx[l+1] = i
+        end
+    end
+
+    return ClnnModes{S,Ta,Tb}(amodesA, amodesB, Δkmax, Δnmax, lnn, first_ell_idx)
 end
 
 
@@ -346,10 +363,16 @@ function getidx(cmodes::ClnnModes{S}, l, n1, n2) where {S}
     if S
         n1, n2 = minmax(n1, n2)
     end
+
     lnnsize = getlnnsize(cmodes)
-    idx = findfirst(1:lnnsize) do i
+
+    ifirst = cmodes.first_ell_idx[l+1]
+
+    i = findfirst(ifirst:lnnsize) do i
         all(cmodes.lnn[:,i] .== (l, n1, n2))
     end
+    idx = ifirst + i - 1
+
     if isnothing(idx)
         lA = min(l, cmodes.amodesA.lmax)
         lB = min(l, cmodes.amodesB.lmax)
@@ -358,6 +381,7 @@ function getidx(cmodes::ClnnModes{S}, l, n1, n2) where {S}
         Δk = cmodes.amodesB.knl[n2B,lB+1] - cmodes.amodesA.knl[n1A,lA+1]
         @error "Cannot find index" l,n1,n2 lnnsize idx S cmodes.Δkmax cmodes.amodesA.lmax cmodes.amodesB.lmax cmodes.amodesA.nmax cmodes.amodesB.nmax isvalidlnn(cmodes, l, n1, n2) cmodes.amodesA.nmax_l[lA+1] cmodes.amodesB.nmax_l[lB+1] cmodes.amodesA.knl[n1A,lA+1] cmodes.amodesB.knl[n2B,lB+1] Δk
     end
+
     return idx
 end
 
