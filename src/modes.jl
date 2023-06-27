@@ -251,7 +251,7 @@ struct ClnnModes{S,Ta,Tb}
     Δnmax::Int
     # cache:
     lnn::Matrix{Int}
-    first_ell_idx::Array{Int}
+    first_ell_idx::Vector{Int}
 end
 
 Base.broadcastable(x::ClnnModes) = x
