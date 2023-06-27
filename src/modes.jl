@@ -361,7 +361,10 @@ getlnn(cmodes::ClnnModes) = cmodes.lnn
 
 function getidx(cmodes::ClnnModes{S}, l, n1, n2) where {S}
     if S
-        n1, n2 = minmax(n1, n2)
+        #n1, n2 = minmax(n1, n2)  # allocates (julia-v0.9.1)
+        n1_tmp = n1
+        n1 = min(n1, n2)
+        n2 = max(n1_tmp, n2)
     end
 
     lnnsize = getlnnsize(cmodes)
@@ -425,7 +428,10 @@ end
 
 
 function isvalidlnn_symmetric(cmodes::ClnnModes, l, n1, n2, args...)
-    n1, n2 = minmax(n1, n2)
+    #n1, n2 = minmax(n1, n2)  # allocates (julia-v0.9.1)
+    n1_tmp = n1
+    n1 = min(n1, n2)
+    n2 = max(n1_tmp, n2)
     return isvalidlnn(cmodes, l, n1, n2, args...)
 end
 
