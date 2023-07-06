@@ -243,6 +243,18 @@ If two `AnlmModes` are given, then we assume a cross-correlation is desired.
 The `S` parameter specifies whether the resulting modes are symmetric (S=true)
 on interchange of k1 and k2, or not (S=false). This is useful for auto- and
 cross-correlation, respectively.
+
+There is some ambiguity in what exactly the `S` parameter encodes. First, it
+could encode purely the symmetry of the Clnn modes, or it could encode whether
+we are doing a cross-correlation or an auto-correlation. Are these two
+equivalent? Can we ever have a symmetric cross-correlation? We define the
+cross-correlation as `<delta^A delta^{B,*}>, so that for a fixed `l`,
+`Clnn^{AB}` is the transpose of `Clnn^{BA}`.
+
+For the purposes of `ClnnModes`, the `S` parameter shall encode whether the two
+amodes are equal or not. That is, `S = (amodesA==amodesB)`. Whether it encodes
+any symmetry `A==B` beyond that will be left to the application using
+`ClnnModes`. The recommendation is to indeed use it to encode `A==B`.
 """
 struct ClnnModes{S,Ta,Tb}
     amodesA::AnlmModes{Ta}
