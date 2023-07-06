@@ -140,7 +140,7 @@ function amln2clnn(anlm1, anlm2, cmodes::ClnnModes)
         n2_idxs = getidx.(cmodes.amodesB, n2, l, 0:l)
         a1 = @view anlm1[n1_idxs]
         a2 = @view anlm2[n2_idxs]
-        clnn[i] = alm2cl(a1, a2, l, l)
+        clnn[i:i] .= alm2cl(a1, a2, l, l)
     end
     return clnn
 end
