@@ -104,7 +104,7 @@ struct AnlmModes{T}
     knl::Array{Float64,2}
 end
 
-Base.broadcastable(s::AnlmModes) = s
+Base.Broadcast.broadcastable(s::AnlmModes) = Ref(s)
 
 
 function AnlmModes(kmax::Real, rmin::Real, rmax::Real; cache=true, nside=nothing, nmax=typemax(Int64), lmax=typemax(Int64), boundary=GNL.potential)
@@ -254,7 +254,7 @@ struct ClnnModes{S,Ta,Tb}
     first_ell_idx::Vector{Int}
 end
 
-Base.broadcastable(x::ClnnModes) = x
+Base.Broadcast.broadcastable(x::ClnnModes) = Ref(x)
 
 # backwards compatibility:
 Base.getproperty(cmodes::ClnnModes{true}, property::Symbol) = begin
@@ -521,7 +521,7 @@ struct ClnnBinnedModes{T,S,Ta,Tb}
     LKK::Array{T,2}  # l=LKK[1,:], k1=LKK[2,:], k2=LKK[3,:]
 end
 
-Base.broadcastable(s::ClnnBinnedModes) = s
+Base.Broadcast.broadcastable(s::ClnnBinnedModes) = Ref(s)
 
 
 function ClnnBinnedModes(w̃, v, cmodes::ClnnModes{S}) where {S}

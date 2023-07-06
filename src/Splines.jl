@@ -28,7 +28,7 @@ struct Spline1D{k,T}
 end
 
 
-Base.broadcastable(x::Spline1D) = x
+Base.Broadcast.broadcastable(x::Spline1D) = Ref(x)
 
 
 ################# All splines

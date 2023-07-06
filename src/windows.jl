@@ -87,7 +87,7 @@ struct ConfigurationSpaceModes{Tarr,T<:Real}
     nside::Integer
 end
 
-Base.broadcastable(w::ConfigurationSpaceModes) = w
+Base.Broadcast.broadcastable(w::ConfigurationSpaceModes) = Ref(w)
 
 
 @doc raw"""
