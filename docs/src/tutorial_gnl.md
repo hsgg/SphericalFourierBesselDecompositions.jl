@@ -36,3 +36,9 @@ gnl_r = amodes.basisfunctions.gnl[n,l+1](r)
 gnlr = @. amodes.basisfunctions.gnl[n,l+1](rr)
 ```
 Note that `n` ranges from 1 to `amodes.nmax_l[l+1]`, and `l` ranges from 0 to`amodes.lmax`.
+
+The associated wavenumbers can be accessed with
+```julia
+k = amodes.knl[n,l+1]
+```
+If the result is a `NaN`, then it is outside the parameters, i.e., `k > kmax`.
