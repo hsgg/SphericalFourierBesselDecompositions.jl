@@ -388,16 +388,17 @@ function getidx(cmodes::ClnnModes{S}, l, n1, n2) where {S}
         cmodes.lnn[2,i] == n1 &&
         cmodes.lnn[3,i] == n2
     end
-    idx = ifirst + i - 1
 
-    if isnothing(idx)
+    if isnothing(i)
         lA = min(l, cmodes.amodesA.lmax)
         lB = min(l, cmodes.amodesB.lmax)
         n1A = min(n1, cmodes.amodesA.nmax_l[lA+1])
         n2B = min(n2, cmodes.amodesB.nmax_l[lB+1])
         Δk = cmodes.amodesB.knl[n2B,lB+1] - cmodes.amodesA.knl[n1A,lA+1]
-        @error "Cannot find index" l,n1,n2 lnnsize idx S cmodes.Δkmax cmodes.amodesA.lmax cmodes.amodesB.lmax cmodes.amodesA.nmax cmodes.amodesB.nmax isvalidlnn(cmodes, l, n1, n2) cmodes.amodesA.nmax_l[lA+1] cmodes.amodesB.nmax_l[lB+1] cmodes.amodesA.knl[n1A,lA+1] cmodes.amodesB.knl[n2B,lB+1] Δk
+        @error "Cannot find index" l,n1,n2 lnnsize i ifirst S cmodes.Δkmax cmodes.amodesA.lmax cmodes.amodesB.lmax cmodes.amodesA.nmax cmodes.amodesB.nmax isvalidlnn(cmodes, l, n1, n2, Val(true)) isvalidlnn_symmetric(cmodes, l, n1, n2, Val(true)) lA,lB cmodes.amodesA.nmax_l[lA+1] cmodes.amodesB.nmax_l[lB+1] n1A,n2B cmodes.amodesA.knl[n1A,lA+1] cmodes.amodesB.knl[n2B,lB+1] Δk
     end
+
+    idx = ifirst + i - 1
 
     return idx
 end
