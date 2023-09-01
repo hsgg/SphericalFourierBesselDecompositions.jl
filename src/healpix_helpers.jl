@@ -37,7 +37,8 @@ function Healpix.pix2angRing(nside::Integer, pix::AbstractArray)
 end
 
 
-function Healpix.udgrade(map::Union{Vector{T},SubArray{T}}, new_nside::Integer) where {T<:Real}
+function Healpix.udgrade(map, new_nside)
+    T = eltype(map)
     hpmap = HealpixMap{T,Healpix.RingOrder}(map)
     newmap = udgrade(hpmap, new_nside)
     return newmap  # will usually want to keep it as a HealpixMap

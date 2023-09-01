@@ -63,7 +63,7 @@ function SeparableArray(arr1, arr2; name1=:arr1, name2=:arr2)
     N = ndims(arr1) + ndims(arr2)
     A1 = typeof(arr1)
     A2 = typeof(arr2)
-    return SeparableArray{T,N,A1,A2}(arr1, arr2, name1, name2)
+    return SeparableArray{T,N,A1,A2}(arr1, arr2, Symbol(name1), Symbol(name2))
 end
 
 
