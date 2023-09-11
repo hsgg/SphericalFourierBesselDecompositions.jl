@@ -41,7 +41,44 @@ using ..Theory
 using ..WindowChains
 
 
-function calc_covariance_modecounting(CBlnn, bcmodes, fvol, Δℓ, Δn)
+function calc_covariance_modecounting(Clnn, cmodes, fvol, Δℓ, Δn)
+    lnnsize = getlnnsize(cmodes)
+    V_mc = fill(0.0, lnnsize, lnnsize)
+    @time for j=1:lnnsize, i=1:lnnsize
+        L, N, N′ = getlnn(cmodes, j)
+        l, n, n′ = getlnn(cmodes, i)
+        if l == L
+            C1 = 0.0
+            C2 = 0.0
+            C3 = 0.0
+            C4 = 0.0
+            # Need to ensure that what we calculate exists in 'CBlnn'
+            if isvalidlnn_symmetric(cmodes, l, n, N)
+                idx = getidx(cmodes, l, n, N)
+                C1 = Clnn[idx]
+            end
+            if isvalidlnn_symmetric(cmodes, L, n′, N′)
+                idx = getidx(cmodes, L, n′, N′)
+                C2 = Clnn[idx]
+            end
+            if isvalidlnn_symmetric(cmodes, l, n, N′)
+                idx = getidx(cmodes, l, n, N′)
+                C3 = Clnn[idx]
+            end
+            if isvalidlnn_symmetric(cmodes, L, n′, N)
+                idx = getidx(cmodes, L, n′, N)
+                C4 = Clnn[idx]
+            end
+            #(i == j) && @show i,j,(l,k,k′),(L,K,K′),C1,C2,C3,C4
+            Nmodes = fvol * (2*L+1) * Δℓ * Δn
+            V_mc[i,j] = (C1*C2 + C3*C4) / Nmodes
+        end
+    end
+    return V_mc
+end
+
+
+function calc_covariance_modecounting(CBlnn, bcmodes::ClnnBinnedModes, fvol, Δℓ, Δn)
     lnnsize = getlnnsize(bcmodes)
     V_mc = fill(0.0, lnnsize, lnnsize)
     @time for j=1:lnnsize, i=1:lnnsize
