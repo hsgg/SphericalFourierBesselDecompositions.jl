@@ -395,7 +395,7 @@ function getidx(cmodes::ClnnModes{S}, l, n1, n2) where {S}
         n1A = min(n1, cmodes.amodesA.nmax_l[lA+1])
         n2B = min(n2, cmodes.amodesB.nmax_l[lB+1])
         Δk = cmodes.amodesB.knl[n2B,lB+1] - cmodes.amodesA.knl[n1A,lA+1]
-        @error "Cannot find index" l,n1,n2 lnnsize i ifirst S cmodes.Δkmax cmodes.amodesA.lmax cmodes.amodesB.lmax cmodes.amodesA.nmax cmodes.amodesB.nmax isvalidlnn(cmodes, l, n1, n2, Val(true)) isvalidlnn_symmetric(cmodes, l, n1, n2, Val(true)) lA,lB cmodes.amodesA.nmax_l[lA+1] cmodes.amodesB.nmax_l[lB+1] n1A,n2B cmodes.amodesA.knl[n1A,lA+1] cmodes.amodesB.knl[n2B,lB+1] Δk
+        @error "Cannot find index" l,n1,n2 lnnsize i ifirst S cmodes.Δkmax cmodes.amodesA.lmax cmodes.amodesB.lmax cmodes.amodesA.nmax cmodes.amodesB.nmax isvalidlnn(cmodes, l, n1, n2, Val(S)) isvalidlnn_symmetric(cmodes, l, n1, n2, Val(S)) lA,lB cmodes.amodesA.nmax_l[lA+1] cmodes.amodesB.nmax_l[lB+1] n1A,n2B cmodes.amodesA.knl[n1A,lA+1] cmodes.amodesB.knl[n2B,lB+1] Δk
     end
 
     idx = ifirst + i - 1
@@ -449,11 +449,14 @@ function isvalidlnn(cmodes::ClnnModes{S}, l, n1, n2, ::Val{VERBOSE}=Val(false)) 
 end
 
 
-function isvalidlnn_symmetric(cmodes::ClnnModes, l, n1, n2, args...)
-    #n1, n2 = minmax(n1, n2)  # allocates (julia-v0.9.1)
-    n1_tmp = n1
-    n1 = min(n1, n2)
-    n2 = max(n1_tmp, n2)
+function isvalidlnn_symmetric(cmodes::ClnnModes{S}, l, n1, n2, args...) where {S}
+    if S
+        # only makes sense for auto-correlation when S=true.
+        #n1, n2 = minmax(n1, n2)  # allocates (julia-v1.9.1)
+        n1_tmp = n1
+        n1 = min(n1, n2)
+        n2 = max(n1_tmp, n2)
+    end
     return isvalidlnn(cmodes, l, n1, n2, args...)
 end
 
@@ -571,6 +574,7 @@ getlkk(bcmodes::ClnnBinnedModes) = bcmodes.LKK
 
 # _getcblnn_helper(): get surrounding interval range
 _getcblnn_helper(arr, i) = begin
+    @error "This is not the right approach to find the closest mode, because the modes are not sorted to make this work."
     lo = arr[max(1, i - 1)]
     mi = arr[i]
     hi = arr[min(i + 1, length(arr))]
