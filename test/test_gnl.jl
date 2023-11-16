@@ -45,7 +45,7 @@ end
 
 
 @testset "GNL" begin
-    @testset "$boundary" for boundary in [SFB.GNL.potential, SFB.GNL.velocity]
+    @testset "$boundary" for boundary in [SFB.GNL.potential, SFB.GNL.velocity, SFB.GNL.sphericalbessel_kF]
         @testset "rmin=$rmin" for rmin in [0.0, 500.0]#, 2000.0]
             @testset "kmax=$kmax" for kmax in [0.01, 0.1]
                 println("=====")
@@ -162,8 +162,22 @@ end
                 s = @. knl < kmax
                 @show length(knl) length(knl[s])
 
-                println("Testing orthonormality ($boundary,rmin=$rmin,kmax=$kmax)...")
-                @time test_orthonormality(amodes)
+                if boundary == SFB.GNL.sphericalbessel_kF
+                    knl = amodes.knl
+                    lmax = size(knl,2) - 1
+                    for l in rand(0:lmax,5), n in rand(1:size(knl,1), 5)  # no need to test every combination
+                        @show l,n
+                        nr = @. 3 + 12 * ceil(Int, 2 * knl[n,l+1] * (rmax - rmin))
+                        Δr = (rmax - rmin) / nr
+                        myr = rmin:Δr:rmax+Δr/2
+                        jl = √(2/π) * knl[n,l+1] * SFB.GNL.sphericalbesselj.(l, knl[n,l+1]*myr)
+                        gnl = amodes.basisfunctions.(n, l, myr)
+                        @test jl ≈ gnl
+                    end
+                else
+                    println("Testing orthonormality ($boundary,rmin=$rmin,kmax=$kmax)...")
+                    @time test_orthonormality(amodes)
+                end
             end
         end
     end

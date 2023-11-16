@@ -73,7 +73,7 @@ using SharedArrays
 const HighprecisionFloat = ArbFloat{1024}
 
 
-@enum BoundaryConditions potential velocity #density
+@enum BoundaryConditions potential velocity sphericalbessel_kF #density
 
 
 ############## calculate zeros ##################3
@@ -269,7 +269,11 @@ Calculate the `knl` for boundary conditions.
 """
 function calc_knl(args...; boundary=potential, kwargs...)
 
-    knl = calc_knl_zeros(args...; boundary, kwargs...)
+    if boundary ∈ [potential, velocity]
+        knl = calc_knl_zeros(args...; boundary, kwargs...)
+    elseif boundary == sphericalbessel_kF
+        knl = calc_knl_sphericalbessel_kF(args...; kwargs...)
+    end
 
     if boundary == velocity
         @assert isnan(knl[end,1])
@@ -331,6 +335,32 @@ function calc_knl_zeros(kmax, rmin, rmax; nmax=typemax(Int64), lmax=typemax(Int6
         end
     end
     @assert all(knl[@. isfinite(knl)] .> 0)
+    return knl
+end
+
+
+function calc_knl_sphericalbessel_kF(nmax, lmax, rmin, rmax; boundary=sphericalbessel_kF)
+    V = 4*π/3 * (rmax^3 - rmin^3)
+    kF = 2*π / ∛V
+    knl = fill(NaN, nmax, lmax+1)
+    knl[:,:] .= range(0, step=kF/2, length=nmax)
+    @assert all(knl .>= 0)
+    return knl
+end
+
+
+function calc_knl_sphericalbessel_kF(kmax, rmin, rmax; nmax=typemax(Int64), lmax=typemax(Int64), boundary=sphericalbessel_kF)
+    V = 4*π/3 * (rmax^3 - rmin^3)
+    kF = 2*π / ∛V
+
+    k = 0:(kF/2):kmax
+
+    lmax = ceil(Int, kmax*rmax - 1/2)
+
+    knl = fill(NaN, length(k), lmax+1)
+    knl[:,:] .= k
+
+    @assert all(knl .>= 0)
     return knl
 end
 
@@ -480,11 +510,20 @@ function calc_cnl_dnl_velocity(knl, n, l, rmin, rmax)
 end
 
 
+function calc_cnl_dnl_sphericalbessel_kF(knl, n, l, rmin, rmax)
+    cnl = √(2/π) * knl
+    dnl = zero(cnl)
+    return cnl, dnl
+end
+
+
 function get_calc_cnl_dnl_func(boundary)
     if boundary == potential
         return calc_cnl_dnl_potential
     elseif boundary == velocity
         return calc_cnl_dnl_velocity
+    elseif boundary == sphericalbessel_kF
+        return calc_cnl_dnl_sphericalbessel_kF
     end
 end
 
