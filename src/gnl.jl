@@ -343,7 +343,7 @@ function calc_knl_sphericalbessel_kF(nmax, lmax, rmin, rmax; boundary=sphericalb
     V = 4*π/3 * (rmax^3 - rmin^3)
     kF = 2*π / ∛V
     knl = fill(NaN, nmax, lmax+1)
-    knl[:,:] .= range(0, step=kF/2, length=nmax)
+    knl[:,:] .= range(0, step=kF/4, length=nmax)
     @assert all(knl .>= 0)
     return knl
 end
@@ -353,7 +353,7 @@ function calc_knl_sphericalbessel_kF(kmax, rmin, rmax; nmax=typemax(Int64), lmax
     V = 4*π/3 * (rmax^3 - rmin^3)
     kF = 2*π / ∛V
 
-    k = 0:(kF/2):kmax
+    k = 0:(kF/4):kmax
 
     lmax = ceil(Int, kmax*rmax - 1/2)
 
