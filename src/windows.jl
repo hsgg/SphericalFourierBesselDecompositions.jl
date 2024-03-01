@@ -670,7 +670,7 @@ end
 
 function calc_Wrl_Wrl(W1r_lm, W2r_lm, L1M1cache, cmodes::ClnnModes)
     nr = size(W1r_lm,1)
-    LMAX = 2 * cmodes.amodes.lmax
+    LMAX = 2 * cmodes.amodesA.lmax
     W1rl_W2rl = fill(NaN, nr, nr, LMAX+1)
     for L1=0:LMAX, j=1:nr, i=1:nr
         L1M1 = L1M1cache[L1+1,1]
@@ -938,9 +938,9 @@ function _power_win_mix(w̃mat, vmat, rsdrgnlr, W1r_lm::SeparableArray, W2r_lm::
     @show LNNsize1 LNNsize2 LNNsize1*LNNsize2
 
     println("Calculate angular and radial mixing:")
-    check_nsamp(cmodes.amodes, length(rsdrgnlr[:,1,1]))
-    lmax = bcmodes.cmodes.amodes.lmax
-    nmax_l = bcmodes.cmodes.amodes.nmax_l
+    check_nsamp(cmodes.amodesA, length(rsdrgnlr[:,1,1]))
+    lmax = bcmodes.cmodes.amodesA.lmax
+    nmax_l = bcmodes.cmodes.amodesA.nmax_l
     @time ang_mix = calc_angular_mixing_matrix(lmax, W1r_lm.wlm, W2r_lm.wlm)
     @time gnlgNLϕ1 = calc_radial_mixing(lmax, nmax_l, rsdrgnlr, W1r_lm.phi, 1, 1)
     @time gnlgNLϕ2 = calc_radial_mixing(lmax, nmax_l, rsdrgnlr, W2r_lm.phi, 1, 1)
@@ -982,7 +982,7 @@ end
 # calculate binned power spectrum mode-coupling matrix
 function power_win_mix(win1, win2, w̃mat, vmat, wmodes::ConfigurationSpaceModes, bcmodes::ClnnBinnedModes; kwargs...)
     cmodes = bcmodes.cmodes
-    amodes = cmodes.amodes
+    amodes = cmodes.amodesA
     lnnsize = getlnnsize(cmodes)
     LNNsize = getlnnsize(bcmodes)
     @show LNNsize^2, LNNsize, lnnsize
