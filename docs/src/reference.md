@@ -56,3 +56,21 @@ Modules = [SphericalFourierBesselDecompositions.Windows]
 ```@autodocs
 Modules = [SphericalFourierBesselDecompositions.WindowChains]
 ```
+
+## SFB.Theory
+
+```@autodocs
+Modules = [SphericalFourierBesselDecompositions.Theory]
+```
+
+## SFB.MyBroadcast
+
+```@autodocs
+Modules = [SphericalFourierBesselDecompositions.MyBroadcast]
+```
+
+## SFB.MyBroadcast.MeshedArrays
+
+```@autodocs
+Modules = [SphericalFourierBesselDecompositions.MyBroadcast.MeshedArrays]
+```

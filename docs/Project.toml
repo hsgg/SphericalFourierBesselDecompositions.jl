@@ -3,4 +3,4 @@ Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 SphericalFourierBesselDecompositions = "7c5eff59-6392-4db1-b2e3-7d0560cca202"
 
 [compat]
-Documenter = "0.26"
+Documenter = "0.26, 1"
