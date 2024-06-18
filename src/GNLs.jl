@@ -40,6 +40,7 @@ module GNLs
 ############# GNL interface #######################################
 
 abstract type AbstractGNL end
+using ..Splines
 
 
 # This will allow to call GNL.potential:
@@ -47,10 +48,6 @@ abstract type AbstractGNL end
 struct GNL end  # workaround to be able to do GNL.potential, etc.
 Base.getproperty(::Type{GNL}, b::Symbol) = eval(b)
 
-
-# evaluate gnl(r)
-
-(sphbesg::AbstractGNL)(n, l, r) = evaluate(sphbesg, n, l, r)
 
 
 export AbstractGNL
@@ -70,7 +67,7 @@ function GNL(nmax, lmax, rmin, rmax; boundary=potential, kwargs...)
     (rmin < rmax) || @error "rmin >= rmax" rmin rmax
 
     if boundary == cryognl
-        # return CryoGNL()
+        return CryoGNL(nmax, lmax, rmin, rmax; kwargs...)
     end
     return SphericalBesselGNL(nmax, lmax, rmin, rmax; boundary, kwargs...)
 end
@@ -79,10 +76,22 @@ function GNL(kmax, rmin, rmax; boundary=potential, kwargs...)
     (rmin < rmax) || @error "rmin >= rmax" rmin rmax
 
     if boundary == cryognl
-        # return CryoGNL()
+        return CryoGNL()
     end
     return SphericalBesselGNL(kmax, rmin, rmax; boundary, kwargs...)
 end
+
+
+
+# evaluate gnl(r)
+
+(sphbesg::AbstractGNL)(n, l, r) = evaluate(sphbesg, n, l, r)
+
+evaluate(sphbesg::AbstractGNL, n, l, r) = sphbesg.gnl[n,l+1](r)
+
+# derivative gnl'(r)
+Splines.derivative(sphbesg::AbstractGNL, n, l, r) = derivative(sphbesg.gnl[n,l+1], r)
+
 
 
 # compatibility:
@@ -91,6 +100,7 @@ const SphericalBesselGnl = GNL
 
 # Specific implementations:
 include("SphericalBesselGNLs.jl")
+include("CryoGNLs.jl")
 
 
 end

@@ -58,7 +58,6 @@
 using SpecialFunctions
 using ArbNumerics  # Nemo conflicts currently
 using Roots
-using ..Splines
 
 using Distributed
 using SharedArrays
@@ -633,19 +632,6 @@ function evaluate(sphbesg::SphericalBesselGNL{Nothing,Tyl}, n, l, r) where {Tyl}
     d = sphbesg.dnl[n,l+1]
     return calc_sphbes_gnl(k*r, l, c, d)
 end
-
-function evaluate(sphbesg::SphericalBesselGNL{Array{Tspl,2},Tyl}, n, l, r) where {Tspl,Tyl}
-    return sphbesg.gnl[n,l+1](r)
-end
-
-
-# derivative gnl'(r)
-
-function Splines.derivative(sphbesg::SphericalBesselGNL{Array{Tspl,2},Tyl}, n, l, r) where {Tspl,Tyl}
-    return derivative(sphbesg.gnl[n,l+1], r)
-end
-
-
 
 
 
