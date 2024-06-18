@@ -44,7 +44,7 @@
 
 module Modes
 
-using ..GNL
+using ..GNLs
 using Statistics
 using LinearAlgebra
 using SparseArrays
@@ -108,7 +108,7 @@ Base.Broadcast.broadcastable(s::AnlmModes) = Ref(s)
 
 
 function AnlmModes(kmax::Real, rmin::Real, rmax::Real; cache=true, nside=nothing, nmax=typemax(Int64), lmax=typemax(Int64), boundary=GNL.potential)
-    sphbesg = SphericalBesselGnl(kmax, rmin, rmax; nmax, lmax, cache, boundary)
+    sphbesg = GNL(kmax, rmin, rmax; nmax, lmax, cache, boundary)
     knl = sphbesg.knl
     nmax, lmax = size(knl) .- (0,1)
     modes = @. knl <= kmax
@@ -144,7 +144,7 @@ end
 function AnlmModes(nmax::Int, lmax::Int, rmin::Real, rmax::Real; cache=true, nside=nothing, boundary=GNL.potential)
     lmax_n = [lmax for n=1:nmax]
     nmax_l = [nmax for l=0:lmax]
-    sphbesg = SphericalBesselGnl(nmax, lmax, rmin, rmax; cache, boundary)
+    sphbesg = GNL(nmax, lmax, rmin, rmax; cache, boundary)
     if nside == nothing
         nside = estimate_nside(lmax)
     end

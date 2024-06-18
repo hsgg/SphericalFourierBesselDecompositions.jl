@@ -48,7 +48,7 @@ using ..Splines
 using ..MyBroadcast
 using ..HealpixHelpers
 using ..LMcalcStructs
-using ..GNL
+using ..GNLs
 using Healpix
 using LinearAlgebra
 using SpecialFunctions

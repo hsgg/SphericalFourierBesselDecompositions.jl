@@ -33,7 +33,7 @@ module SphericalFourierBesselDecompositions
 include("MyBroadcast.jl")
 include("healpix_helpers.jl")
 include("Splines.jl")
-include("gnl.jl")  # SphericalBesselGnls
+include("gnl.jl")
 include("modes.jl")  # AnlmModes, ClnnModes, ClnnBinnedModes
 include("utils.jl")  # mostly theory, may be split at some point
 include("SeparableArrays.jl")
@@ -55,7 +55,7 @@ using Scanf
 using .MyBroadcast
 using .HealpixHelpers
 using .Splines
-using .GNL
+using .GNLs
 using .Modes
 using .Utils
 using .Windows
