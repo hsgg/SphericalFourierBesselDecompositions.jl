@@ -45,8 +45,14 @@ using ..Splines
 
 # This will allow to call GNL.potential:
 @enum BoundaryConditions potential velocity sphericalbessel_kF cryognl #density
-struct GNL end  # workaround to be able to do GNL.potential, etc.
-Base.getproperty(::Type{GNL}, b::Symbol) = eval(b)
+abstract type GNL end  # workaround to be able to do GNL.potential, etc.
+Base.getproperty(t::Type{GNL}, b::Symbol) = begin
+    if b in Symbol.(instances(BoundaryConditions))
+        return eval(b)
+    else
+        return getfield(t, b)  # fallback, needed for printing
+    end
+end
 
 
 
@@ -76,7 +82,7 @@ function GNL(kmax, rmin, rmax; boundary=potential, kwargs...)
     (rmin < rmax) || @error "rmin >= rmax" rmin rmax
 
     if boundary == cryognl
-        return CryoGNL()
+        return CryoGNL(kmax, rmin, rmax; kwargs...)
     end
     return SphericalBesselGNL(kmax, rmin, rmax; boundary, kwargs...)
 end

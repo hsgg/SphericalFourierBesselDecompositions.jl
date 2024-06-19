@@ -8,7 +8,8 @@ using FastGaussQuadrature
 using Test
 
 
-function test_orthonormality(amodes)
+function test_orthonormality(amodes, atol)
+    @show atol
     rmin = amodes.rmin
     rmax = amodes.rmax
     #for l=0:amodes.lmax
@@ -34,9 +35,9 @@ function test_orthonormality(amodes)
 
                 #@show l,n1,n2,δᴷ
                 if n1 == n2
-                    @test δᴷ ≈ 1  atol=1e-6
+                    @test δᴷ ≈ 1  atol=atol
                 else
-                    @test δᴷ ≈ 0  atol=1e-6
+                    @test δᴷ ≈ 0  atol=atol
                 end
             end
         end
@@ -45,7 +46,7 @@ end
 
 
 @testset "GNL" begin
-    @testset "$boundary" for boundary in [SFB.GNL.potential, SFB.GNL.velocity, SFB.GNL.sphericalbessel_kF]
+    @testset "$boundary" for boundary in [SFB.GNL.potential, SFB.GNL.velocity, SFB.GNL.sphericalbessel_kF, SFB.GNL.cryognl]
         @testset "rmin=$rmin" for rmin in [0.0, 500.0]#, 2000.0]
             @testset "kmax=$kmax" for kmax in [0.01, 0.1]
                 println("=====")
@@ -170,13 +171,17 @@ end
                         nr = @. 3 + 12 * ceil(Int, 2 * knl[n,l+1] * (rmax - rmin))
                         Δr = (rmax - rmin) / nr
                         myr = rmin:Δr:rmax+Δr/2
-                        jl = √(2/π) * knl[n,l+1] * SFB.GNL.sphericalbesselj.(l, knl[n,l+1]*myr)
+                        jl = √(2/π) * knl[n,l+1] * SFB.GNLs.sphericalbesselj.(l, knl[n,l+1]*myr)
                         gnl = amodes.basisfunctions.(n, l, myr)
                         @test jl ≈ gnl
                     end
                 else
                     println("Testing orthonormality ($boundary,rmin=$rmin,kmax=$kmax)...")
-                    @time test_orthonormality(amodes)
+                    atol = 1e-6
+                    if boundary == SFB.GNL.cryognl
+                        atol = 1e-4
+                    end
+                    @time test_orthonormality(amodes, atol)
                 end
             end
         end

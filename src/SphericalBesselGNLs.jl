@@ -247,6 +247,8 @@ function get_knl_zero_func(boundary)
         return knl_zero_function_potential
     elseif boundary == velocity
         return knl_zero_function_velocity
+    else
+        return (k,l,rmin,rmax) -> NaN
     end
 end
 
@@ -264,6 +266,8 @@ function calc_knl(args...; boundary=potential, kwargs...)
         knl = calc_knl_zeros(args...; boundary, kwargs...)
     elseif boundary == sphericalbessel_kF
         knl = calc_knl_sphericalbessel_kF(args...; kwargs...)
+    else
+        error("boundary $boundary wrong implementation")
     end
 
     if boundary == velocity
@@ -281,6 +285,8 @@ function get_kmin_l_add(boundary)
         return 3//2
     elseif boundary == velocity
         return 1//2
+    else
+        error("boundary $boundary wrong implementation")
     end
 end
 
@@ -515,6 +521,8 @@ function get_calc_cnl_dnl_func(boundary)
         return calc_cnl_dnl_velocity
     elseif boundary == sphericalbessel_kF
         return calc_cnl_dnl_sphericalbessel_kF
+    else
+        error("boundary $boundary wrong implementation")
     end
 end
 
