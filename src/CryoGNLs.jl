@@ -69,13 +69,13 @@ end
 
 
 # This is an optimized version when the number of eigenvectors needed is small.
-function get_radial_cryofunks(L, ri, Δr, nmax)
-    @time B = diagm(@. √Δr * ri)
-    @time G = get_radial_greens_matrix(L, ri, Δr)
+function get_radial_cryofunks(L, ri, Δr, nmax, G)
+    B = diagm(@. √Δr * ri)
+    # G = get_radial_greens_matrix(L, ri, Δr)
 
     x0 = ones(size(G,1))
     krylovdim = min(length(ri), ceil(Int, nmax*1.05 + 2))
-    @time eval, evec, conv = eigsolve(G, x0, nmax; krylovdim)
+    eval, evec, conv = eigsolve(G, x0, nmax; krylovdim)
     if length(eval) != conv.converged
         @error "Only $(conv.converged) of $(length(eval)) eigenvectors successfully calculated." eval evec conv L ri Δr nmax
         error("Failed to converge all requested eigenvectors.")
@@ -86,12 +86,12 @@ function get_radial_cryofunks(L, ri, Δr, nmax)
     k = k[p]
 
     Z = fill(NaN, length(ri), length(p))
-    @time for i in axes(Z,2)
+    for i in axes(Z,2)
         Z[:,i] .= evec[p[i]]
     end
 
-    @time g = B \ Z
-    @time ginv = Z' * B
+    g = B \ Z
+    ginv = Z' * B
     return k, g, ginv
 end
 
@@ -163,14 +163,18 @@ function CryoGNL(kmax, rmin, rmax; nrbins=Inf, kwargs...)
 
     knl = fill(NaN, nmax, lmax + 1)
     gnl = fill(Spline1D(T=Float64), size(knl))
+    G = CryoGNLs.get_radial_greens_matrix(0, rmid, Δr)
+    Ratio = @. rmid / rmid'
 
     @time for l in 0:lmax
         @show lmax,l,nmax,my_nmax
 
-        k, g, _ = @time CryoGNLs.get_radial_cryofunks(l, rmid, Δr, my_nmax)
+        k, g, _ = @time CryoGNLs.get_radial_cryofunks(l, rmid, Δr, my_nmax, G)
+        @. G.data = G.data * Ratio * (2 * l + 1) / (2 * l + 3)
+        # G = CryoGNLs.Hermitian(G.data)
 
         my_nmax = findlast(k .<= kmax)
-        @show nrbins,nmax,my_nmax
+        # @show nrbins,nmax,my_nmax
 
         if isnothing(my_nmax)
             lmax = l - 1
