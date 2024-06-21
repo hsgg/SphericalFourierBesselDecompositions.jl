@@ -1,7 +1,7 @@
 name = "SphericalFourierBesselDecompositions"
 uuid = "7c5eff59-6392-4db1-b2e3-7d0560cca202"
 authors = ["Henry S. Grasshorn Gebhardt <gebhardt@caltech.edu>"]
-version = "0.5.13"
+version = "0.5.14"
 
 [deps]
 ArbNumerics = "7e558dbc-694d-5a72-987c-6f4ebed21442"
@@ -28,7 +28,7 @@ WignerSymbols = "9f57e263-0b3d-5e2e-b1be-24f2bb48858b"
 ArbNumerics = "^1.2"
 FastTransforms = "0.13, 0.14, 0.15, 0.16"
 Healpix = "3, 4"
-KrylovKit = "0.8"
+KrylovKit = "0.7, 0.8"
 LoopVectorization = "0.12"
 ProgressMeter = "1"
 QuadGK = "^2.4"
