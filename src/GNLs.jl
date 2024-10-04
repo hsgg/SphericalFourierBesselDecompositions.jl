@@ -34,6 +34,12 @@
 
 
 
+@doc raw"""
+    GNLs
+
+Module to define radial basis functions. The specific basis functions are
+defined in an enum, `BoundaryConditions`.
+"""
 module GNLs
 
 
@@ -44,6 +50,11 @@ using ..Splines
 
 
 # This will allow to call GNL.potential:
+@doc raw"""
+    BoundaryConditions
+
+This enum defines the radial basis functions.
+"""
 @enum BoundaryConditions potential velocity sphericalbessel_kF cryognl #density
 abstract type GNL end  # workaround to be able to do GNL.potential, etc.
 Base.getproperty(t::Type{GNL}, b::Symbol) = begin
