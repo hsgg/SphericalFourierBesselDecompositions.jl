@@ -115,6 +115,7 @@ end
 
 # Using wigner chain
 function WindowChainsCacheWignerChain(win, wmodes, amodes)
+    @warn "Using poorly tested Window Chain implementation. Will give incorrect results."
     lmax = amodes.lmax
     nmax = amodes.nmax
     nmax_l = amodes.nmax_l
