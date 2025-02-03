@@ -3,8 +3,12 @@ using Documenter
 
 DocMeta.setdocmeta!(SphericalFourierBesselDecompositions, :DocTestSetup, :(using SphericalFourierBesselDecompositions); recursive=true)
 
+magickcmd = "magick"
+if isnothing(Sys.which(magickcmd))
+    magickcmd = "convert"
+end
 magickopts = `-density 300 -background none -define icon:auto-resize=256,128,96,64,48,32,16`
-cmd = `convert $(@__DIR__)/src/assets/favicon.svg $magickopts $(@__DIR__)/src/assets/favicon.ico`
+cmd = `$magickcmd $(@__DIR__)/src/assets/favicon.svg $magickopts $(@__DIR__)/src/assets/favicon.ico`
 @show cmd
 run(cmd)
 
