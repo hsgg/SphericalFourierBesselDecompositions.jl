@@ -30,7 +30,7 @@
 
 module Cat2Anlm
 
-export cat2amln, winweights2galweights
+export cat2amln, cat2nlm, winweights2galweights
 export field2anlm
 
 
@@ -306,6 +306,8 @@ function cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weight=ones(eltype(rθϕ), s
     @assert all(isfinite.(anlm))
     return anlm
 end
+
+const cat2nlm = cat2amln
 
 
 # field2anlm(): Convenience function to transform a given field (not catalog)

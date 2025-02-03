@@ -145,6 +145,8 @@ function amln2clnn(anlm1, anlm2, cmodes::ClnnModes)
     return clnn
 end
 
+const anlm2clnn = amln2clnn
+
 
 @doc raw"""
     pixwin(cmodes)
