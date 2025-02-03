@@ -1,7 +1,7 @@
 name = "SphericalFourierBesselDecompositions"
 uuid = "7c5eff59-6392-4db1-b2e3-7d0560cca202"
 authors = ["Henry S. Grasshorn Gebhardt <gebhardt@caltech.edu>"]
-version = "0.5.14"
+version = "0.5.15"
 
 [deps]
 ArbNumerics = "7e558dbc-694d-5a72-987c-6f4ebed21442"
@@ -34,7 +34,7 @@ ProgressMeter = "1"
 QuadGK = "^2.4"
 Roots = "1, 2"
 Scanf = "0.5"
-SpecialFunctions = "^0.10.1, ^1, 2"
+SpecialFunctions = "^0.10.1, 1, 2"
 Statistics = "1"
 WignerD = "0.1"
 WignerFamilies = "^1.0.1"
