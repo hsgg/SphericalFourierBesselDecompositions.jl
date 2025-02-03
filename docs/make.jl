@@ -11,7 +11,6 @@ run(cmd)
 makedocs(;
     modules=[SphericalFourierBesselDecompositions],
     authors="Henry Gebhardt <henry.s.gebhardt@jpl.nasa.gov> and contributors",
-    repo="https://github.com/hsgg/SphericalFourierBesselDecompositions.jl/blob/{commit}{path}#{line}",
     sitename="SphericalFourierBesselDecompositions.jl",
     #sitename="[SphericalFourierBesselDecompositions.jl](https://github.com/hsgg/SphericalFourierBesselDecompositions.jl)",
     #sitename="<a href=\"https://github.com/hsgg/SphericalFourierBesselDecompositions.jl\">SphericalFourierBesselDecompositions.jl</a>",

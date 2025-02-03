@@ -19,10 +19,16 @@ Pages = ["reference.md"]
 Modules = [SphericalFourierBesselDecompositions]
 ```
 
-## SFB.GNL
+## SFB.GNLs
 
 ```@autodocs
 Modules = [SphericalFourierBesselDecompositions.GNLs]
+```
+
+### SFB.GNL.CryoGNLs
+
+```@autodocs
+Modules = [SphericalFourierBesselDecompositions.GNLs.CryoGNLs]
 ```
 
 ## SFB.Modes
