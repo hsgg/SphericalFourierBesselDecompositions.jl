@@ -12,8 +12,7 @@ package is supposed to do.
 
 First, load the package and create a shortcut
 ```julia
-using SphericalFourierBesselDecompositions
-const SFB = SphericalFourierBesselDecompositions
+import SphericalFourierBesselDecompositions as SFB
 ```
 We will always assume that this shortcut has been created, as the package `SFB`
 does not export any symbols itself. Make the shortcut `const` can be important
@@ -35,25 +34,42 @@ include.
 
 The objects `amodes` and `cmodes` are used to access elements in the arrays
 produced by the routines below. For example, performing the SFB transform on a
-catalog, we use `anlm = SFB.cat2amln(...)`, and the individual modes can be
-accessed via `anlm[SFB.getidx(amodes, n, l, m)]`.
+catalog, we will later use `anlm = SFB.cat2amln(...)`, and the individual modes
+can then be accessed via `anlm[SFB.getidx(amodes, n, l, m)]`.
 
-The window function is described by
+To do the transform, we need a window. Let's generate a simple separable one
+for this tutorial. First, decide on the number of radial bins to use, and
+store that in `nr`. Then, generate the radial selection function
 ```julia
 nr = 50
+phi = ones(nr)
+mask = ones(SFB.nside2npix(amodes.nside))
+```
+The mask must be a HEALPix mask in ring order.
+The window function is then described by
+```julia
 wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
 win = SFB.SeparableArray(phi, mask, name1=:phi, name2=:mask)
 win_rhat_ln = SFB.win_rhat_ln(win, wmodes, amodes)
 Veff = SFB.integrate_window(win, wmodes)
 ```
-where `nr` is the number of radial bins, `phi` is an array of length `nr`, and
-`mask` is a HEALPix mask in ring order. In general, `win` can be a 2D-array,
-where the first dimension is radial, and the second dimension is the HEALPix
-mask at each radius. Using a `SeparableArray` uses Julia's dispatch mechanism
-to call more efficient specialized algorithms when the radial and angular
-window are separable. `SFB.win_rhat_ln()` performs the radial transform of the
-window, `SFB.integrate_window()` is a convenient way to calculate the effective
-volume `Veff`.
+In general, `win` can be a 2D-array, where the first dimension is radial, and
+the second dimension is the HEALPix mask at each radius. Using a
+`SeparableArray` uses Julia's dispatch mechanism to call more efficient
+specialized algorithms when the radial and angular window are separable.
+`SFB.win_rhat_ln()` performs the radial transform of the window,
+`SFB.integrate_window()` is a convenient way to calculate the effective volume
+`Veff`.
+
+To actually perform the SFB decomposition we need a galaxy catalog. A very poor
+mock can be created as follows:
+```julia
+Ngalaxies = 10_000
+rθϕ = rand(3, Ngalaxies)
+nbar = Ngalaxies / Veff
+```
+where `rθϕ` is a `3 × Ngalaxies` array with the `r`, `θ`, and `ϕ` coordinates
+of each galaxy in the survey, and `nbar` is the number density.
 
 The SFB decomposition for a catalogue of galaxies is now performed with
 ```julia
@@ -61,11 +77,9 @@ weights = ones(size(rθϕ,2))
 anlm = SFB.cat2amln(rθϕ, amodes, nbar, win_rhat_ln, weights)
 CNobs = SFB.amln2clnn(anlm, cmodes)
 ```
-where `rθϕ` is a `3 × Ngalaxies` array with the `r`, `θ`, and `ϕ` coordinates
-of each galaxy in the survey, and `nbar = Ngalaxies / Veff` is the average
-number density. An array `weights` needs to be passed that contains a weight,
-e.g., an FKP weight, for each galaxy. The last line calculates the pseudo-SFB
-power spectrum.
+An array `weights` needs to be passed that contains a weight, e.g., an FKP
+weight, for each galaxy. The last line calculates the pseudo-SFB power
+spectrum.
 
 Shot noise and pixel window are removed with
 ```julia
@@ -76,13 +90,13 @@ Cobs = @. (CNobs - Nobs_th) / pixwin ^ 2
 
 Window deconvolution is performed with bandpower binning:
 ```julia
-w̃mat, vmat = SFB.bandpower_binning_weights(cmodes; Δℓ=Δℓ, Δn=Δn)
+w̃mat, vmat = SFB.bandpower_binning_weights(cmodes; Δℓ=1, Δn1=1, Δn2=1)
 bcmodes = SFB.ClnnBinnedModes(w̃mat, vmat, cmodes)
 bcmix = SFB.power_win_mix(win, w̃mat, vmat, wmodes, bcmodes)
 C = bcmix \ (w̃mat * Cobs)
 ```
 The first line calculates binning matrices `w̃` and `v` for bin sizes `Δℓ ~
-1/fsky` and `Δn = 1`, the second line describes modes similar to `cmodes` but
+1/fsky` and `Δn1 = Δn2 = 1`, the second line describes modes similar to `cmodes` but
 for bandpower binned modes. The coupling matrix is calculated in the third
 line, and the last line does the binning and deconvolves the window function.
 
