@@ -108,6 +108,11 @@ Base.Broadcast.broadcastable(s::AnlmModes) = Ref(s)
 
 
 function AnlmModes(kmax::Real, rmin::Real, rmax::Real; cache=true, nside=nothing, nmax=typemax(Int64), lmax=typemax(Int64), boundary=GNL.potential)
+    T = Float64
+    kmax = T(kmax)
+    rmin = T(rmin)
+    rmax = T(rmax)
+
     sphbesg = GNL(kmax, rmin, rmax; nmax, lmax, cache, boundary)
     knl = sphbesg.knl
     nmax, lmax = size(knl) .- (0,1)
@@ -142,6 +147,10 @@ end
 
 
 function AnlmModes(nmax::Int, lmax::Int, rmin::Real, rmax::Real; cache=true, nside=nothing, boundary=GNL.potential)
+    T = Float64
+    rmin = T(rmin)
+    rmax = T(rmax)
+
     lmax_n = [lmax for n=1:nmax]
     nmax_l = [nmax for l=0:lmax]
     sphbesg = GNL(nmax, lmax, rmin, rmax; cache, boundary)

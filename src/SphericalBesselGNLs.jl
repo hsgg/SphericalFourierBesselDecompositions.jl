@@ -611,23 +611,37 @@ Generate `gnl(n,l,r)`. Returns a struct that can be called for calculating
 `gnl`. Note that the last argument is `r`, *not* `kr`.
 """
 function SphericalBesselGNL(nmax, lmax, rmin, rmax; cache=true, boundary=potential)
+    T = Float64
+    rmin = T(rmin)
+    rmax = T(rmax)
+
     (rmin < rmax) || @error "rmin >= rmax" rmin rmax
+
     knl = calc_knl(nmax, lmax, rmin, rmax; boundary)
     cnl, dnl = calc_cnl_dnl(knl, rmin, rmax; boundary)
+
     if !cache
         return SphericalBesselGNL(nmax, lmax, rmin, rmax, knl, cnl, dnl, boundary, nothing)
     end
+
     return SphericalBesselGNL(nmax, lmax, rmin, rmax, knl, cnl, dnl, boundary)
 end
 
 function SphericalBesselGNL(kmax, rmin, rmax; cache=true, nmax=typemax(Int64), lmax=typemax(Int64), boundary=potential)
+    T = Float64
+    rmin = T(rmin)
+    rmax = T(rmax)
+
     (rmin < rmax) || @error "rmin >= rmax" rmin rmax
+
     knl = calc_knl(kmax, rmin, rmax; nmax, lmax, boundary)
     cnl, dnl = calc_cnl_dnl(knl, rmin, rmax; boundary)
     nmax, lmax = size(knl) .- (0,1)
+
     if !cache
         return SphericalBesselGNL(nmax, lmax, rmin, rmax, knl, cnl, dnl, boundary, nothing)
     end
+
     return SphericalBesselGNL(nmax, lmax, rmin, rmax, knl, cnl, dnl, boundary)
 end
 

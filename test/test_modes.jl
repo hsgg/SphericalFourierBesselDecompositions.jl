@@ -9,6 +9,19 @@ using LinearAlgebra
 
 
 @testset "Modes" begin
+    @testset "AnlmModes Int args" begin
+        @time SFB.AnlmModes(0.03, 0, 1500)
+        @time SFB.AnlmModes(0.03, 0.0, 1500)
+        @time SFB.AnlmModes(0.03, 0, 1500.0)
+        @time SFB.AnlmModes(0.03, 0.0, 1500.0)
+
+        @time SFB.AnlmModes(10, 12, 0, 1500)
+        @time SFB.AnlmModes(10, 12, 0.0, 1500)
+        @time SFB.AnlmModes(10, 12, 0, 1500.0)
+        @time SFB.AnlmModes(10, 12, 0.0, 1500.0)
+    end
+
+
     @testset "AnlmModes" begin
         rmin = 100.0
         rmax = 10000.0
