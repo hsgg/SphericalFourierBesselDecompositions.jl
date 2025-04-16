@@ -18,7 +18,7 @@ using LinearAlgebra
 
 
 ## runtests:
-@testset "SphericalFourierBesselDecompositions" begin
+@testset verbose=true "SphericalFourierBesselDecompositions" begin
     include("test_toplevel.jl")
     include("test_separablearrays.jl")
     include("test_gnl.jl")
