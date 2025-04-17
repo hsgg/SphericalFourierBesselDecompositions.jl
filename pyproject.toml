@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pysuperfab"
+version = "0.5.15"
+description = "Python wrapper for SphericalFourierBesselDecompositions.jl"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Henry Gebhardt", email = "gebhardt@caltech.edu" }
+]
+dependencies = [
+    "juliacall",
+]
+
+[project.urls]
+Homepage = "https://github.com/hsgg/SphericalFourierBesselDecompositions.jl"
+Repository = "https://github.com/hsgg/SphericalFourierBesselDecompositions.jl"
+
+[tool.setuptools]
+packages = ["pysuperfab"]
+
+[tool.setuptools.package-data]
+pysuperfab = ["juliapkg.json"]
