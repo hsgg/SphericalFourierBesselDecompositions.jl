@@ -5,12 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pysuperfab"
 version = "0.5.15"
-description = "Python wrapper for SphericalFourierBesselDecompositions.jl"
-readme = "README.md"
-license = { file = "LICENSE" }
 authors = [
     { name = "Henry Gebhardt", email = "gebhardt@caltech.edu" }
 ]
+description = "Python wrapper for SphericalFourierBesselDecompositions.jl"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = [ "LICENSE" ]
 dependencies = [
     "juliacall",
 ]

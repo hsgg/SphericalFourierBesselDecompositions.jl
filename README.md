@@ -56,4 +56,4 @@ That should start looking *really* familiar from the
 4. Commit version updates.
 5. Comment with `@JuliaRegistrator register()` on that commit. This will
    publicize the package in the Julia General registry.
-5. Upload the python package.
+5. Python package could be uploaded... somwhere
