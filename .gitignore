@@ -1,3 +1,6 @@
-__pycache__/
-build/
-superfabpy.egg-info/
+/docs/build/
+
+/build/
+/pysuperfab/__pycache__/
+/pysuperfab.egg-info/
+/dist/

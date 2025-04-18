@@ -13,7 +13,7 @@ For installation instructions and a tutorial, see the
 [Documentation](https://hsgg.github.io/SphericalFourierBesselDecompositions.jl/dev).
 
 
-## pySuperFaB: Python wrapper for SphericalFourierBesselDecompositions.jl
+## pySuperFaB Python wrapper
 
 This is a simple Python wrapper for [`SphericalFourierBesselDecompositions.jl`](https://github.com/hsgg/SphericalFourierBesselDecompositions.jl).
 
@@ -21,7 +21,7 @@ This is a simple Python wrapper for [`SphericalFourierBesselDecompositions.jl`](
 ### Installation
 
 ```
-pip install .
+pip install pysuperfab
 ```
 
 The only dependency (from a Python perspective) is `juliacall`, which is
@@ -30,12 +30,13 @@ available in conda as `pyjuliacall`.
 
 ### Usage
 
-You can use this as any other Python package. Under the hood it uses JuliaCall,
-which on first import will automatically download Julia if you don't already
-have it. It will also then download the
-`SphericalFourierBesselDecompositions.jl` Julia package.
+You can use this as any other Python package. Under the hood it uses
+[JuliaCall](https://juliapy.github.io/PythonCall.jl/stable/juliacall/), which
+on first import will automatically download Julia if you don't already have it.
+It will also then download the `SphericalFourierBesselDecompositions.jl` Julia
+package.
 
-Use like so:
+Use pySuperFaB like so:
 ```
 from pysuperfab import SFB
 
@@ -53,7 +54,9 @@ That should start looking *really* familiar from the
 1. Edit version field in `Project.toml`.
 2. Edit version field in `pysuperfab/juliapkg.json`.
 3. Edit version field in `pyproject.toml`.
-4. Commit version updates.
+4. Commit version updates. Ensure CI passes.
 5. Comment with `@JuliaRegistrator register()` on that commit. This will
    publicize the package in the Julia General registry.
-5. Python package could be uploaded... somwhere
+5. Build and upload Python package:
+   a. `python -m build`
+   b. `python -m twine upload dist/*`
