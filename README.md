@@ -51,12 +51,22 @@ That should start looking *really* familiar from the
 
 ## How to make a release
 
-1. Edit version field in `Project.toml`.
-2. Edit version field in `pysuperfab/juliapkg.json`.
-3. Edit version field in `pyproject.toml`.
-4. Commit version updates. Ensure CI passes.
-5. Comment with `@JuliaRegistrator register()` on that commit. This will
-   publicize the package in the Julia General registry.
-5. Build and upload Python package:
+1. Update version:
+
+   a. Edit version field in `Project.toml`.
+
+   b. Edit version field in `pysuperfab/juliapkg.json`.
+
+   c. Edit version field in `pyproject.toml`.
+
+   d. Commit version updates. There is an awkwardness here: CI cannot pass for
+      the python package until the Julia package has been registered.
+
+2. Julia release: comment with `@JuliaRegistrator register()` on that commit.
+   This will publicize the package in the Julia General registry.
+
+3. Build and upload Python package:
+
    a. `python -m build`
+
    b. `python -m twine upload dist/*`
