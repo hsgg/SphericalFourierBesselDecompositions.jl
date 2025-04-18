@@ -51,6 +51,10 @@ That should start looking *really* familiar from the
 
 ## How to make a release
 
+To avoid the awkwardness that the python CI cannot pass until the Julia package
+is registered, I recommend to do this in two steps: First do the Julia release,
+then the Python release.
+
 1. Update version:
 
    a. Edit version field in `Project.toml`.
