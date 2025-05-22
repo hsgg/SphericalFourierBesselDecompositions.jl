@@ -353,6 +353,33 @@ function calc_wmix(win, wmodes::ConfigurationSpaceModes, amodes::AnlmModes; neg_
 end
 
 
+struct WMix
+    wmix::Array
+    wmix_negm::Array
+    amodes::AnlmModes
+end
+
+function WMix()
+    ...
+end
+
+full(w::WMix) = begin
+    ...
+end
+
+Base.getindex(w::WMix, nlm::Int, NLM::Int) = begin
+    return w[nlm,NLM]
+end
+
+Base.getindex(w::WMix, nlm::NTuple{3,Int}, NLM::NTuple{3,Int}) = begin
+    n, l, m = nlm
+    N, L, M = NLM
+    nl = ...
+    NL = ...
+    return get_wmix(w.wmix, w.wmix_negm, nl, m, NL, M)
+end
+
+
 function get_wmix(w, w′, nl, m, NL, M)
     if m >= 0
         if M >= 0
