@@ -65,6 +65,11 @@ end
 
 ######################### Clnn <--> CnlmNLM #######################
 
+@doc raw"""
+    Clnn2CnlmNLM(Clnn, cmodes)
+
+This function turn Clnn into a full matrix `C_{nlm}^{NLM}`.
+"""
 function Clnn2CnlmNLM(Clnn, cmodes)
     amodes = cmodes.amodes
     nlmsize = getnlmsize(amodes)
