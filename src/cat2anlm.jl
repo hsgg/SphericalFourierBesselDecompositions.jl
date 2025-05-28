@@ -31,13 +31,15 @@
 module Cat2Anlm
 
 export cat2amln, cat2nlm, winweights2galweights
-export field2anlm
+export field2anlm, anlm2field
 
 
 using SharedArrays
 using Healpix
+using ProgressMeter
 using ..HealpixHelpers
 using ..SeparableArrays
+using ..MyMathFunctions
 using ..Modes
 
 using ..Windows
@@ -313,15 +315,66 @@ const cat2nlm = cat2amln
 # field2anlm(): Convenience function to transform a given field (not catalog)
 # into SFB space. It can probably be optimized quite a bit.
 # Unfortunately, the inverse is not straightforward, because of the layout of
-# `f_nlm` as a vector and `f` as a matrix.
-function field2anlm(f, wmodes::ConfigurationSpaceModes, amodes)
+# `f_nlm` as a vector and `f_xyz` as a matrix.
+function field2anlm(f_xyz, wmodes::ConfigurationSpaceModes, amodes)
     rθϕ = fill(0.0, 3, 0)
     nbar = 1.0
-    f_rhatln = win_rhat_ln(f, wmodes, amodes)
+    f_rhatln = win_rhat_ln(f_xyz, wmodes, amodes)
     f_nlm = -cat2amln(rθϕ, amodes, nbar, f_rhatln, [])
     return f_nlm
 end
 
+
+function anlm2rθϕ(f_nlm, ir, θ, ϕ; gnl, amodes, nlmodes)
+    f = eltype(f_nlm)(0)
+
+    for n=1:amodes.nmax, l=0:amodes.lmax_n[n], m=-l:l
+
+        nlm = getidx(amodes, n, l, abs(m))
+        f_coeff = f_nlm[nlm]
+        if m < 0
+            f_coeff = (-1)^m * conj(f_coeff)
+        end
+
+        nl = getidx(nlmodes, l, n)
+
+        ylm = sphericalharmonicsy(l, m, θ, ϕ)
+
+        f += gnl[nl,ir] * ylm * f_coeff
+    end
+
+    return f
+end
+
+
+# anlm2field(): Convenience function to transform a given field in SFB space
+# into configuration space.
+function anlm2field(f_nlm, wmodes::ConfigurationSpaceModes, amodes)
+    T = real(eltype(f_nlm))
+    f_xyz = fill(complex(T(0)), wmodes.nr, wmodes.npix)
+    reso = Resolution(amodes.nside)
+    nmax = amodes.nmax
+    lmax_n = amodes.lmax_n
+
+    nlmodes = ClnnModes(amodes; Δnmax=0)
+    gnl = fill(T(0), getlnnsize(nlmodes), wmodes.nr)
+    for nl=1:getlnnsize(nlmodes)
+        l, n, _ = getlnn(nlmodes, nl)
+        gnl[nl,:] = amodes.basisfunctions.(n, l, wmodes.r)
+    end
+
+    @show size(f_xyz) length(f_xyz)
+
+    @showprogress Threads.@threads for idx in CartesianIndices(f_xyz)
+        ir, p = Tuple(idx)
+
+        θ, ϕ = pix2angRing(reso, p)
+
+        f_xyz[ir,p] = anlm2rθϕ(f_nlm, ir, θ, ϕ; gnl, amodes, nlmodes)
+    end
+
+    return f_xyz
+end
 
 
 end

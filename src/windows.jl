@@ -82,9 +82,9 @@ struct ConfigurationSpaceModes{Tarr,T<:Real}
     rmax::T
     Δr::T
     r::Tarr
-    nr::Integer
-    npix::Integer
-    nside::Integer
+    nr::Int
+    npix::Int
+    nside::Int
 end
 
 Base.Broadcast.broadcastable(w::ConfigurationSpaceModes) = Ref(w)

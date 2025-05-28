@@ -218,6 +218,26 @@ using Healpix
         #@time anlm_fkp = Complex{Float16}.(anlm_fkp)
     end
 
+
+    run_big_tests && @testset "anlm2field()" begin
+        rmin = 500.0
+        rmax = 1000.0
+        nmax = 10
+        lmax = 10
+        nside = 256
+        nr = 100
+        amodes = SFB.AnlmModes(nmax, lmax, rmin, rmax, nside=nside)
+        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
+
+        f_xyz = rand(wmodes.nr, wmodes.npix)
+
+        @show SFB.getnlmsize(amodes)
+
+        f_nlm = SFB.field2anlm(f_xyz, wmodes, amodes)
+
+        f2_xyz = SFB.anlm2field(f_nlm, wmodes, amodes)
+    end
+
 end
 
 

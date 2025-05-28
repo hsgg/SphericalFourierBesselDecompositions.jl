@@ -36,6 +36,7 @@ include("Splines.jl")
 include("GNLs.jl")
 include("modes.jl")  # AnlmModes, ClnnModes, ClnnBinnedModes
 include("utils.jl")  # mostly theory, may be split at some point
+include("math.jl")
 include("SeparableArrays.jl")
 include("LMcalcStructs.jl")
 include("windows.jl")  # window function related
@@ -55,6 +56,7 @@ using Scanf
 using .MyBroadcast
 using .HealpixHelpers
 using .Splines
+using .MyMathFunctions
 using .GNLs
 using .Modes
 using .Utils
@@ -527,32 +529,6 @@ function xyz2rtp(xyz)
         rθϕ[3,i] = ϕ
     end
     return rθϕ
-end
-
-
-function sphericalharmonicsy(l, m, θ, ϕ)
-    rY1 = sphevaluate(θ, ϕ, l, abs(m))
-    rY2 = sphevaluate(θ, ϕ, l, -abs(m))
-    if m < 0
-        return (rY1 - im*rY2) / √2
-    elseif m == 0
-        return rY1 + 0*im
-    else
-        return (-1)^m * (rY1 + im*rY2) / √2
-    end
-end
-
-
-function realsphericalharmonicsy(l, m, θ, ϕ)
-    #Ylm = sphericalharmonicsy(l, m, θ, ϕ)
-    #if m < 0
-    #    return √2 * (-1)^m * imag(Ylm)
-    #elseif m == 0
-    #    return real(Ylm)
-    #else
-    #    return √2 * (-1)^m * real(Ylm)
-    #end
-    return sphevaluate.(θ, ϕ, l, m)
 end
 
 
