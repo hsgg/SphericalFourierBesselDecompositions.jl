@@ -326,21 +326,20 @@ end
 
 
 function anlm2rθϕ(f_nlm, ir, θ, ϕ; gnl, amodes, nlmodes)
-    f = eltype(f_nlm)(0)
+    f = real(eltype(f_nlm))(0)
 
-    for n=1:amodes.nmax, l=0:amodes.lmax_n[n], m=-l:l
+    for n=1:amodes.nmax, l=0:amodes.lmax_n[n], m=0:l
 
-        nlm = getidx(amodes, n, l, abs(m))
+        nlm = getidx(amodes, n, l, m)
         f_coeff = f_nlm[nlm]
-        if m < 0
-            f_coeff = (-1)^m * conj(f_coeff)
-        end
 
         nl = getidx(nlmodes, l, n)
 
         ylm = sphericalharmonicsy(l, m, θ, ϕ)
 
-        f += gnl[nl,ir] * ylm * f_coeff
+        m_factor = (m > 0) ? 2 : 1  # takes care of m < 0
+
+        f += m_factor * gnl[nl,ir] * real(ylm * f_coeff)
     end
 
     return f
@@ -351,7 +350,7 @@ end
 # into configuration space.
 function anlm2field(f_nlm, wmodes::ConfigurationSpaceModes, amodes)
     T = real(eltype(f_nlm))
-    f_xyz = fill(complex(T(0)), wmodes.nr, wmodes.npix)
+    f_xyz = similar(f_nlm, T, (wmodes.nr, wmodes.npix))
     reso = Resolution(amodes.nside)
     nmax = amodes.nmax
     lmax_n = amodes.lmax_n
@@ -365,7 +364,7 @@ function anlm2field(f_nlm, wmodes::ConfigurationSpaceModes, amodes)
 
     @show size(f_xyz) length(f_xyz)
 
-    @showprogress Threads.@threads for idx in CartesianIndices(f_xyz)
+    @time @showprogress Threads.@threads for idx in CartesianIndices(f_xyz)
         ir, p = Tuple(idx)
 
         θ, ϕ = pix2angRing(reso, p)

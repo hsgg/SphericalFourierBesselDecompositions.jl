@@ -219,7 +219,7 @@ using Healpix
     end
 
 
-    run_big_tests && @testset "anlm2field()" begin
+    @testset "anlm2field()" begin
         rmin = 500.0
         rmax = 1000.0
         nmax = 10
@@ -236,6 +236,10 @@ using Healpix
         f_nlm = SFB.field2anlm(f_xyz, wmodes, amodes)
 
         f2_xyz = SFB.anlm2field(f_nlm, wmodes, amodes)
+
+        f2_nlm = SFB.field2anlm(f2_xyz, wmodes, amodes)
+
+        @test f_nlm ≈ f2_nlm
     end
 
 end
