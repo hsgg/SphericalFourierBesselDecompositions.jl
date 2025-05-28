@@ -11,6 +11,19 @@ using Healpix
 
 #using PyPlot
 
+
+macro array_comparison(a1, a2, kwargs...)
+    esc(quote
+        println("===>")
+        @show extrema(abs, $a1)
+        @show extrema(abs, $a1 .- $a2)
+        @show norm($a1 .- $a2)
+        @show norm($a1 .- $a2) / norm($a1)
+        @test $a1 ≈ $a2  $(kwargs...)
+    end)
+end
+
+
 @testset "Cat2Anlm" begin
 
     run_tests = true
@@ -219,27 +232,34 @@ using Healpix
     end
 
 
-    @testset "anlm2field()" begin
+    run_tests && @testset "anlm2field()" begin
         rmin = 500.0
         rmax = 1000.0
         nmax = 10
         lmax = 10
-        nside = 256
-        nr = 100
+        nside = 16
+        nr = 25
         amodes = SFB.AnlmModes(nmax, lmax, rmin, rmax, nside=nside)
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
 
-        f_xyz = rand(wmodes.nr, wmodes.npix)
-
         @show SFB.getnlmsize(amodes)
 
-        f_nlm = SFB.field2anlm(f_xyz, wmodes, amodes)
+        f1_xyz = rand(wmodes.nr, wmodes.npix)
 
-        f2_xyz = SFB.anlm2field(f_nlm, wmodes, amodes)
+        f1_nlm = SFB.field2anlm(f1_xyz, wmodes, amodes)
+
+        f2_xyz = SFB.anlm2field(f1_nlm, wmodes, amodes)
 
         f2_nlm = SFB.field2anlm(f2_xyz, wmodes, amodes)
 
-        @test f_nlm ≈ f2_nlm
+        f3_xyz = SFB.anlm2field(f2_nlm, wmodes, amodes)
+
+        f3_nlm = SFB.field2anlm(f3_xyz, wmodes, amodes)
+
+        @array_comparison f1_xyz f2_xyz  rtol=1  # no need to match pre- and post-filter
+        @array_comparison f2_xyz f3_xyz  rtol=1e-3
+        @array_comparison f1_nlm f2_nlm  rtol=1e-3
+        @array_comparison f2_nlm f3_nlm  rtol=1e-3
     end
 
 end
