@@ -240,7 +240,7 @@ end
         nside = 32
         nr = 100
         amodes = SFB.AnlmModes(nmax, lmax, rmin, rmax, nside=nside)
-        wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
+        wmodes = SFB.ConfigurationSpaceModes(amodes, nr)
 
         @show SFB.getnlmsize(amodes)
 

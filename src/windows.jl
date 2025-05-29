@@ -104,6 +104,17 @@ end
 
 
 @doc raw"""
+    ConfigurationSpaceModes(amodes, nr)
+
+A struct to describe voxelization scheme, initialized from an `AnlmModes`
+object.
+"""
+function ConfigurationSpaceModes(amodes::AnlmModes, nr)
+    return ConfigurationSpaceModes(amodes.rmin, amodes.rmax, nr, amodes.nside)
+end
+
+
+@doc raw"""
     window_r(wmodes::ConfigurationSpaceModes)
 
 Get the $r$-values of the radial bins and corresponding widths $\Delta r$, e.g.,
