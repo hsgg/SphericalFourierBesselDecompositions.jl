@@ -317,6 +317,9 @@ const cat2nlm = cat2amln
 
 Calculate the SFB coefficients for the real field `f_xyz`, where the real
 field is in the format of an `nr × npix` matrix.
+
+For `wmodes` see [`ConfigurationSpaceModes`](@ref). For `amodes` see
+[`AnlmModes`](@ref).
 """
 function field2anlm(f_xyz, wmodes::ConfigurationSpaceModes, amodes)
     rθϕ = fill(0.0, 3, 0)
@@ -333,6 +336,9 @@ end
 Transform the SFB coefficients `f_nlm` into configuration space. The resulting
 matrix will be of the form `nr × npix`, where `nr` is the number of radial
 bins given by `wmodes`, and `npix` is the number of HEALPixels.
+
+For `wmodes` see [`ConfigurationSpaceModes`](@ref). For `amodes` see
+[`AnlmModes`](@ref).
 """
 function anlm2field(f_nlm, wmodes::ConfigurationSpaceModes, amodes)
     T = real(eltype(f_nlm))
