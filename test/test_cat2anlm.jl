@@ -237,8 +237,8 @@ end
         rmax = 1000.0
         nmax = 10
         lmax = 10
-        nside = 16
-        nr = 25
+        nside = 32
+        nr = 100
         amodes = SFB.AnlmModes(nmax, lmax, rmin, rmax, nside=nside)
         wmodes = SFB.ConfigurationSpaceModes(rmin, rmax, nr, amodes.nside)
 
@@ -257,9 +257,9 @@ end
         f3_nlm = SFB.field2anlm(f3_xyz, wmodes, amodes)
 
         @array_comparison f1_xyz f2_xyz  rtol=1  # no need to match pre- and post-filter
-        @array_comparison f2_xyz f3_xyz  rtol=1e-3
-        @array_comparison f1_nlm f2_nlm  rtol=1e-3
-        @array_comparison f2_nlm f3_nlm  rtol=1e-3
+        @array_comparison f2_xyz f3_xyz  rtol=1e-4
+        @array_comparison f1_nlm f2_nlm  rtol=1e-4
+        @array_comparison f2_nlm f3_nlm  rtol=1e-4
     end
 
 end

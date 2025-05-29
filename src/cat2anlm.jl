@@ -325,35 +325,11 @@ function field2anlm(f_xyz, wmodes::ConfigurationSpaceModes, amodes)
 end
 
 
-function anlm2rθϕ(f_nlm, ir, θ, ϕ; gnl, amodes, nlmodes)
-    f = real(eltype(f_nlm))(0)
-
-    for n=1:amodes.nmax, l=0:amodes.lmax_n[n], m=0:l
-
-        nlm = getidx(amodes, n, l, m)
-        f_coeff = f_nlm[nlm]
-
-        nl = getidx(nlmodes, l, n)
-
-        ylm = sphericalharmonicsy(l, m, θ, ϕ)
-
-        m_factor = (m > 0) ? 2 : 1  # takes care of m < 0
-
-        f += m_factor * gnl[nl,ir] * real(ylm * f_coeff)
-    end
-
-    return f
-end
-
-
 # anlm2field(): Convenience function to transform a given field in SFB space
 # into configuration space.
 function anlm2field(f_nlm, wmodes::ConfigurationSpaceModes, amodes)
     T = real(eltype(f_nlm))
     f_xyz = similar(f_nlm, T, (wmodes.nr, wmodes.npix))
-    reso = Resolution(amodes.nside)
-    nmax = amodes.nmax
-    lmax_n = amodes.lmax_n
 
     nlmodes = ClnnModes(amodes; Δnmax=0)
     gnl = fill(T(0), getlnnsize(nlmodes), wmodes.nr)
@@ -364,12 +340,27 @@ function anlm2field(f_nlm, wmodes::ConfigurationSpaceModes, amodes)
 
     @show size(f_xyz) length(f_xyz)
 
-    @time @showprogress Threads.@threads for idx in CartesianIndices(f_xyz)
-        ir, p = Tuple(idx)
+    # Approach: n-first, r-last
+    @time @showprogress for ir=1:wmodes.nr
 
-        θ, ϕ = pix2angRing(reso, p)
+        alm = Alm(amodes.lmax, amodes.lmax)
 
-        f_xyz[ir,p] = anlm2rθϕ(f_nlm, ir, θ, ϕ; gnl, amodes, nlmodes)
+        for (i, (l,m)) in enumerate(each_ell_m(alm))
+
+            alm_i = complex(T)(0)
+
+            for n=1:amodes.nmax_l[l+1]
+                nl = getidx(nlmodes, l, n)
+                nlm = getidx(amodes, n, l, m)
+                alm_i += gnl[nl,ir] * f_nlm[nlm]
+            end
+
+            alm.alm[i] = alm_i
+        end
+
+        hpmap = alm2map(alm, amodes.nside)
+
+        f_xyz[ir,:] .= hpmap
     end
 
     return f_xyz
