@@ -312,10 +312,12 @@ end
 const cat2nlm = cat2amln
 
 
-# field2anlm(): Convenience function to transform a given field (not catalog)
-# into SFB space. It can probably be optimized quite a bit.
-# Unfortunately, the inverse is not straightforward, because of the layout of
-# `f_nlm` as a vector and `f_xyz` as a matrix.
+@doc raw"""
+    field2anlm(f_xyz, wmodes::ConfigurationSpaceModes, amodes)
+
+Calculate the SFB coefficients for the real field `f_xyz`, where the real
+field is in the format of an `nr × npix` matrix.
+"""
 function field2anlm(f_xyz, wmodes::ConfigurationSpaceModes, amodes)
     rθϕ = fill(0.0, 3, 0)
     nbar = 1.0
@@ -325,8 +327,13 @@ function field2anlm(f_xyz, wmodes::ConfigurationSpaceModes, amodes)
 end
 
 
-# anlm2field(): Convenience function to transform a given field in SFB space
-# into configuration space.
+@doc raw"""
+    anlm2field(f_nlm, wmodes::ConfigurationSpaceModes, amodes)
+
+Transform the SFB coefficients `f_nlm` into configuration space. The resulting
+matrix will be of the form `nr × npix`, where `nr` is the number of radial
+bins given by `wmodes`, and `npix` is the number of HEALPixels.
+"""
 function anlm2field(f_nlm, wmodes::ConfigurationSpaceModes, amodes)
     T = real(eltype(f_nlm))
     f_xyz = similar(f_nlm, T, (wmodes.nr, wmodes.npix))
