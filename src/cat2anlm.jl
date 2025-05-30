@@ -324,10 +324,12 @@ function field2anlm_v2(f_xyz, wmodes::ConfigurationSpaceModes, amodes)
     T = eltype(f_xyz)
     f_nlm = zeros(complex(T), getnlmsize(amodes))
 
-    # create temporary arrays
+    # work arrays
     map = HealpixMap{T,Healpix.RingOrder}(fill(T(0), wmodes.npix))
-    alm = mymap2alm(map; amodes.lmax)  # create temporary array
+    alm = map2alm(map; amodes.lmax)  # create temporary array
+    ell_m = each_ell_m(alm)
 
+    # gnl cache
     nlmodes = ClnnModes(amodes; Δnmax=0)
     gnl = fill(T(0), getlnnsize(nlmodes), wmodes.nr)
     r, Δr = window_r(wmodes)
@@ -339,10 +341,10 @@ function field2anlm_v2(f_xyz, wmodes::ConfigurationSpaceModes, amodes)
     # approach: lm-first, r-last
     @time @showprogress for ir=1:wmodes.nr
 
-        map .= @view f_xyz[ir,:]
-        mymap2alm!(map, alm)
+        map.= @view f_xyz[ir,:]
+        map2alm!(map, alm)
 
-        for (i, (l,m)) in enumerate(each_ell_m(alm))
+        for (i, (l,m)) in enumerate(ell_m)
             for n=1:amodes.nmax_l[l+1]
                 nl = getidx(nlmodes, l, n)
                 nlm = getidx(amodes, n, l, m)
@@ -382,6 +384,7 @@ function anlm2field(f_nlm, wmodes::ConfigurationSpaceModes, amodes)
     T = real(eltype(f_nlm))
     f_xyz = similar(f_nlm, T, (wmodes.nr, wmodes.npix))
 
+    # gnl cache
     nlmodes = ClnnModes(amodes; Δnmax=0)
     gnl = fill(T(0), getlnnsize(nlmodes), wmodes.nr)
     for nl=1:getlnnsize(nlmodes)
@@ -389,12 +392,15 @@ function anlm2field(f_nlm, wmodes::ConfigurationSpaceModes, amodes)
         @. gnl[nl,:] = amodes.basisfunctions(n, l, wmodes.r)
     end
 
+    # work arrays
+    alm = Alm{complex(T)}(amodes.lmax, amodes.lmax)
+    hpmap = alm2map(alm, amodes.nside)
+    ell_m = each_ell_m(alm)
+
     # Approach: n-first, r-last
     @time @showprogress for ir=1:wmodes.nr
 
-        alm = Alm(amodes.lmax, amodes.lmax)
-
-        for (i, (l,m)) in enumerate(each_ell_m(alm))
+        for (i, (l,m)) in enumerate(ell_m)
 
             alm_i = complex(T)(0)
 
@@ -407,7 +413,7 @@ function anlm2field(f_nlm, wmodes::ConfigurationSpaceModes, amodes)
             alm.alm[i] = alm_i
         end
 
-        hpmap = alm2map(alm, amodes.nside)
+        alm2map!(alm, hpmap)
 
         f_xyz[ir,:] .= hpmap
     end

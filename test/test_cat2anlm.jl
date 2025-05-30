@@ -254,6 +254,7 @@ end
         # println("==============================")
         # @btime SFB.Cat2Anlm.field2anlm_v2($f1_xyz, $wmodes, $amodes)
         # println("==============================")
+        # @btime SFB.Cat2Anlm.anlm2field($f1_nlm, $wmodes, $amodes)
     end
 
 
