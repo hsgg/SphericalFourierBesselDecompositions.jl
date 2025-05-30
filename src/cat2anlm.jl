@@ -312,6 +312,49 @@ end
 const cat2nlm = cat2amln
 
 
+function field2anlm_v1(f_xyz, wmodes::ConfigurationSpaceModes, amodes)
+    rθϕ = fill(0.0, 3, 0)
+    nbar = 1.0
+    f_rhatln = win_rhat_ln(f_xyz, wmodes, amodes)
+    f_nlm = -cat2amln(rθϕ, amodes, nbar, f_rhatln, [])
+    return f_nlm
+end
+
+function field2anlm_v2(f_xyz, wmodes::ConfigurationSpaceModes, amodes)
+    T = eltype(f_xyz)
+    f_nlm = zeros(complex(T), getnlmsize(amodes))
+
+    # create temporary arrays
+    map = HealpixMap{T,Healpix.RingOrder}(fill(T(0), wmodes.npix))
+    alm = mymap2alm(map; amodes.lmax)  # create temporary array
+
+    nlmodes = ClnnModes(amodes; Δnmax=0)
+    gnl = fill(T(0), getlnnsize(nlmodes), wmodes.nr)
+    r, Δr = window_r(wmodes)
+    for nl=1:getlnnsize(nlmodes)
+        l, n, _ = getlnn(nlmodes, nl)
+        @. gnl[nl,:] = amodes.basisfunctions(n, l, wmodes.r) * r^2 * Δr
+    end
+
+    # approach: lm-first, r-last
+    @time @showprogress for ir=1:wmodes.nr
+
+        map .= @view f_xyz[ir,:]
+        mymap2alm!(map, alm)
+
+        for (i, (l,m)) in enumerate(each_ell_m(alm))
+            for n=1:amodes.nmax_l[l+1]
+                nl = getidx(nlmodes, l, n)
+                nlm = getidx(amodes, n, l, m)
+                f_nlm[nlm] += gnl[nl,ir] * alm.alm[i]
+            end
+        end
+    end
+
+    return f_nlm
+end
+
+
 @doc raw"""
     field2anlm(f_xyz, wmodes::ConfigurationSpaceModes, amodes)
 
@@ -321,13 +364,8 @@ field is in the format of an `nr × npix` matrix.
 For `wmodes` see [`ConfigurationSpaceModes`](@ref). For `amodes` see
 [`AnlmModes`](@ref).
 """
-function field2anlm(f_xyz, wmodes::ConfigurationSpaceModes, amodes)
-    rθϕ = fill(0.0, 3, 0)
-    nbar = 1.0
-    f_rhatln = win_rhat_ln(f_xyz, wmodes, amodes)
-    f_nlm = -cat2amln(rθϕ, amodes, nbar, f_rhatln, [])
-    return f_nlm
-end
+# const field2anlm = field2anlm_v1
+const field2anlm = field2anlm_v2
 
 
 @doc raw"""
@@ -348,10 +386,8 @@ function anlm2field(f_nlm, wmodes::ConfigurationSpaceModes, amodes)
     gnl = fill(T(0), getlnnsize(nlmodes), wmodes.nr)
     for nl=1:getlnnsize(nlmodes)
         l, n, _ = getlnn(nlmodes, nl)
-        gnl[nl,:] = amodes.basisfunctions.(n, l, wmodes.r)
+        @. gnl[nl,:] = amodes.basisfunctions(n, l, wmodes.r)
     end
-
-    @show size(f_xyz) length(f_xyz)
 
     # Approach: n-first, r-last
     @time @showprogress for ir=1:wmodes.nr

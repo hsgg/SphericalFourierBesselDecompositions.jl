@@ -232,6 +232,31 @@ end
     end
 
 
+    run_tests && @testset "field2anlm version comparison" begin
+        rmin = 500.0
+        rmax = 1000.0
+        nmax = 10
+        lmax = 10
+        nside = 32
+        nr = 100
+        amodes = SFB.AnlmModes(nmax, lmax, rmin, rmax, nside=nside)
+        wmodes = SFB.ConfigurationSpaceModes(amodes, nr)
+
+        f1_xyz = rand(wmodes.nr, wmodes.npix)
+
+        f1_nlm = SFB.Cat2Anlm.field2anlm_v1(f1_xyz, wmodes, amodes)
+        f12_nlm = SFB.Cat2Anlm.field2anlm_v2(f1_xyz, wmodes, amodes)
+
+        @test f1_nlm ≈ f12_nlm
+
+        # # performance check using BenchmarkTools:
+        # @btime SFB.Cat2Anlm.field2anlm_v1($f1_xyz, $wmodes, $amodes)
+        # println("==============================")
+        # @btime SFB.Cat2Anlm.field2anlm_v2($f1_xyz, $wmodes, $amodes)
+        # println("==============================")
+    end
+
+
     run_tests && @testset "anlm2field()" begin
         rmin = 500.0
         rmax = 1000.0
