@@ -34,7 +34,7 @@ export gen_Clnn_theory
 export Clnn2CnlmNLM, sum_m_lmeqLM
 export add_local_average_effect_nowindow
 export calc_NobsA, calc_NobsA_z
-export calc_CobsA, calc_CobsA_z
+# export calc_CobsA, calc_CobsA_z
 
 
 using ..Modes

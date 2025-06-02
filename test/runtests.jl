@@ -19,6 +19,12 @@ using LinearAlgebra
 
 ## runtests:
 @testset verbose=true "SphericalFourierBesselDecompositions" begin
+
+    @testset "Aqua.jl" begin
+        using Aqua
+        Aqua.test_all(SphericalFourierBesselDecompositions)
+    end
+
     include("test_toplevel.jl")
     include("test_separablearrays.jl")
     include("test_gnl.jl")

@@ -25,28 +25,38 @@ WignerFamilies = "a8f88a7a-0a89-491c-8ecb-051e99aa9f5e"
 WignerSymbols = "9f57e263-0b3d-5e2e-b1be-24f2bb48858b"
 
 [compat]
+Aqua = "0.8"
 ArbNumerics = "^1.2"
+DelimitedFiles = "1"
+Distributed = "1"
+FastGaussQuadrature = "1"
 FastTransforms = "0.13, 0.14, 0.15, 0.16, 0.17"
 Healpix = "3, 4"
 KrylovKit = "0.7, 0.8, 0.9"
+LinearAlgebra = "1"
 LoopVectorization = "0.12"
 ProgressMeter = "1"
+PyPlot = "2"
 QuadGK = "^2.4"
+Random = "1"
 Roots = "1, 2"
 Scanf = "0.5"
+SharedArrays = "1"
+SparseArrays = "1"
 SpecialFunctions = "^0.10.1, 1, 2"
 Statistics = "1"
+Test = "1"
 WignerD = "0.1"
 WignerFamilies = "^1.0.1"
 WignerSymbols = "^1.1, 2"
 julia = "1"
 
 [extras]
-CPUSummary = "2a0fbf3d-bb9c-48f3-b0a9-814d99fd7ab9"
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 FastGaussQuadrature = "442a2c76-b920-505d-bb47-c5924d526838"
 PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["DelimitedFiles", "FastGaussQuadrature", "PyPlot", "Test"]
+test = ["Aqua", "DelimitedFiles", "FastGaussQuadrature", "PyPlot", "Test"]
