@@ -9,18 +9,6 @@ using LinearAlgebra
 
 
 @testset "Modes" begin
-    @testset "AnlmModes Int args" begin
-        @time SFB.AnlmModes(0.03, 0, 1500)
-        @time SFB.AnlmModes(0.03, 0.0, 1500)
-        @time SFB.AnlmModes(0.03, 0, 1500.0)
-        @time SFB.AnlmModes(0.03, 0.0, 1500.0)
-
-        @time SFB.AnlmModes(10, 12, 0, 1500)
-        @time SFB.AnlmModes(10, 12, 0.0, 1500)
-        @time SFB.AnlmModes(10, 12, 0, 1500.0)
-        @time SFB.AnlmModes(10, 12, 0.0, 1500.0)
-    end
-
 
     @testset "AnlmModes" begin
         rmin = 100.0
@@ -46,6 +34,18 @@ using LinearAlgebra
             @test n == n2
             @test l == l2
             @test m == m2
+        end
+
+        @testset "AnlmModes Int args" begin
+            @time SFB.AnlmModes(0.03, 0, 1500)
+            @time SFB.AnlmModes(0.03, 0.0, 1500)
+            @time SFB.AnlmModes(0.03, 0, 1500.0)
+            @time SFB.AnlmModes(0.03, 0.0, 1500.0)
+
+            @time SFB.AnlmModes(10, 12, 0, 1500)
+            @time SFB.AnlmModes(10, 12, 0.0, 1500)
+            @time SFB.AnlmModes(10, 12, 0, 1500.0)
+            @time SFB.AnlmModes(10, 12, 0.0, 1500.0)
         end
     end
 
@@ -113,6 +113,14 @@ using LinearAlgebra
             @test k1 == k2
             @test k1 > k1_old
             k1_old = k1
+        end
+
+
+        @testset "allocations" begin
+            @allocations SFB.getidx(cmodes, 0, 1)  # compile
+            @allocations SFB.getidx(cmodes, 0, 1, 1)  # compile
+            @test 0 == @allocations SFB.getidx(cmodes, 0, 1)
+            @test_broken 0 == @allocations SFB.getidx(cmodes, 0, 1, 1)
         end
     end
 
