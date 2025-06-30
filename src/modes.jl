@@ -107,6 +107,18 @@ end
 Base.Broadcast.broadcastable(s::AnlmModes) = Ref(s)
 
 
+function Base.show(io::IO, amodes::AnlmModes{T}) where {T}
+    kmax = amodes.kmax
+    rmin = amodes.rmin
+    rmax = amodes.rmax
+    nmax = amodes.nmax
+    lmax = amodes.lmax
+    nside = amodes.nside
+    knl = amodes.knl
+    print(io, "AnlmModes(kmax=$kmax, rmin=$rmin, rmax=$rmax, $T, nmax=$nmax, lmax=$lmax, nside=$nside, num_modes=$(sum(isfinite.(knl))))")
+end
+
+
 function AnlmModes(kmax::Real, rmin::Real, rmax::Real; cache=true, nside=nothing, nmax=typemax(Int64), lmax=typemax(Int64), boundary=GNL.potential)
     T = Float64
     kmax = T(kmax)
@@ -283,6 +295,26 @@ Base.getproperty(cmodes::ClnnModes{true}, property::Symbol) = begin
         return getfield(cmodes, :amodesA)
     end
     return getfield(cmodes, property)
+end
+
+
+function Base.show(io::IO, cmodes::ClnnModes{true})
+    amodes = cmodes.amodes
+    Δkmax = cmodes.Δkmax
+    Δnmax = cmodes.Δnmax
+    num_lnn = size(cmodes.lnn, 2)
+
+    print(io, "ClnnModes{S=true}(Δkmax=$Δkmax, Δnmax=$Δnmax, num_lnn=$num_lnn, amodes=$amodes)")
+end
+
+function Base.show(io::IO, cmodes::ClnnModes{false})
+    amodesA = cmodes.amodesA
+    amodesB = cmodes.amodesB
+    Δkmax = cmodes.Δkmax
+    Δnmax = cmodes.Δnmax
+    num_lnn = size(cmodes.lnn, 2)
+
+    print(io, "ClnnModes{S=false}(Δkmax=$Δkmax, Δnmax=$Δnmax, num_lnn=$num_lnn, amodesA=$amodesA, amodesB=$amodesB)")
 end
 
 
