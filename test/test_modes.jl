@@ -119,8 +119,10 @@ using LinearAlgebra
         @testset "allocations" begin
             @allocations SFB.getidx(cmodes, 0, 1)  # compile
             @allocations SFB.getidx(cmodes, 0, 1, 1)  # compile
+            @allocations SFB.getidx(clnnmodes, 0, 1, 2)  # compile
             @test 0 == @allocations SFB.getidx(cmodes, 0, 1)
-            @test_broken 0 == @allocations SFB.getidx(cmodes, 0, 1, 1)
+            @test 0 == @allocations SFB.getidx(cmodes, 0, 1, 1)
+            @test 0 == @allocations SFB.getidx(clnnmodes, 0, 1, 2)
         end
     end
 

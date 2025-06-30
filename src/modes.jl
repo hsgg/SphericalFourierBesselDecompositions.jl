@@ -382,20 +382,20 @@ getlnn(cmodes::ClnnModes) = cmodes.lnn
 
 function getidx(cmodes::ClnnModes{S}, l, n1, n2) where {S}
     if S
-        #n1, n2 = minmax(n1, n2)  # allocates (julia-v0.9.1)
-        n1_tmp = n1
-        n1 = min(n1, n2)
-        n2 = max(n1_tmp, n2)
+        #n1, n2 = minmax(n1, n2)  # allocates (julia-1.9.1, julia-1.11.5)
+        if n1 > n2
+            n1, n2 = n2, n1
+        end
     end
 
     lnnsize = getlnnsize(cmodes)
 
     ifirst = cmodes.first_ell_idx[l+1]
 
-    i = findfirst(ifirst:lnnsize) do i
-        cmodes.lnn[1,i] == l &&
-        cmodes.lnn[2,i] == n1 &&
-        cmodes.lnn[3,i] == n2
+    i = findfirst(ifirst:lnnsize) do j
+        cmodes.lnn[1,j] == l &&
+        cmodes.lnn[2,j] == n1 &&
+        cmodes.lnn[3,j] == n2
     end
 
     if isnothing(i)
@@ -412,6 +412,38 @@ function getidx(cmodes::ClnnModes{S}, l, n1, n2) where {S}
     return idx
 end
 
+
+function getidx(cmodes::ClnnModes{true}, l, n1, n2)
+    if n1 > n2
+        n1, n2 = n2, n1
+    end
+
+    lnnsize = getlnnsize(cmodes)
+
+    idx = cmodes.first_ell_idx[l+1]
+
+    for dn=1:(n2-n1)
+        idx += cmodes.amodes.nmax_l[l+1] - dn + 1
+    end
+
+    idx += n1 - 1
+
+    if idx > lnnsize || cmodes.lnn[1,idx] != l || cmodes.lnn[2,idx] != n1 || cmodes.lnn[3,idx] != n2
+        lnn_found = nothing
+        if 1 <= idx <= lnnsize
+            lnn_found = (cmodes.lnn[:,idx]...,)
+        end
+        lA = min(l, cmodes.amodesA.lmax)
+        lB = min(l, cmodes.amodesB.lmax)
+        n1A = min(n1, cmodes.amodesA.nmax_l[lA+1])
+        n2B = min(n2, cmodes.amodesB.nmax_l[lB+1])
+        Δk = cmodes.amodesB.knl[n2B,lB+1] - cmodes.amodesA.knl[n1A,lA+1]
+        @error "Cannot find index" l,n1,n2 lnnsize idx lnn_found cmodes.Δkmax cmodes.amodesA.lmax cmodes.amodesB.lmax cmodes.amodesA.nmax cmodes.amodesB.nmax isvalidlnn(cmodes, l, n1, n2) isvalidlnn_symmetric(cmodes, l, n1, n2) lA,lB cmodes.amodesA.nmax_l[lA+1] cmodes.amodesB.nmax_l[lB+1] n1A,n2B cmodes.amodesA.knl[n1A,lA+1] cmodes.amodesB.knl[n2B,lB+1] Δk
+        error("Cannot find index")
+    end
+
+    return idx
+end
 
 # an optimization for the common case n1=n2 when Δnmax=0
 function getidx(cmodes::ClnnModes, l, n)
