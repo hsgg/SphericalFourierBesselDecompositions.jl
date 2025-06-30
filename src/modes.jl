@@ -414,7 +414,7 @@ end
 
 
 # an optimization for the common case n1=n2 when Δnmax=0
-function getidx(cmodes::ClnnModes{true}, l, n)
+function getidx(cmodes::ClnnModes, l, n)
     @assert cmodes.Δnmax == 0
     ifirst = cmodes.first_ell_idx[l+1]
     idx = ifirst + n - 1
