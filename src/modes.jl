@@ -460,9 +460,9 @@ function getidx(cmodes::ClnnModes{true}, l, n1, n2)
 
     idx += n1 - 1
 
-    if idx > lnnsize || cmodes.lnn[1,idx] != l || cmodes.lnn[2,idx] != n1 || cmodes.lnn[3,idx] != n2
+    if !(1<= idx <= lnnsize)
         lnn_found = nothing
-        if 1 <= idx <= lnnsize
+        if 1 <= idx <= lnnsize  # retain this for future debugging
             lnn_found = (cmodes.lnn[:,idx]...,)
         end
         lA = min(l, cmodes.amodesA.lmax)
