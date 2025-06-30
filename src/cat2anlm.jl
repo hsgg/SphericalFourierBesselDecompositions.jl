@@ -339,7 +339,7 @@ function field2anlm_v2(f_xyz, wmodes::ConfigurationSpaceModes, amodes)
     end
 
     # approach: lm-first, r-last
-    @time @showprogress for ir=1:wmodes.nr
+    @time @showprogress desc="field2anlm:" for ir=1:wmodes.nr
 
         map.= @view f_xyz[ir,:]
         map2alm!(map, alm)
@@ -398,7 +398,7 @@ function anlm2field(f_nlm, wmodes::ConfigurationSpaceModes, amodes)
     ell_m = each_ell_m(alm)
 
     # Approach: n-first, r-last
-    @time @showprogress for ir=1:wmodes.nr
+    @time @showprogress desc="anlm2field:" for ir=1:wmodes.nr
 
         for (i, (l,m)) in enumerate(ell_m)
 
